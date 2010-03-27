@@ -77,8 +77,8 @@ msg = {
 }
 
 # Command line arguments
-retrain_arg = None
-train_arg = None
+_retrain_arg = None
+_train_arg = None
 
 
 
@@ -372,25 +372,28 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, user_score):
                     wikipedia.output("Score is %s." % mark(score, lambda x:x=='good'))
                     if(known): wikipedia.output("Known as %s." % mark(known, lambda x:x=='good'))
                     if(verified): wikipedia.output("Verified as %s." % mark(verified, lambda x:x[:3]!='bad'))
-
                     wikipedia.output("CRM114 thinks it is: %s, prob was:%f %s" % (mark(crm114_answer, lambda x:x=='good'), probability, falseString))
-                    wikipedia.output(" \03{lightblue}%s\03{default}" % edit_text[:500])
+                    
+                    wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % revid)
                     wikipedia.showDiff(prev.text, e.text)
-                    wikipedia.output("retrain_arg = %s" % retrain_arg)
+                    wikipedia.output(" \03{lightblue}%s\03{default}" % edit_text[:500])
+                    
                     uncertain = score_numeric < 1 or reverts_info[i] != -1 or falseString
-                    if(retrain_arg or (uncertain and not known)):
+                    if(_retrain_arg or (uncertain and not known)):
+                        if not known or not verified: known = score     # keep verified answer by default
                         answer = wikipedia.inputChoice(u'Do you want to mark this revision as %s (Yes)?' % \
-                                    mark(score, lambda x:x=='good'), ['Yes', 'No', 'Constructive'], ['Y', 'N', 'C'], 'Y')
+                                    mark(known, lambda x:x=='good'), ['Yes', 'No', 'Constructive'], ['Y', 'N', 'C'], 'Y')
                         if answer == 'n':
-                            wikipedia.output(" \03{lightpurple}***** Wow! *****\03{default} \03{lightgreen}Thank you for correcting me.\03{default}")
-                            known = ('good', 'bad')[score_numeric > -1]                 # inverting/correcting
-                            verified = known + ' (corrected by human)'
+                            wikipedia.output(" \03{lightpurple}***** Wow! *****\03{default} \03{lightgreen}Thank you for correcting me.\03{default}")                                                        
+                            known = ('good', 'bad')[known == 'good']                 # inverting/correcting
+                        
                         if answer == 'c':
                             known = 'good'
-                            verified = 'constructive (corrected by human)'
-                        else:
-                            known = ('good', 'bad')[score_numeric < 0]
-                            verified = known + ' (verified by human)'
+                            verified = 'constructive (corrected by user)'
+                        else:                                                    
+                            verified = known + (' (corrected by user)', ' (verified by user)')[known == score]
+                            
+                        wikipedia.output("Marked as %s" % mark(verified, lambda x:x[:3]!='bad'))
                         human_responses += 1
                     else:
                         known = score
@@ -419,18 +422,19 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, user_score):
 
 
 def main():
-    pattern = None
+    global _retrain_arg, _train_arg
+    pattern_arg = None
     for arg in wikipedia.handleArgs():
-        if arg.startswith('-xml') and len(arg) > 5: pattern = arg[5:]
-        if arg.startswith('-retrain'): retrain_arg = True
-        if arg.startswith('-train'): train_arg = True
+        if arg.startswith('-xml') and len(arg) > 5: pattern_arg = arg[5:]
+        if arg.startswith('-retrain'): _retrain_arg = True
+        if arg.startswith('-train'): _train_arg = True
             
             
-    if(not pattern):            # work: lightblue lightgreen lightpurple lightred
+    if(not pattern_arg):            # work: lightblue lightgreen lightpurple lightred
         wikipedia.output('Usage: ./r.py \03{lightblue}-xml:\03{default}path/Wikipedia-Single-Page-Dump-*.xml')
         return
 
-    xmlFilenames = sorted(locate(pattern))
+    xmlFilenames = sorted(locate(pattern_arg))
     wikipedia.output(u"Files: \n%s\n\n" % xmlFilenames)
     mysite = wikipedia.getSite()
 
