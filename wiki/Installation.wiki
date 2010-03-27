@@ -11,3 +11,6 @@ Prerequisites:
 
 Optional:
  * Python 2.6 Lib/pprint.py patches [http://bugs.python.org/issue8228],  [http://bugs.python.org/issue5131]
+
+Installation:
+ svn checkout http://wrdese.googlecode.com/svn/trunk/ wrdese-read-only
