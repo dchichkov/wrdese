@@ -4,6 +4,7 @@
 # TODO:
 # consecutive edits as one edit
 # self-reverts
+# categorize 'bad' edits, based on reverts comments
 
 """
 This bot goes over multiple revisions and tries bayesian approach to detect spam/vandalism.
