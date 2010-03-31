@@ -67,8 +67,8 @@ kCrmPath = "crm"
 kClassificationType = "<osb unique microgroom>"
 kClassificationExtension = ".css"
 
-#kClassificationType = "<hyperspace>"
-#kClassificationExtension = ".css"
+# kClassificationType = "<hyperspace>"
+# kClassificationExtension = ".css"
 
 #kClassificationType = "<osb unigram>"
 #kClassificationExtension = ".css"
