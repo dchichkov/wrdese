@@ -89,7 +89,7 @@ msg = {
 # Command line arguments
 _retrain_arg = None
 _train_arg = None
-
+_show_diffs_arg = None
 
 
 def locate(pattern):
@@ -152,6 +152,25 @@ def analyse_tokens_lifetime(xmlFilenames):
         # wikipedia.output("[%d] %d +/- %d sec. : %s" % (v[1][2], v[1][0], v[1][1], v[0]))
 
 
+def test_ndiff(xmlFilenames):
+    i = 0
+    t0 = time.time()
+    for xmlFilename in xmlFilenames:
+        #for i in reverts:
+        #    wikipedia.output("Revision %d (%d)" % (i[0], i[1]));
+        dump = xmlreader.XmlDump(xmlFilename, allrevisions=True)
+        revisions = dump.parse()
+        prev = None
+        for e in revisions:
+            #wikipedia.output("Revision %d: %s by %s Comment: %s" % (i, e.timestamp, e.username, e.comment))
+            #if prev:
+            #    if(e.text and prev.text):
+            #        diff = difflib.ndiff(prev.text.split(), e.text.split())
+            prev = e
+            i += 1
+    wikipedia.output("%f seconds" % (time.time() - t0))
+
+
 
 
 
@@ -165,8 +184,8 @@ def dump_cstats(stats, ids):
 
     wikipedia.output("===================================================================================")
     pp = pprint.PrettyPrinter(width=140)
-    wikipedia.output("Stats:\n%s" % pp.pformat(stats))
-    wikipedia.output("Revision IDs: ids = \\\n%s" % pp.pformat(ids))
+    wikipedia.output("stats = \\    # Stats:\n%s" % pp.pformat(stats))
+    wikipedia.output("ids = \\      # Revision IDs:\n%s" % pp.pformat(ids))
     wikipedia.output("===================================================================================")
 
 
@@ -226,7 +245,7 @@ def analyse_reverts(xmlFilenames):
         if(reverted_to != -1):            
             if(reverts_info[i] == -1): reverts_info[i] = -2
             elif(reverts_info[i] != reverted_to):
-                wikipedia.output("Revert war: revision %d is a duplicate of %d was later reverted to %d" % (i, reverts_info[i], reverted_to)) 
+                # wikipedia.output("Revert war: revision %d is a duplicate of %d was later reverted to %d" % (i, reverts_info[i], reverted_to)) 
                 reverts_info[i] = -4
         elif(reverts_info[i] >= 0): reverted_to = reverts_info[i]  
         if(i == reverted_to): reverted_to = -1   
@@ -282,17 +301,17 @@ def analyse_reverts(xmlFilenames):
             users_reputation[prev.username] += 1
 
         if(e.comment and len(e.comment) > 80):        # we like long comments
-            wikipedia.output("Revision (%d, %d). Boosting user %s(%d)" % (i - 1, i, e.username, users_reputation[e.username]))
-            wikipedia.output("    %s" % e.comment)
+            #wikipedia.output("Revision (%d, %d). Boosting user %s(%d)" % (i - 1, i, e.username, users_reputation[e.username]))
+            #wikipedia.output("    %s" % e.comment)
             users_reputation[e.username] += 1
             
         total_size += e.size
         total_time += (e.utc - prev.utc)
         prev = e
 
-    sorted_users = sorted(users_reputation.items(), key=lambda t: t[1])
-    for u in sorted_users:
-        wikipedia.output("[%d] %s" % (u[1], u[0]))
+    #sorted_users = sorted(users_reputation.items(), key=lambda t: t[1])
+    #for u in sorted_users:
+    #    wikipedia.output("[%d] %s" % (u[1], u[0]))
 
  
     # marking initial revision scores
@@ -305,10 +324,10 @@ def analyse_reverts(xmlFilenames):
         elif(reverts_info[i] < -2):     rev_score_info[i] += -1     
         elif(reverts_info[i] > -1):     rev_score_info[i] += 1
 
-    for i, e in enumerate(edit_info):
-        wikipedia.output(">>>  Revision %d (%s, %s) by %s(%s): %s %s : \03{lightblue}%s\03{default}   <<< " %   \
-                         (i, mark(reverts_info[i], lambda x:x>-2), mark(rev_score_info[i], lambda x:x>-1), e.username,  \
-                            mark(users_reputation[e.username], lambda x:x>-1), e.utc, e.size, e.comment))
+    #for i, e in enumerate(edit_info):
+    #    wikipedia.output(">>>  Revision %d (%s, %s) by %s(%s): %s %s : \03{lightblue}%s\03{default}   <<< " %   \
+    #                     (i, mark(reverts_info[i], lambda x:x>-2), mark(rev_score_info[i], lambda x:x>-1), e.username,  \
+    #                        mark(users_reputation[e.username], lambda x:x>-1), e.utc, e.size, e.comment))
 
 
     return (rev_score_info, reverts_info, users_reputation)
@@ -363,13 +382,15 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
                     edit.append('ELFcomment')
                     edit.append(e.comment)
                 else: edit.append('ELFnoComment')
-                
+
                 if(e.text and prev.text):                    
                     diff = difflib.ndiff(prev.text.split(), e.text.split())
+                    ip = 0; im = 0
                     for delta in diff:
-                        if   delta[:1] == '+': edit.append('+' + delta[2:])
-                        elif delta[:1] == '-': edit.append('-' + delta[2:])
+                        if   delta[:1] == '+' and ip < 100: edit.append('+' + delta[2:]); ip += 1
+                        elif delta[:1] == '-' and im < 100: edit.append('-' + delta[2:]); im += 1
                         else: continue
+                        if ip == 100 and im == 100: break
                 elif(e.text and not prev.text): edit.append('ELFrevblank')
                 elif(prev.text and not e.text): edit.append('ELFblanking')
                 else: edit.append('ELFblank')
@@ -390,7 +411,7 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
                 # if the retrain arg is set to true, username or the revision id
                 retrain = (_retrain_arg == True) or (_retrain_arg == e.username) or (_retrain_arg == revid)
 
-                if(score != known or falseString or retrain):
+                if(score != known or (not verified and falseString) or retrain):
                     wikipedia.output("\n\n\n\n\n\n\n >>>  Revision %d (%s, %s) by %s(%s): %s %s : \03{lightblue}%s\03{default}   <<< " %   \
                          (i, mark(reverts_info[i], lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.username,                         \
                             mark(users_reputation[e.username], lambda x:x>-1), e.timestamp, revid, e.comment))
@@ -400,8 +421,9 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
                     wikipedia.output("CRM114 thinks it is: %s, prob was:%f %s" % (mark(crm114_answer, lambda x:x=='good'), probability, falseString))
                     
                     wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % revid)
-                    wikipedia.showDiff(prev.text, e.text)
-                    wikipedia.output(" \03{lightblue}%s\03{default}" % edit_text[:500])
+                    if(_show_diffs_arg):
+                        wikipedia.showDiff(prev.text, e.text)
+                    wikipedia.output(" \03{lightblue}%s\03{default}" % edit_text)
                     
                     # uncertain = score_numeric < 1 or reverts_info[i] != -1 or falseString
                     uncertain = falseString
@@ -435,7 +457,7 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
                     stats['CRM114 answered ' + crm114_answer + ' on score'][score] += 1
 
                 # training CRM114
-                if(probability < 0.75 or crm114_answer != known):
+                if(probability < 0.55 or crm114_answer != known):
                     c.learn(known, edit_text.encode('utf-8'))
                     stats['CRM114 trained'][known] += 1
                     # wikipedia.output("\03{lightpurple}Training %s\03{default}", known)
@@ -468,6 +490,7 @@ def main():
     wikipedia.output(u"Files: \n%s\n\n" % xmlFilenames)
     mysite = wikipedia.getSite()
 
+    #test_ndiff(xmlFilenames)
     # analyse_tokens_lifetime(xmlFilenames)
     (rev_score_info, reverts_info, users_reputation) = analyse_reverts(xmlFilenames)
     analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)

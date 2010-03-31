@@ -7,10 +7,13 @@ from bisect import bisect
 from pprint import pprint
 
 from d import ids
-# sorting it, required
+# sorting them, just in case
 for v in ids.values():
     v.sort()
 
+
+# for r in ids['bad']: 
+#    print '<a href="http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d">%d</a>' % (r, r)
 
 # unnoticed bad
 # '7060009', '51041574', '51041574'
