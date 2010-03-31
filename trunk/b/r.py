@@ -5,11 +5,20 @@
 # 205.175.123.113
 # 68.45.27.72
 # 68.221.207.176
+# 64.113.165.254
 
 # TODO:
 # consecutive edits as one edit
 # self-reverts: reverted edit is bad. no reputation change.
 # categorize 'bad' edits, based on reverts comments
+# tokens lifetime - use relative lifetime
+
+# crude diff: 
+# * remove heads/tails
+# * notice article/sections removal/replacements
+# * mark edit position (begining, middle, end)
+# * resist copyedits
+# * keep tokens order
 
 # 'Revision analysis score bad on known': {'bad': 257, 'good': 14},
 # 'Revision analysis score good on known': {'bad': 21, 'good': 707}}
@@ -457,7 +466,7 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
                     stats['CRM114 answered ' + crm114_answer + ' on score'][score] += 1
 
                 # training CRM114
-                if(probability < 0.55 or crm114_answer != known):
+                if(probability < 0.75 or crm114_answer != known):
                     c.learn(known, edit_text.encode('utf-8'))
                     stats['CRM114 trained'][known] += 1
                     # wikipedia.output("\03{lightpurple}Training %s\03{default}", known)
