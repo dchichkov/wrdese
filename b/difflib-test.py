@@ -4,6 +4,8 @@
 
 from difflib import SequenceMatcher, ndiff, Differ
 from collections import defaultdict
+from ordereddict import OrderedDict
+
 
 
 # diff = Differ(None, lambda x: x == ' ').compare('other text'.split(), 'random text'.split())
@@ -37,3 +39,24 @@ for tag, alo, ahi, blo, bhi in cruncher.get_opcodes():
 for t, v in dseqs.items():
     if(v > 0): print("+++%s" % t)
     elif(v < 0): print("---%s" % t)
+
+
+
+print "==========================================="
+
+d = OrderedDict()
+for t in a:
+    d[t] = d.setdefault(t, 0) - 1
+    
+for t in b:
+    d[t] = d.setdefault(t, 0) + 1
+
+text = ""
+for t, v in d.items():
+    if(v > 0): text += " +++%s" % t
+    elif(v < 0): text += " ---%s" % t
+print(text)
+
+
+
+
