@@ -1,0 +1,89 @@
+Index: Misc/NEWS
+===================================================================
+--- Misc/NEWS	(revision 70604)
++++ Misc/NEWS	(working copy)
+@@ -2598,6 +2598,8 @@
+ 
+ - The pprint module now supports sets and frozensets.
+ 
++- Issue #5131: The pprint module now formats defaultdicts similar to dicts.
++
+ - Issue #1221598: add optional callbacks to ftplib.FTP's storbinary()
+   and storlines() methods.  (Contributed by Phil Schwartz)
+ 
+Index: Misc/ACKS
+===================================================================
+--- Misc/ACKS	(revision 70604)
++++ Misc/ACKS	(working copy)
+@@ -148,6 +148,7 @@
+ Alex Coventry
+ Matthew Dixon Cowles
+ Christopher A. Craig
++Nick Craig-Wood
+ Laura Creighton
+ Simon Cross
+ Drew Csillag
+@@ -787,6 +788,6 @@
+ Mike Zarnstorff
+ Siebren van der Zee
+ Uwe Zessin
+-Tarek ZiadŽ
++Tarek ZiadÂŽ
+ Peter Åstrand
+ Jesse Noller
+Index: Lib/pprint.py
+===================================================================
+--- Lib/pprint.py	(revision 70604)
++++ Lib/pprint.py	(working copy)
+@@ -37,6 +37,7 @@
+ import sys as _sys
+ 
+ from cStringIO import StringIO as _StringIO
++from collections import defaultdict
+ 
+ __all__ = ["pprint","pformat","isreadable","isrecursive","saferepr",
+            "PrettyPrinter"]
+@@ -136,8 +137,12 @@
+             return
+ 
+         r = getattr(typ, "__repr__", None)
+-        if issubclass(typ, dict) and r is dict.__repr__:
+-            write('{')
++        if ((issubclass(typ, dict) and r is dict.__repr__) or
++            (issubclass(typ, defaultdict) and r is defaultdict.__repr__)):
++            if issubclass(typ, defaultdict):
++                write('defaultdict({')
++            else:
++                write('{')
+             if self._indent_per_level > 1:
+                 write((self._indent_per_level - 1) * ' ')
+             length = _len(object)
+@@ -163,7 +168,10 @@
+                                       allowance + 1, context, level)
+                 indent = indent - self._indent_per_level
+                 del context[objid]
+-            write('}')
++            if issubclass(typ, defaultdict):
++                write('})')
++            else:
++                write('}')
+             return
+ 
+         if ((issubclass(typ, list) and r is list.__repr__) or
+Index: Lib/test/test_pprint.py
+===================================================================
+--- Lib/test/test_pprint.py	(revision 70604)
++++ Lib/test/test_pprint.py	(working copy)
+@@ -414,6 +414,12 @@
+         self.assertEqual(pprint.pformat(nested_list, depth=1), lv1_list)
+ 
+ 
++    def test_defaultdict(self):
++        import collections
++        dd = collections.defaultdict.fromkeys(range(10))
++        self.assertEqual(True, pprint.pformat(dd).startswith('defaultdict({'))
++        self.assertEqual(True, pprint.pformat(dd).endswith('})'))
++
+ class DottedPrettyPrinter(pprint.PrettyPrinter):
+ 
+     def format(self, object, context, maxlevels, level):
