@@ -13,12 +13,13 @@
 # categorize 'bad' edits, based on reverts comments
 # tokens lifetime - use relative lifetime
 
-# crude diff: 
+# diff: 
 # * remove heads/tails
 # * notice article/sections removal/replacements
 # * mark edit position (begining, middle, end)
-# * resist copyedits
+# * detect/resist copyedits
 # * keep tokens order
+# * detect duplications, etc
 
 # 'Revision analysis score bad on known': {'bad': 257, 'good': 14},
 # 'Revision analysis score good on known': {'bad': 21, 'good': 707}}
@@ -52,6 +53,7 @@ __version__='$Id: r.py 7909 2010-02-05 06:42:52Z Dc987 $'
 import re, sys, time, calendar, difflib, string, math, hashlib, os, fnmatch
 import pprint
 from collections import defaultdict, namedtuple
+from ordereddict import OrderedDict
 
 # pywikipedia (trunk 2010/03/15) in your PYTHONPATH, configured and running 
 import wikipedia, pagegenerators, xmlreader, editarticle
@@ -161,20 +163,52 @@ def analyse_tokens_lifetime(xmlFilenames):
         # wikipedia.output("[%d] %d +/- %d sec. : %s" % (v[1][2], v[1][0], v[1][1], v[0]))
 
 
+# remove more junk symbols?
 def test_ndiff(xmlFilenames):
     i = 0
     t0 = time.time()
     for xmlFilename in xmlFilenames:
-        #for i in reverts:
-        #    wikipedia.output("Revision %d (%d)" % (i[0], i[1]));
         dump = xmlreader.XmlDump(xmlFilename, allrevisions=True)
         revisions = dump.parse()
         prev = None
         for e in revisions:
-            #wikipedia.output("Revision %d: %s by %s Comment: %s" % (i, e.timestamp, e.username, e.comment))
-            #if prev:
-            #    if(e.text and prev.text):
-            #        diff = difflib.ndiff(prev.text.split(), e.text.split())
+            wikipedia.output("Revision %d: %s by %s Comment: %s" % (i, e.timestamp, e.username, e.comment))
+            wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % int(e.revisionid))           
+            if prev:
+                edit = []
+                if(e.text and prev.text and e.comment and e.comment.find("copy") > 0):                    
+                    diff = difflib.ndiff(prev.text.split(), e.text.split())
+                    ip = 0; im = 0
+                    for delta in diff:
+                        if   delta[:1] == '+': edit.append('+' + delta[2:]); ip += 1
+                        elif delta[:1] == '-': edit.append('-' + delta[2:]); im += 1
+                        else: continue
+                    wikipedia.output(" \03{lightblue}%s\03{default}\n" % ' '.join(edit))
+                    
+                    
+                    a = prev.text.split(); b = e.text.split()
+                    cruncher = difflib.SequenceMatcher(None, a, b)
+                    d = OrderedDict()
+                    for tag, alo, ahi, blo, bhi in cruncher.get_opcodes():
+                        #aprint("---------------------------")
+                        #print(tag, alo, ahi, blo, bhi)
+                        #print("'%s'" % a[alo:ahi])
+                        #print("'%s'" % b[blo:bhi])
+                        if(tag == 'insert' or tag == 'replace'): 
+                            for t in b[blo:bhi]: 
+                                d[t] = d.setdefault(t, 0) + 1
+                                #print("+%s" % t)            
+                        if(tag == 'delete' or tag == 'replace'):
+                            for t in a[alo:ahi]:
+                                d[t] = d.setdefault(t, 0) - 1
+                                #print("-%s" % t)
+                    text = ""
+                    for t, v in d.items():
+                        if(v > 0): text += " \03{lightgreen}+%s\03{default}" % t
+                        elif(v < 0): text += " \03{lightred}-%s\03{default}" % t
+                    wikipedia.output(text)
+
+
             prev = e
             i += 1
     wikipedia.output("%f seconds" % (time.time() - t0))
