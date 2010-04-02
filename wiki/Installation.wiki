@@ -8,6 +8,7 @@ Prerequisites:
  * tre-0.7.5.tar.bz2 [http://crm114.sourceforge.net/]
  * crm114-20100106-BlameMichelson.src.tar.gz [http://crm114.sourceforge.net/]
  * crm.py (renamed to crm114.py) [http://www.elegantchaos.com/node/129]
+ * ordereddict [http://pypi.python.org/pypi/ordereddict]
 
 Optional:
  * Python 2.6 Lib/pprint.py patches [http://bugs.python.org/issue8228],  [http://bugs.python.org/issue5131]
