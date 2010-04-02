@@ -208,6 +208,20 @@ def test_ndiff(xmlFilenames):
                         elif(v < 0): text += " \03{lightred}-%s\03{default}" % t
                     wikipedia.output(text)
 
+                    wikipedia.output("----------")
+                    d = OrderedDict()
+                    for t in a:
+                        d[t] = d.setdefault(t, 0) - 1
+                        
+                    for t in b:
+                        d[t] = d.setdefault(t, 0) + 1
+
+                    text = ""
+                    for t, v in d.items():
+                        if(v > 0): text += " \03{lightgreen}+%s\03{default}" % t
+                        elif(v < 0): text += " \03{lightred}-%s\03{default}" % t
+                    wikipedia.output(text)
+
 
             prev = e
             i += 1
