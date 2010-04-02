@@ -1,0 +1,63 @@
+--- pprint.py   (revision 77310)
++++ pprint.py   (working copy)
+40a41
+> from collections import defaultdict
+136c137
+<             return
+---
+>             return self._width
+144c145
+<             return
+---
+>             return _len(rep)
+147,148c148,153
+<         if issubclass(typ, dict) and r is dict.__repr__:
+<             write('{')
+---
+>         if ((issubclass(typ, dict) and r is dict.__repr__) or
+>             (issubclass(typ, defaultdict) and r is defaultdict.__repr__)):
+>             if issubclass(typ, defaultdict):
+>                 write('defaultdict({')
+>             else:
+>                 write('{')
+173,174c178,182
+<             write('}')
+<             return
+---
+>             if issubclass(typ, defaultdict):
+>                 write('})')
+>             else:
+>                 write('}')
+>             return self._width
+188c196
+<                     return
+---
+>                     return self._width
+196c204
+<                     return
+---
+>                     return self._width
+209c217,218
+<                 self._format(object[0], stream, indent, allowance + 1,
+---
+>                 position = indent
+>                 position += self._format(object[0], stream, indent, allowance + 1,
+213c222
+<                         if sepLines:
+---
+>                         if sepLines and allowance + 1 > self._width - position:
+214a224
+>                             position = (1 + indent)
+217,218c227,229
+<                         self._format(ent, stream, indent,
+<                                       allowance + 1, context, level)
+---
+>                             position += 2
+>                         position += self._format(ent, stream, indent,
+>                                                     allowance + 1, context, level)
+224c235
+<             return
+---
+>             return self._width
+226a238
+>         return _len(rep)
