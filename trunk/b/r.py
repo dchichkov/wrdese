@@ -11,7 +11,9 @@
 # consecutive edits as one edit
 # self-reverts: reverted edit is bad. no reputation change.
 # categorize 'bad' edits, based on reverts comments
+# use 'rv', 'revert', 'vandal', 'rvv' as revert/vandalism idintifiers
 # tokens lifetime - use relative lifetime
+
 
 # diff: 
 # * remove heads/tails
@@ -51,7 +53,7 @@ and the bot will only work on that single page.
 __version__='$Id: r.py 7909 2010-02-05 06:42:52Z Dc987 $'
 
 import re, sys, time, calendar, difflib, string, math, hashlib, os, fnmatch
-import pprint
+import pprint, ddiff
 from collections import defaultdict, namedtuple
 from ordereddict import OrderedDict
 
@@ -176,7 +178,7 @@ def test_ndiff(xmlFilenames):
             wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % int(e.revisionid))           
             if prev:
                 edit = []
-                if(e.text and prev.text and e.comment and e.comment.find("copy") > 0):                    
+                if(e.text and prev.text):
                     diff = difflib.ndiff(prev.text.split(), e.text.split())
                     ip = 0; im = 0
                     for delta in diff:
@@ -186,43 +188,13 @@ def test_ndiff(xmlFilenames):
                     wikipedia.output(" \03{lightblue}%s\03{default}\n" % ' '.join(edit))
                     
                     
-                    a = prev.text.split(); b = e.text.split()
-                    cruncher = difflib.SequenceMatcher(None, a, b)
-                    d = OrderedDict()
-                    for tag, alo, ahi, blo, bhi in cruncher.get_opcodes():
-                        #aprint("---------------------------")
-                        #print(tag, alo, ahi, blo, bhi)
-                        #print("'%s'" % a[alo:ahi])
-                        #print("'%s'" % b[blo:bhi])
-                        if(tag == 'insert' or tag == 'replace'): 
-                            for t in b[blo:bhi]: 
-                                d[t] = d.setdefault(t, 0) + 1
-                                #print("+%s" % t)            
-                        if(tag == 'delete' or tag == 'replace'):
-                            for t in a[alo:ahi]:
-                                d[t] = d.setdefault(t, 0) - 1
-                                #print("-%s" % t)
+                    a = prev.text.split(" \t\n[]"); b = e.text.split(" \t\n[]")
+                    diff = ddiff.ddiff_v2(a, b)
                     text = ""
-                    for t, v in d.items():
-                        if(v > 0): text += " \03{lightgreen}+%s\03{default}" % t
-                        elif(v < 0): text += " \03{lightred}-%s\03{default}" % t
+                    for d in diff:
+                        text += mark(d, lambda x:x[0]=='+')
+                        text += ' '
                     wikipedia.output(text)
-
-                    wikipedia.output("----------")
-                    d = OrderedDict()
-                    for t in a:
-                        d[t] = d.setdefault(t, 0) - 1
-                        
-                    for t in b:
-                        d[t] = d.setdefault(t, 0) + 1
-
-                    text = ""
-                    for t, v in d.items():
-                        if(v > 0): text += " \03{lightgreen}+%s\03{default}" % t
-                        elif(v < 0): text += " \03{lightred}-%s\03{default}" % t
-                    wikipedia.output(text)
-
-
             prev = e
             i += 1
     wikipedia.output("%f seconds" % (time.time() - t0))
@@ -241,18 +213,21 @@ def dump_cstats(stats, ids):
 
     wikipedia.output("===================================================================================")
     pp = pprint.PrettyPrinter(width=140)
-    wikipedia.output("stats = \\    # Stats:\n%s" % pp.pformat(stats))
-    wikipedia.output("ids = \\      # Revision IDs:\n%s" % pp.pformat(ids))
+    wikipedia.output("stats = \\\n%s" % pp.pformat(stats))
+    wikipedia.output("ids = \\\n%s" % pp.pformat(ids))
     wikipedia.output("===================================================================================")
 
 
 
 # -------------------------------------------------------------------------
-# returns: reverts_info
+# returns: (rev_score_info, reverts_info, user_reputation)
+
+# reverts_info
 # -1  : regular revision
 # -2 : between duplicates, by single user (reverted, most likely bad)
 # -3 : between duplicates, by other users (reverted, questionable)
 # -4 : between duplicates, (revert that was reverted. revert war.)
+# -5 : self-revert
 # >=0: this revision is a duplicate of
 # -------------------------------------------------------------------------
 def analyse_reverts(xmlFilenames):    
@@ -387,14 +362,71 @@ def analyse_reverts(xmlFilenames):
     #                        mark(users_reputation[e.username], lambda x:x>-1), e.utc, e.size, e.comment))
 
 
-    return (rev_score_info, reverts_info, users_reputation)
+    return (rev_score_info, reverts_info, users_reputation, edit_info)
 
 
 def mark(value, function):
     if(function(value)): 
         return "\03{lightgreen}%s\03{default}" % value
     return "\03{lightred}%s\03{default}" % value
-        
+
+def urri(ri):
+    if(ri > -1): return 'revert'
+    return ('self_revert', 'revert_war', 'questionable', 'reverted', 'regular')
+
+
+def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info):
+
+    # Tracking blankings and near-blankings
+    # Establishing user ratings for the user whitelists
+    user_features = defaultdict(lambda: defaultdict(int))                 # TODO: optimize!
+    edit_features = [defaultdict(int)] * len(edit_info)                                   #
+
+    def add_feature(f):
+        user_features[e.username][f] += 1
+        edit_features[i][f] += 1
+
+    total_time = total_size = 0
+    prev = edit_info[0]
+    for i, e in enumerate(edit_info):
+        rii = reverts_info[i]
+
+        if(e.size * i < total_size):                                        # new page is smaller than the average
+            add_feature('smaller_than_average')
+            if(rii == -2):                                                  # and it was reverted
+                add_feature('smaller_and_reverted')
+
+        if(e.size < prev.size): add_feature('smaller')
+        elif(e.size > prev.size): add_feature('larger')
+        else: add_feature('same_size')
+
+        if(e.username != prev.username): 
+            add_feature('different_user')
+            add_feature('different_user_' + urri(rii))
+        else: 
+            add_feature('same_user')
+            add_feature('same_' + urri(rii))
+
+        delta_utc = e.utc - prev.utc                                        # prev edition has managed longer than usual
+        if(delta_utc * i > total_time): add_feature('accepted')
+
+        if(e.comment): add_feature('comment')
+        else: add_feature('no_comment')
+        if(e.comment and len(e.comment) > 80): add_feature('long_comment')
+
+        total_size += e.size
+        total_time += (e.utc - prev.utc)
+        prev = e
+
+    for uf in user_features.values():
+        for f, i in uf.iteritems():
+            uf[f] = math.trunc(math.log(abs(i) + 1, math.pi/2)) * ((-1, 1)[i > 0])
+    
+    pp = pprint.PrettyPrinter(width=140)
+    wikipedia.output("stats = \\\n%s" % pp.pformat(user_features))
+    wikipedia.output("stats = \\\n%s" % pp.pformat(edit_features))
+
+
 
 def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation):
     # stats
@@ -402,15 +434,18 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
     stats = defaultdict(lambda:defaultdict(int))
     human_responses = 0
  
+    p = re.compile(r'\W+')
+    # p = re.compile(r'\s+')
+
     # CRM114
     c = crm114.Classifier( "data", [ "good", "bad" ] ) 
     i = 0
+    prev = None
     for xmlFilename in xmlFilenames:
         #for i in reverts:
         #    wikipedia.output("Revision %d (%d)" % (i[0], i[1]));
         dump = xmlreader.XmlDump(xmlFilename, allrevisions=True)
         revisions = dump.parse()
-        prev = None
         for e in revisions:
             score_numeric = rev_score_info[i]                   
             score = ('good', 'bad')[score_numeric < 0]              # current analyse_reverts score
@@ -441,13 +476,10 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
                 else: edit.append('ELFnoComment')
 
                 if(e.text and prev.text):                    
-                    diff = difflib.ndiff(prev.text.split(), e.text.split())
-                    ip = 0; im = 0
-                    for delta in diff:
-                        if   delta[:1] == '+' and ip < 100: edit.append('+' + delta[2:]); ip += 1
-                        elif delta[:1] == '-' and im < 100: edit.append('-' + delta[2:]); im += 1
-                        else: continue
-                        if ip == 100 and im == 100: break
+                    diff = ddiff.ddiff_v2(p.split(prev.text), p.split(e.text))
+                    for d in diff: 
+                        edit.append(d)
+
                 elif(e.text and not prev.text): edit.append('ELFrevblank')
                 elif(prev.text and not e.text): edit.append('ELFblanking')
                 else: edit.append('ELFblank')
@@ -547,9 +579,10 @@ def main():
     wikipedia.output(u"Files: \n%s\n\n" % xmlFilenames)
     mysite = wikipedia.getSite()
 
-    #test_ndiff(xmlFilenames)
+    # test_ndiff(xmlFilenames)
     # analyse_tokens_lifetime(xmlFilenames)
-    (rev_score_info, reverts_info, users_reputation) = analyse_reverts(xmlFilenames)
+    (rev_score_info, reverts_info, users_reputation, edit_info) = analyse_reverts(xmlFilenames)
+    # analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info)
     analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
 
 

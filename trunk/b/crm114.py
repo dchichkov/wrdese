@@ -73,6 +73,10 @@ kClassificationExtension = ".css"
 #kClassificationType = "<osb unigram>"
 #kClassificationExtension = ".css"
 
+# kClassificationType = "<entropy>"
+# kClassificationExtension = ".css"
+
+
 
 kLearnCommand = " '-{ learn %s ( %s ) }'"
 kClassifyCommand = " '-{ isolate (:stats:); classify %s ( %s ) (:stats:); match [:stats:] (:: :best: :prob:) /Best match to file .. \(%s\/([[:graph:]]+)\\%s\) prob: ([0-9.]+)/; output /:*:best:\\t:*:prob:/ }'"
@@ -143,6 +147,7 @@ class Classifier:
         self.learn( "good", "this is a test" )
         self.learn( "bad", "this is very bad" )
         print "class was: %s, prob was:%f" % ( self.classify( "this is a test" ) )
+        print "class was: %s, prob was:%f" % ( self.classify( "this is bad" ) )
         
         
 if __name__ == "__main__":
