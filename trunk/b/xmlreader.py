@@ -287,7 +287,7 @@ Consider installing the python-celementtree package.''')
             source = bz2.BZ2File(self.filename)
         if self.filename.endswith('.7z'):
             import subprocess
-            source = subprocess.Popen('7za e -bd -so %s 2>/dev/null' % self.filename, shell=True, stdout=subprocess.PIPE, bufsize=65535).stdout
+            source = subprocess.Popen('7za e -bd -so %s 2>/dev/null' % self.filename, shell=True, stdout=subprocess.PIPE, bufsize=1024).stdout
         else:
             # assume it's an uncompressed XML file
             source = open(self.filename)

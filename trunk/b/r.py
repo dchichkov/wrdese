@@ -372,15 +372,15 @@ def mark(value, function):
 
 def urri(ri):
     if(ri > -1): return 'revert'
-    return ('self_revert', 'revert_war', 'questionable', 'reverted', 'regular')
+    return ('self_revert', 'revert_war', 'questionable', 'reverted', 'regular')[ri]
 
 
 def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info):
 
     # Tracking blankings and near-blankings
     # Establishing user ratings for the user whitelists
-    user_features = defaultdict(lambda: defaultdict(int))                 # TODO: optimize!
-    edit_features = [defaultdict(int)] * len(edit_info)                                   #
+    user_features = defaultdict(lambda: defaultdict(int))           # TODO: optimize!
+    edit_features = [None] * len(edit_info)                         #
 
     def add_feature(f):
         user_features[e.username][f] += 1
@@ -389,6 +389,7 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
     total_time = total_size = 0
     prev = edit_info[0]
     for i, e in enumerate(edit_info):
+        edit_features[i] = defaultdict(int)
         rii = reverts_info[i]
 
         if(e.size * i < total_size):                                        # new page is smaller than the average
@@ -581,8 +582,12 @@ def main():
 
     # test_ndiff(xmlFilenames)
     # analyse_tokens_lifetime(xmlFilenames)
+
+    start = time.time()
     (rev_score_info, reverts_info, users_reputation, edit_info) = analyse_reverts(xmlFilenames)
-    # analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info)
+    wikipedia.output("Analysis time: %f" % (time.time() - start))
+
+    analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info)
     analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
 
 
