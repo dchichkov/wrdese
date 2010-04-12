@@ -6,6 +6,9 @@
 # 68.45.27.72
 # 68.221.207.176
 # 64.113.165.254
+# 199.190.225.40
+# 1193620791
+
 
 # TODO:
 # consecutive edits as one edit
@@ -14,6 +17,7 @@
 # use 'rv', 'revert', 'vandal', 'rvv' as revert/vandalism idintifiers
 # tokens lifetime - use relative lifetime
 
+# F1-score
 
 # diff: 
 # * remove heads/tails
@@ -39,7 +43,7 @@ Current code:
 
 
 These command line parameters can be used to specify which pages to work on:
-Example: ./r.py -xml:path/Wikipedia-2010031201*.xml
+Example: ./r.py -xml:path/Wikipedia-2010031201*.xml.7z
 
 &params;
     -xml           Retrieve information from a local XML dump(s) (pages-articles
@@ -66,6 +70,9 @@ from scipy import stats
 
 # CRM114, crm.py module by Sam Deane
 import crm114   
+
+# NLTK, the Natural Language Toolkit
+import nltk
 
 # known good, known bad revisions
 import k
@@ -231,7 +238,7 @@ def dump_cstats(stats, ids):
 # >=0: this revision is a duplicate of
 # -------------------------------------------------------------------------
 def analyse_reverts(xmlFilenames):    
-    EditInfo = namedtuple('EditInfo', 'username, comment, size, utc')
+    EditInfo = namedtuple('EditInfo', 'revid, username, comment, size, utc')
     rev_hashes = defaultdict(list)      # Filling md5 hashes map (md5 -> [list of revision indexes]) for nonempty
     user_revisions = defaultdict(int)   # Filling nuber of nonempty revisions made by user
     edit_info = []
@@ -248,7 +255,7 @@ def analyse_reverts(xmlFilenames):
                 rev_hashes[m.digest()].append(total_revisions)  # total_revisions is just an index really
                 user_revisions[e.username] += 1;
             
-            edit_info.append(EditInfo(e.username, e.comment, len(e.text), timestamp_to_time(e.timestamp)))
+            edit_info.append(EditInfo(int(e.revisionid), e.username, e.comment, len(e.text), timestamp_to_time(e.timestamp)))
             total_revisions += 1
 
     # Marking duplicates_info
@@ -383,13 +390,13 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
     edit_features = [None] * len(edit_info)                         #
 
     def add_feature(f):
-        user_features[e.username][f] += 1
-        edit_features[i][f] += 1
+        user_features[e.username]['U' + f] += 1
+        edit_features[i][f] = True
 
     total_time = total_size = 0
     prev = edit_info[0]
     for i, e in enumerate(edit_info):
-        edit_features[i] = defaultdict(int)
+        edit_features[i] = {}
         rii = reverts_info[i]
 
         if(e.size * i < total_size):                                        # new page is smaller than the average
@@ -402,8 +409,7 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
         else: add_feature('same_size')
 
         if(e.username != prev.username): 
-            add_feature('different_user')
-            add_feature('different_user_' + urri(rii))
+            add_feature(urri(rii))
         else: 
             add_feature('same_user')
             add_feature('same_' + urri(rii))
@@ -420,12 +426,46 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
         prev = e
 
     for uf in user_features.values():
-        for f, i in uf.iteritems():
-            uf[f] = math.trunc(math.log(abs(i) + 1, math.pi/2)) * ((-1, 1)[i > 0])
+        for f, v in uf.iteritems():
+            uf[f] = math.trunc(math.log(abs(v) + 1, math.pi/2))
     
     pp = pprint.PrettyPrinter(width=140)
-    wikipedia.output("stats = \\\n%s" % pp.pformat(user_features))
-    wikipedia.output("stats = \\\n%s" % pp.pformat(edit_features))
+    #wikipedia.output("user_features = \\\n%s" % pp.pformat(user_features))
+    #wikipedia.output("edit_features = \\\n%s" % pp.pformat(edit_features))
+
+    train = [None] * len(edit_info)
+    for i, e in enumerate(edit_info):
+        known = k.is_verified_or_known_as_good_or_bad(e.revid)              # previous score (some human verified)
+        verified = k.is_known_as_verified(e.revid)                          # if not Empty: human verified        
+        features = edit_features[i]
+        
+        for f, v in user_features[e.username].iteritems():
+            features[f] = v
+        
+        train[i] = (features, known)
+    
+    # wikipedia.output("train = \\\n%s" % pp.pformat(train))
+    classifier = nltk.MaxentClassifier.train(train)
+    classifier.show_most_informative_features()
+
+
+    for i, e in enumerate(edit_info):
+        known = k.is_verified_or_known_as_good_or_bad(e.revid)              # previous score (some human verified)
+        verified = k.is_known_as_verified(e.revid)                          # if not Empty: human verified        
+        features = edit_features[i]
+        
+        for f, v in user_features[e.username].iteritems():
+            features[f] = v
+        pdist = classifier.prob_classify(features)
+        classified = ('bad', 'good')[pdist.prob('good') > pdist.prob('bad')]
+        if(known != classified and not verified):            
+            wikipedia.output("\n>>>  Revision %d (%s, %s) by %s(%s): %s %s : \03{lightblue}%s\03{default}   <<< " %   \
+                         (i, mark(reverts_info[i], lambda x:x>-2), mark(rev_score_info[i], lambda x:x>-1), e.username,  \
+                            mark(users_reputation[e.username], lambda x:x>-1), e.utc, e.size, e.comment))
+            wikipedia.output("known as %s classified as %s: p(x) = %.4f p(y) = %.4f" % \
+                             (mark(known, lambda x:x=='good'), mark(classified, lambda x:x=='good'), pdist.prob('good'), pdist.prob('bad')))
+            wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % e.revid)
+            
 
 
 
@@ -573,7 +613,7 @@ def main():
             
             
     if(not pattern_arg):            # work: lightblue lightgreen lightpurple lightred
-        wikipedia.output('Usage: ./r.py \03{lightblue}-xml:\03{default}path/Wikipedia-Single-Page-Dump-*.xml')
+        wikipedia.output('Usage: ./r.py \03{lightblue}-xml:\03{default}path/Wikipedia-Single-Page-Dump-*.xml.7z')
         return
 
     xmlFilenames = sorted(locate(pattern_arg))
