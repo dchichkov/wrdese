@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8  -*-
 
+# Dumb Diff Module
 
 from difflib import SequenceMatcher, ndiff, Differ
 from collections import defaultdict

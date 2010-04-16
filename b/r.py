@@ -2,33 +2,98 @@
 # -*- coding: utf-8  -*-
 
 #retrain:
-# 205.175.123.113
-# 68.45.27.72
-# 68.221.207.176
-# 64.113.165.254
-# 199.190.225.40
-# 1193620791
 
 
 # TODO:
 # consecutive edits as one edit
 # self-reverts: reverted edit is bad. no reputation change.
-# categorize 'bad' edits, based on reverts comments
-# use 'rv', 'revert', 'vandal', 'rvv' as revert/vandalism idintifiers
 # tokens lifetime - use relative lifetime
 
-# F1-score
+# Users with bad reputation can do good edits:
+# * self reverts
+# * partial self reverts
+# * regular edits
+# *  
 
-# diff: 
+# Information extraction from user comments
+#  * usernames (self, other) and revision id's in the comment
+#  * 'undid', 'rvv', 'rv', 'revert', 'vandal', etc in the comment
+#  * categorize 'bad' edits, based on reverts comments
+#     use 'rv', 'revert', 'vandal', 'rvv' as revert/vandalism idintifiers
+#  
+
+
+
+# Edit labels:
+#    * 'bad' - automatically identified edits that generally require a revert (some human verified)
+#    * 'good' - automatically identified good faith edits (some human verified)
+#
+# Additional extra information (revisions in these lists are already in the 'good' or 'bad'):
+#    * 'good (corrected by user)' - good edits (automatically identified, corrected by a human)
+#    * 'constructive (corrected by user)' - good edits, questionably good edits, partial vandalism reverts, etc. (human corrections)
+#    * 'bad (corrected by user)' - bad edits (automatically identified, corrected by a human)
+#    * 'bad (verified by user)' - bad edits (automatically identified, verified by a human)
+#    * 'good (verified by user)' - good edits (automatically identified, verified by a human)
+
+
+# Edit by:
+# vandal, regular
+
+# Whose edit was it:
+# self, other user
+
+# Possible extra labels:
+# 'rv'   - reverting no consensus
+# 'rwar' - reverting edit warring
+# 'rvv'  - reverting vandalism  
+# 'rself' - self reverting
+
+# 'rpart' - partial revert 
+
+
+# 'vins' - vandal inserted nonsence or graffiti
+# 'vdel' - vandal deleted content or blanked a page
+# 'vr' - vandal reverted a page
+# 'vrself' - vandal did a self revert
+# 'vgood' - vandal did a constructive edit
+
+
+# Possible labels: 
+# * misinformation, mass delete, partial delete, offensive, spam, nonsense
+
+# Detecting Wikipedia Vandalism with Active Learning and Statistical Language Models
+# by Si-Chi Chin, W. Nick Street, Padmini Srinivasan, David Eichmann
+#
+# The categorization is systematically organized based on the four primary actions
+# (change, insert, delete, and revert) and types of change (format and content).
+#
+# Common types "blanking,” “large-scale editing”, “graffitti”, “misinformaiton"
+# "image attack", "link spam", "irregular formatting", 
+
+
+
+# Possible features:
+# large-scale editing - the size of new edits (insertion, delition) twice as large as the median
+# ratio of upper-case letters
+# time of the day
+# maximum length of a word in the new edit
+# edit position (infobox, top, regular, bottom)
+# image insertion or change
+# changing named entities
+
+# +1 (next), -1 (prev) revisions features
+
+
+
+# calculate F1-score
+
+# diff (partially done in ddiff): 
 # * remove heads/tails
 # * notice article/sections removal/replacements
 # * mark edit position (begining, middle, end)
 # * detect/resist copyedits
 # * keep tokens order
 # * detect duplications, etc
-
-# 'Revision analysis score bad on known': {'bad': 257, 'good': 14},
-# 'Revision analysis score good on known': {'bad': 21, 'good': 707}}
 
 
 """
@@ -72,7 +137,13 @@ from scipy import stats
 import crm114   
 
 # NLTK, the Natural Language Toolkit
-import nltk
+# Note: requires http://code.google.com/p/nltk/issues/detail?id=535 patch
+import nltk, maxent, megam
+# from nltk.classify import maxent, megam
+
+
+# download and extract megam_i686.opt from http://www.cs.utah.edu/~hal/megam/
+megam.config_megam('./megam_i686.opt')
 
 # known good, known bad revisions
 import k
@@ -391,7 +462,7 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
 
     def add_feature(f):
         user_features[e.username]['U' + f] += 1
-        edit_features[i][f] = True
+        edit_features[i][f] = 'present'
 
     total_time = total_size = 0
     prev = edit_info[0]
@@ -417,38 +488,65 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
         delta_utc = e.utc - prev.utc                                        # prev edition has managed longer than usual
         if(delta_utc * i > total_time): add_feature('accepted')
 
-        if(e.comment): add_feature('comment')
+        if(e.comment): 
+            add_feature('comment')
+            for token in e.comment.split():
+                edit_features[i][token] = 'comment'
+            
         else: add_feature('no_comment')
-        if(e.comment and len(e.comment) > 80): add_feature('long_comment')
+        if(e.comment and len(e.comment.split()) > 10): add_feature('long_comment')
+        
 
         total_size += e.size
         total_time += (e.utc - prev.utc)
         prev = e
 
-    for uf in user_features.values():
-        for f, v in uf.iteritems():
-            uf[f] = math.trunc(math.log(abs(v) + 1, math.pi/2))
+    # for v in xrange(1,100): print v, math.trunc(math.log(math.sqrt(i))*2*math.pi)
+    # for uf in user_features.values():
+    #    for f, v in uf.iteritems():
+    #        uf[f] = math.log(v)
     
-    pp = pprint.PrettyPrinter(width=140)
-    #wikipedia.output("user_features = \\\n%s" % pp.pformat(user_features))
+    #pp = pprint.PrettyPrinter(width=140)
+    #for u, uf in user_features.iteritems():    
+    #    wikipedia.output("user %s(%s) features = \\\n%s" % (u, mark(users_reputation[u], lambda x:x>-1), pp.pformat(uf)))
     #wikipedia.output("edit_features = \\\n%s" % pp.pformat(edit_features))
 
-    train = [None] * len(edit_info)
-    for i, e in enumerate(edit_info):
+    train = [None] * len(edit_features)
+    for i, features in enumerate(edit_features):
+        e = edit_info[i]
         known = k.is_verified_or_known_as_good_or_bad(e.revid)              # previous score (some human verified)
-        verified = k.is_known_as_verified(e.revid)                          # if not Empty: human verified        
-        features = edit_features[i]
-        
+        if known == None: wikipedia.output("Unknown revision %d" % e.revid); known = 'good'
         for f, v in user_features[e.username].iteritems():
-            features[f] = v
-        
+            features[f] = v        
         train[i] = (features, known)
+
+    #for i in reversed(xrange(1, len(edit_features))):
+    #    for f, v in edit_features[i-1].iteritems():
+    #        edit_features[i]['PREV' + f] = v
+
+    #for i in xrange(len(edit_features) - 1):
+    #    for f, v in edit_features[i+1].iteritems():
+    #        edit_features[i]['NEXT' + f] = v
+
+   
+    megam.config_megam('./megam_i686.opt')
+    enc = maxent.TypedMaxentFeatureEncoding.train(train, alwayson_features=True)
     
+    #for fs in train:
+    #    s = "";
+    #    for f, v in fs[0].iteritems(): s += " : %s = %4s " % (f, v)
+    #    print("Featureset", s, " Class: ", fs[1] , "Encoding is: ", enc.encode(fs[0], fs[1]))
+
+
+    classifier = maxent.MaxentClassifier.train(train, algorithm='megam', encoding=enc, \
+                    bernoulli=False, trace=2, tolerance=2e-5, max_iter=1000, min_lldelta=1e-7)
+    classifier.show_most_informative_features(n=20)
+
     # wikipedia.output("train = \\\n%s" % pp.pformat(train))
-    classifier = nltk.MaxentClassifier.train(train)
-    classifier.show_most_informative_features()
+    # classifier = nltk.MaxentClassifier.train(train, algorithm='CG', sparse=False, tolerance=5e-4,gaussian_prior_sigma=0)
+    # classifier.show_most_informative_features(50)
 
-
+    stats = defaultdict(lambda:defaultdict(int))
     for i, e in enumerate(edit_info):
         known = k.is_verified_or_known_as_good_or_bad(e.revid)              # previous score (some human verified)
         verified = k.is_known_as_verified(e.revid)                          # if not Empty: human verified        
@@ -457,15 +555,17 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
         for f, v in user_features[e.username].iteritems():
             features[f] = v
         pdist = classifier.prob_classify(features)
-        classified = ('bad', 'good')[pdist.prob('good') > pdist.prob('bad')]
-        if(known != classified and not verified):            
-            wikipedia.output("\n>>>  Revision %d (%s, %s) by %s(%s): %s %s : \03{lightblue}%s\03{default}   <<< " %   \
+        score = ('bad', 'good')[pdist.prob('good') > pdist.prob('bad')]
+        stats['Revision analysis score ' + score + ' on known'][known] += 1
+        if(known == 'good' and score == 'bad'):            
+            wikipedia.output("\n\n>>>  Revision %d (%s, %s) by %s(%s): %s %s : \03{lightblue}%s\03{default}   <<< " %   \
                          (i, mark(reverts_info[i], lambda x:x>-2), mark(rev_score_info[i], lambda x:x>-1), e.username,  \
                             mark(users_reputation[e.username], lambda x:x>-1), e.utc, e.size, e.comment))
             wikipedia.output("known as %s classified as %s: p(x) = %.4f p(y) = %.4f" % \
-                             (mark(known, lambda x:x=='good'), mark(classified, lambda x:x=='good'), pdist.prob('good'), pdist.prob('bad')))
+                             (mark(known, lambda x:x=='good'), mark(score, lambda x:x=='good'), pdist.prob('good'), pdist.prob('bad')))
             wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % e.revid)
-            
+            classifier.explain(features)
+    dump_cstats(stats, {})       
 
 
 
@@ -539,7 +639,7 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
                 else: falseString = ""
                 
                 # if the retrain arg is set to true, username or the revision id
-                retrain = (_retrain_arg == True) or (_retrain_arg == e.username) or (_retrain_arg == revid)
+                retrain = (_retrain_arg == True) or (_retrain_arg and ((_retrain_arg.find(e.username) > 0) or (_retrain_arg.find(str(revid)) > 0)))
 
                 if(score != known or (not verified and falseString) or retrain):
                     wikipedia.output("\n\n\n\n\n\n\n >>>  Revision %d (%s, %s) by %s(%s): %s %s : \03{lightblue}%s\03{default}   <<< " %   \
@@ -628,7 +728,7 @@ def main():
     wikipedia.output("Analysis time: %f" % (time.time() - start))
 
     analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info)
-    analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
+    #analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
 
 
 if __name__ == "__main__":
