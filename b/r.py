@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8  -*-
 
-#retrain:
+#retrain BAD: 167750423, 285306288
 
 
 # TODO:
@@ -182,6 +182,8 @@ _retrain_arg = None
 _train_arg = None
 _show_diffs_arg = None
 
+# Human iteractions
+_human_responses = 0
 
 def locate(pattern):
     '''Locate all files matching supplied filename pattern in and below
@@ -453,6 +455,60 @@ def urri(ri):
     return ('self_revert', 'revert_war', 'questionable', 'reverted', 'regular')[ri]
 
 
+def collect_stats(stats, ids, reverts_info, users_reputation, e, prev, revid, i, verified, known, score, score_numeric, uncertain, edit_text):
+    global _retrain_arg, _train_arg, _human_responses
+    # if the retrain arg is set to true, username or the revision id
+    retrain = (_retrain_arg == True) or (_retrain_arg and ((_retrain_arg.find(e.username) > 0) or (_retrain_arg.find(str(revid)) > 0)))
+
+    if(score != known or (not verified and uncertain) or retrain):
+        wikipedia.output("\n\n\n\n\n\n\n >>>  Revision %d (%s, %s) by %s(%s): %s : \03{lightblue}%s\03{default}   <<< " %   \
+             (revid, mark(reverts_info[i], lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.username,                         \
+                mark(users_reputation[e.username], lambda x:x>-1), e.timestamp, e.comment))
+        wikipedia.output("Score is %s." % mark(score, lambda x:x=='good'))
+        if(known): wikipedia.output("Known as %s." % mark(known, lambda x:x=='good'))
+        if(verified): wikipedia.output("Verified as %s." % mark(verified, lambda x:x[:3]!='bad'))
+        if(uncertain): wikipedia.output(uncertain)
+        wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % revid)
+        if(_show_diffs_arg):
+            wikipedia.showDiff(prev.text, e.text)
+        wikipedia.output(" \03{lightblue}%s\03{default}" % edit_text)
+
+        # uncertain = score_numeric < 1 or reverts_info[i] != -1 or uncertain
+        if((uncertain and not verified) or retrain):
+            if not known or not verified: known = score     # keep verified answer by default
+            answer = wikipedia.inputChoice(u'Do you want to mark this revision as %s (Yes)?' % \
+                        mark(known, lambda x:x=='good'), ['Yes', 'No', 'Constructive'], ['Y', 'N', 'C'], 'Y')
+            if answer == 'n':
+                wikipedia.output(" \03{lightpurple}***** Wow! *****\03{default} \03{lightgreen}Thank you for correcting me.\03{default}") 
+                known = ('good', 'bad')[known == 'good']                 # inverting/correcting
+
+            if answer == 'c':
+                known = 'good'
+                verified = 'constructive (corrected by user)'
+            else:
+                verified = known + (' (corrected by user)', ' (verified by user)')[known == score]
+
+            wikipedia.output("Marked as %s" % mark(verified, lambda x:x[:3]!='bad'))
+            _human_responses += 1
+        else:
+            if(not verified): known = score
+
+    # Collecting stats
+    ids[known].append(revid)
+    stats['Revision analysis score ' + score + ' on known'][known] += 1
+    if(verified):
+        ids[verified].append(revid)
+        stats['Revision analysis score ' + score + ' on verified'][verified] += 1
+
+    if(_human_responses > 5):
+        _human_responses = 0
+        dump_cstats(stats, ids)
+
+    return (verified, known, score)
+
+
+
+
 def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info):
 
     # Tracking blankings and near-blankings
@@ -461,6 +517,9 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
     edit_features = [None] * len(edit_info)                         #
 
     def add_feature(f):
+        edit_features[i][f] = 'present'
+
+    def add_uefeature(f):
         user_features[e.username]['U' + f] += 1
         edit_features[i][f] = 'present'
 
@@ -471,30 +530,56 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
         rii = reverts_info[i]
 
         if(e.size * i < total_size):                                        # new page is smaller than the average
-            add_feature('smaller_than_average')
+            add_uefeature('smaller_than_average')
             if(rii == -2):                                                  # and it was reverted
-                add_feature('smaller_and_reverted')
+                add_uefeature('smaller_and_reverted')
 
-        if(e.size < prev.size): add_feature('smaller')
-        elif(e.size > prev.size): add_feature('larger')
-        else: add_feature('same_size')
+        if(e.size < prev.size):
+            # print prev.size, e.size, float(prev.size - e.size) * i / total_size, '%30s\t%s' % (e.username, e.comment)
+            edit_features[i]['smaller %'] = float(prev.size - e.size) * i * 100 / total_size
+        elif(e.size > prev.size):
+            print prev.size, e.size, float(e.size - prev.size) * i * 100 / total_size, '%30s\t%s' % (e.username, e.comment)
+            edit_features[i]['larger %'] = float(e.size - prev.size) * i * 100 / total_size
+ 
+
+        if(e.size < prev.size): add_uefeature('smaller')
+        elif(e.size > prev.size): add_uefeature('larger')
+        else: add_uefeature('same_size')
 
         if(e.username != prev.username): 
-            add_feature(urri(rii))
+            add_uefeature(urri(rii))
         else: 
-            add_feature('same_user')
-            add_feature('same_' + urri(rii))
+            add_uefeature('same_user')
+            add_uefeature('same_' + urri(rii))
 
         delta_utc = e.utc - prev.utc                                        # prev edition has managed longer than usual
-        if(delta_utc * i > total_time): add_feature('accepted')
-
-        if(e.comment): 
-            add_feature('comment')
-            for token in e.comment.split():
-                edit_features[i][token] = 'comment'
+        if(delta_utc * i > total_time): add_uefeature('accepted')
+        
+        if(e.username.lower().find('bot') > -1):
+            add_uefeature('bot')
+        elif(e.comment):
+            if(e.comment[-2:] == '*/'): add_uefeature('comment_sec_no')
+            elif(e.comment[:5] == '[[WP:' or e.comment[:7] == '[[Help:'):
+                ii = e.comment.find(']]', 5, 32)
+                if(ii > 0): add_uefeature('comment_wp_' + e.comment[5:ii])
+            elif e.comment[:6] == 'Revert': add_feature('comment_revert')
+            elif e.comment[:5] == 'Undid': add_feature('comment_undid')
+            elif e.comment[:3] == 'rvv': add_feature('comment_rvv')
+            elif e.comment[:3] == 'rev': add_feature('comment_rev')
+            elif e.comment[:2] == 'rv': add_feature('comment_rv')
+            elif e.comment[:4] in ('BOT ', 'bot ', 'robo', 'Robo'): add_feature('comment_bot')
+            elif e.comment[:3] == 'cat': add_feature('comment_cat')
+            elif e.comment[:1] == '+': add_feature('comment_plus')
+            elif e.comment.find('spam') > -1: add_feature('comment_spam'); 
+            elif e.comment.find('ref') > -1: add_feature('comment_ref'); # print '%30s\t%s' % (e.username, e.comment)
+            else:
+                # print '%30s\t%s' % (e.username, e.comment)
+                # add_feature('comment')
+                if(len(e.comment.split()) > 7): add_uefeature('comment_long')
+                #for token in e.comment.split():
+                #    edit_features[i][token] = 'comment'
             
-        else: add_feature('no_comment')
-        if(e.comment and len(e.comment.split()) > 10): add_feature('long_comment')
+        else: add_uefeature('no_comment')
         
 
         total_size += e.size
@@ -505,11 +590,11 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
     # for uf in user_features.values():
     #    for f, v in uf.iteritems():
     #        uf[f] = math.log(v)
+            
     
     #pp = pprint.PrettyPrinter(width=140)
     #for u, uf in user_features.iteritems():    
     #    wikipedia.output("user %s(%s) features = \\\n%s" % (u, mark(users_reputation[u], lambda x:x>-1), pp.pformat(uf)))
-    #wikipedia.output("edit_features = \\\n%s" % pp.pformat(edit_features))
 
     train = [None] * len(edit_features)
     for i, features in enumerate(edit_features):
@@ -540,11 +625,7 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
 
     classifier = maxent.MaxentClassifier.train(train, algorithm='megam', encoding=enc, \
                     bernoulli=False, trace=2, tolerance=2e-5, max_iter=1000, min_lldelta=1e-7)
-    classifier.show_most_informative_features(n=20)
-
-    # wikipedia.output("train = \\\n%s" % pp.pformat(train))
-    # classifier = nltk.MaxentClassifier.train(train, algorithm='CG', sparse=False, tolerance=5e-4,gaussian_prior_sigma=0)
-    # classifier.show_most_informative_features(50)
+    classifier.show_most_informative_features(n=50)
 
     stats = defaultdict(lambda:defaultdict(int))
     for i, e in enumerate(edit_info):
@@ -557,13 +638,16 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
         pdist = classifier.prob_classify(features)
         score = ('bad', 'good')[pdist.prob('good') > pdist.prob('bad')]
         stats['Revision analysis score ' + score + ' on known'][known] += 1
-        if(known == 'good' and score == 'bad'):            
+        # if(known == 'good' and  score == 'bad'):
+        if(known != score and not verified):
             wikipedia.output("\n\n>>>  Revision %d (%s, %s) by %s(%s): %s %s : \03{lightblue}%s\03{default}   <<< " %   \
                          (i, mark(reverts_info[i], lambda x:x>-2), mark(rev_score_info[i], lambda x:x>-1), e.username,  \
                             mark(users_reputation[e.username], lambda x:x>-1), e.utc, e.size, e.comment))
             wikipedia.output("known as %s classified as %s: p(x) = %.4f p(y) = %.4f" % \
                              (mark(known, lambda x:x=='good'), mark(score, lambda x:x=='good'), pdist.prob('good'), pdist.prob('bad')))
+            if(verified): wikipedia.output("Verified as %s." % mark(verified, lambda x:x[:3]!='bad'))
             wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % e.revid)
+            wikipedia.output("Features: %s" % features)
             classifier.explain(features)
     dump_cstats(stats, {})       
 
@@ -573,7 +657,6 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
     # stats
     ids = defaultdict(list)
     stats = defaultdict(lambda:defaultdict(int))
-    human_responses = 0
  
     p = re.compile(r'\W+')
     # p = re.compile(r'\s+')
@@ -631,57 +714,18 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
                 # Run CRM114
                 (crm114_answer, probability) = c.classify(edit_text.encode('utf-8'))
 
-                # Human verification
-                if(crm114_answer == 'bad' and score == 'good'):  
+                # CRM114 different or uncertain
+                if(crm114_answer == 'bad' and score == 'good'): 
                     falseString = " >>> \03{lightpurple}FALSE POSITIVE\03{default} <<<"
+                    uncertain = "CRM114 thinks it is: %s, prob was:%f %s" % (mark(crm114_answer, lambda x:x=='good'), probability, falseString)
                 elif(crm114_answer == 'good' and score == 'bad'): 
                     falseString = "  >>> \03{lightpurple}False Negative\03{default} <<<"
-                else: falseString = ""
+                    uncertain = "CRM114 thinks it is: %s, prob was:%f %s" % (mark(crm114_answer, lambda x:x=='good'), probability, falseString)
+                else: uncertain = ""
                 
-                # if the retrain arg is set to true, username or the revision id
-                retrain = (_retrain_arg == True) or (_retrain_arg and ((_retrain_arg.find(e.username) > 0) or (_retrain_arg.find(str(revid)) > 0)))
+                # Collecting stats and Human verification
+                (verified, known, score) = collect_stats(stats, ids, reverts_info, users_reputation, e, prev, revid, i, verified, known, score, score_numeric, uncertain, edit_text)
 
-                if(score != known or (not verified and falseString) or retrain):
-                    wikipedia.output("\n\n\n\n\n\n\n >>>  Revision %d (%s, %s) by %s(%s): %s %s : \03{lightblue}%s\03{default}   <<< " %   \
-                         (i, mark(reverts_info[i], lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.username,                         \
-                            mark(users_reputation[e.username], lambda x:x>-1), e.timestamp, revid, e.comment))
-                    wikipedia.output("Score is %s." % mark(score, lambda x:x=='good'))
-                    if(known): wikipedia.output("Known as %s." % mark(known, lambda x:x=='good'))
-                    if(verified): wikipedia.output("Verified as %s." % mark(verified, lambda x:x[:3]!='bad'))
-                    wikipedia.output("CRM114 thinks it is: %s, prob was:%f %s" % (mark(crm114_answer, lambda x:x=='good'), probability, falseString))
-                    
-                    wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % revid)
-                    if(_show_diffs_arg):
-                        wikipedia.showDiff(prev.text, e.text)
-                    wikipedia.output(" \03{lightblue}%s\03{default}" % edit_text)
-                    
-                    # uncertain = score_numeric < 1 or reverts_info[i] != -1 or falseString
-                    uncertain = falseString
-                    if((uncertain and not verified) or retrain):
-                        if not known or not verified: known = score     # keep verified answer by default
-                        answer = wikipedia.inputChoice(u'Do you want to mark this revision as %s (Yes)?' % \
-                                    mark(known, lambda x:x=='good'), ['Yes', 'No', 'Constructive'], ['Y', 'N', 'C'], 'Y')
-                        if answer == 'n':
-                            wikipedia.output(" \03{lightpurple}***** Wow! *****\03{default} \03{lightgreen}Thank you for correcting me.\03{default}")                                                        
-                            known = ('good', 'bad')[known == 'good']                 # inverting/correcting
-                        
-                        if answer == 'c':
-                            known = 'good'
-                            verified = 'constructive (corrected by user)'
-                        else:                                                    
-                            verified = known + (' (corrected by user)', ' (verified by user)')[known == score]
-                            
-                        wikipedia.output("Marked as %s" % mark(verified, lambda x:x[:3]!='bad'))
-                        human_responses += 1
-                    else:
-                        if(not verified): known = score
-
-                # Collecting stats               
-                ids[known].append(revid)
-                stats['Revision analysis score ' + score + ' on known'][known] += 1
-                if(verified): 
-                    ids[verified].append(revid)
-                    stats['Revision analysis score ' + score + ' on verified'][verified] += 1
                 if(i > 500):
                     stats['CRM114 answered ' + crm114_answer + ' on known'][known] += 1
                     stats['CRM114 answered ' + crm114_answer + ' on score'][score] += 1
@@ -691,11 +735,7 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
                     c.learn(known, edit_text.encode('utf-8'))
                     stats['CRM114 trained'][known] += 1
                     # wikipedia.output("\03{lightpurple}Training %s\03{default}", known)
-                 
-                if(i % 100 == 0 or human_responses > 5):
-                    human_responses = 0
-                    dump_cstats(stats, ids)
-                    
+                if(i % 100 == 0): wikipedia.output("Processed %d revisions" % i)
 
             prev = e
             i += 1
@@ -703,7 +743,7 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
 
 
 def main():
-    global _retrain_arg, _train_arg
+    global _retrain_arg, _train_arg, _human_responses
     pattern_arg = None
     for arg in wikipedia.handleArgs():
         if arg.startswith('-xml') and len(arg) > 5: pattern_arg = arg[5:]
@@ -727,8 +767,8 @@ def main():
     (rev_score_info, reverts_info, users_reputation, edit_info) = analyse_reverts(xmlFilenames)
     wikipedia.output("Analysis time: %f" % (time.time() - start))
 
-    analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info)
-    #analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
+    #analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info)
+    analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
 
 
 if __name__ == "__main__":
