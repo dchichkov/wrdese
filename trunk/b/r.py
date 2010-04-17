@@ -552,18 +552,24 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
         delta_utc = e.utc - prev.utc                                        # prev edition has managed longer than usual
         if(delta_utc * i > total_time): add_uefeature('accepted')
         
+        comment_revert = False
+        
         if(e.username.lower().find('bot') > -1):
             add_uefeature('bot')
         elif(e.comment):
             if(e.comment[-2:] == '*/'): add_uefeature('comment_sec_no')
+            elif(e.comment[:8] == '[[WP:AES'): add_uefeature('comment_wp_AES')
+            elif(e.comment[:9] == '[[WP:UNDO'): add_uefeature('comment_wp_UNDO'); comment_revert = True
+            elif(e.comment[:8] == '[[WP:RBK'): add_uefeature('comment_wp_RBK'); comment_revert = True
+            elif(e.comment[:7] == '[[Help:'): add_uefeature('comment_wp_Help'); comment_revert = True
             elif(e.comment[:5] == '[[WP:' or e.comment[:7] == '[[Help:'):
                 ii = e.comment.find(']]', 5, 32)
-                if(ii > 0): add_uefeature('comment_wp_' + e.comment[5:ii])
-            elif e.comment[:6] == 'Revert': add_feature('comment_revert')
-            elif e.comment[:5] == 'Undid': add_feature('comment_undid')
-            elif e.comment[:3] == 'rvv': add_feature('comment_rvv')
-            elif e.comment[:3] == 'rev': add_feature('comment_rev')
-            elif e.comment[:2] == 'rv': add_feature('comment_rv')
+                if(ii > 0): add_uefeature('comment_wp_' + e.comment[5:ii])               
+            elif e.comment[:6] == 'Revert': add_feature('comment_revert'); comment_revert = True
+            elif e.comment[:5] == 'Undid': add_feature('comment_undid'); comment_revert = True
+            elif e.comment[:3] == 'rvv': add_feature('comment_rvv'); comment_revert = True
+            elif e.comment[:3] == 'rev': add_feature('comment_rev'); comment_revert = True
+            elif e.comment[:2] == 'rv': add_feature('comment_rv'); comment_revert = True
             elif e.comment[:4] in ('BOT ', 'bot ', 'robo', 'Robo'): add_feature('comment_bot')
             elif e.comment[:3] == 'cat': add_feature('comment_cat')
             elif e.comment[:1] == '+': add_feature('comment_plus')
@@ -578,6 +584,10 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
             
         else: add_uefeature('no_comment')
         
+        if comment_revert and rii == -1:
+            print '%30s\t%s' % (e.username, e.comment)
+            wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d\n\n" % e.revid)
+            
 
         total_size += e.size
         total_time += (e.utc - prev.utc)
@@ -641,7 +651,8 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
         uncertain = known != score
         score_numeric = rev_score_info[i]
         extra = lambda: classifier.explain(features);
-        (verified, known, score) = collect_stats(stats, ids, reverts_info, users_reputation, e, prev, e.revid, i, verified, known, score, score_numeric, uncertain, extra)
+        #(verified, known, score) = collect_stats(stats, ids, reverts_info, users_reputation, e, prev, e.revid, i, verified, known, score, score_numeric, uncertain, extra)
+        stats['Revision analysis score ' + score + ' on known'][known] += 1
     dump_cstats(stats, ids)
 
 
