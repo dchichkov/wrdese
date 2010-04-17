@@ -3,6 +3,7 @@
 
 #retrain BAD: 167750423, 285306288
 
+# 167750423
 
 # TODO:
 # consecutive edits as one edit
@@ -293,8 +294,8 @@ def dump_cstats(stats, ids):
 
     wikipedia.output("===================================================================================")
     pp = pprint.PrettyPrinter(width=140)
-    wikipedia.output("stats = \\\n%s" % pp.pformat(stats))
     wikipedia.output("ids = \\\n%s" % pp.pformat(ids))
+    wikipedia.output("stats = \\\n%s" % pp.pformat(stats))
     wikipedia.output("===================================================================================")
 
 
@@ -455,23 +456,23 @@ def urri(ri):
     return ('self_revert', 'revert_war', 'questionable', 'reverted', 'regular')[ri]
 
 
-def collect_stats(stats, ids, reverts_info, users_reputation, e, prev, revid, i, verified, known, score, score_numeric, uncertain, edit_text):
+def collect_stats(stats, ids, reverts_info, users_reputation, e, prev, revid, i, verified, known, score, score_numeric, uncertain, extra):
     global _retrain_arg, _train_arg, _human_responses
     # if the retrain arg is set to true, username or the revision id
-    retrain = (_retrain_arg == True) or (_retrain_arg and ((_retrain_arg.find(e.username) > 0) or (_retrain_arg.find(str(revid)) > 0)))
+    retrain = (_retrain_arg == True) or (_retrain_arg and ((_retrain_arg.find(e.username) > -1) or (_retrain_arg.find(str(revid)) > -1)))
 
     if(score != known or (not verified and uncertain) or retrain):
-        wikipedia.output("\n\n\n\n\n\n\n >>>  Revision %d (%s, %s) by %s(%s): %s : \03{lightblue}%s\03{default}   <<< " %   \
-             (revid, mark(reverts_info[i], lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.username,                         \
-                mark(users_reputation[e.username], lambda x:x>-1), e.timestamp, e.comment))
+        wikipedia.output("\n\n\n\n\n\n\n >> %d (%s, %s) by %s(%s): \03{lightblue}%s\03{default}   <<< " %   \
+             (revid, mark(reverts_info[i], lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.username, \
+                mark(users_reputation[e.username], lambda x:x>-1), e.comment))
         wikipedia.output("Score is %s." % mark(score, lambda x:x=='good'))
         if(known): wikipedia.output("Known as %s." % mark(known, lambda x:x=='good'))
         if(verified): wikipedia.output("Verified as %s." % mark(verified, lambda x:x[:3]!='bad'))
-        if(uncertain): wikipedia.output(uncertain)
+        if(uncertain): wikipedia.output("Uncertain: %s" % uncertain)
         wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % revid)
         if(_show_diffs_arg):
             wikipedia.showDiff(prev.text, e.text)
-        wikipedia.output(" \03{lightblue}%s\03{default}" % edit_text)
+        extra()
 
         # uncertain = score_numeric < 1 or reverts_info[i] != -1 or uncertain
         if((uncertain and not verified) or retrain):
@@ -534,12 +535,8 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
             if(rii == -2):                                                  # and it was reverted
                 add_uefeature('smaller_and_reverted')
 
-        if(e.size < prev.size):
-            # print prev.size, e.size, float(prev.size - e.size) * i / total_size, '%30s\t%s' % (e.username, e.comment)
-            edit_features[i]['smaller %'] = float(prev.size - e.size) * i * 100 / total_size
-        elif(e.size > prev.size):
-            print prev.size, e.size, float(e.size - prev.size) * i * 100 / total_size, '%30s\t%s' % (e.username, e.comment)
-            edit_features[i]['larger %'] = float(e.size - prev.size) * i * 100 / total_size
+        if(e.size < prev.size):   edit_features[i]['smaller %'] = float(prev.size - e.size) * i * 100 / total_size
+        elif(e.size > prev.size): edit_features[i]['larger %'] = float(e.size - prev.size) * i * 100 / total_size
  
 
         if(e.size < prev.size): add_uefeature('smaller')
@@ -627,6 +624,7 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
                     bernoulli=False, trace=2, tolerance=2e-5, max_iter=1000, min_lldelta=1e-7)
     classifier.show_most_informative_features(n=50)
 
+    ids = defaultdict(list)
     stats = defaultdict(lambda:defaultdict(int))
     for i, e in enumerate(edit_info):
         known = k.is_verified_or_known_as_good_or_bad(e.revid)              # previous score (some human verified)
@@ -637,19 +635,14 @@ def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation,
             features[f] = v
         pdist = classifier.prob_classify(features)
         score = ('bad', 'good')[pdist.prob('good') > pdist.prob('bad')]
-        stats['Revision analysis score ' + score + ' on known'][known] += 1
-        # if(known == 'good' and  score == 'bad'):
-        if(known != score and not verified):
-            wikipedia.output("\n\n>>>  Revision %d (%s, %s) by %s(%s): %s %s : \03{lightblue}%s\03{default}   <<< " %   \
-                         (i, mark(reverts_info[i], lambda x:x>-2), mark(rev_score_info[i], lambda x:x>-1), e.username,  \
-                            mark(users_reputation[e.username], lambda x:x>-1), e.utc, e.size, e.comment))
-            wikipedia.output("known as %s classified as %s: p(x) = %.4f p(y) = %.4f" % \
-                             (mark(known, lambda x:x=='good'), mark(score, lambda x:x=='good'), pdist.prob('good'), pdist.prob('bad')))
-            if(verified): wikipedia.output("Verified as %s." % mark(verified, lambda x:x[:3]!='bad'))
-            wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % e.revid)
-            wikipedia.output("Features: %s" % features)
-            classifier.explain(features)
-    dump_cstats(stats, {})       
+        
+        
+        # Collecting stats and Human verification
+        uncertain = known != score
+        score_numeric = rev_score_info[i]
+        extra = lambda: classifier.explain(features);
+        (verified, known, score) = collect_stats(stats, ids, reverts_info, users_reputation, e, prev, e.revid, i, verified, known, score, score_numeric, uncertain, extra)
+    dump_cstats(stats, ids)
 
 
 
@@ -724,7 +717,8 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
                 else: uncertain = ""
                 
                 # Collecting stats and Human verification
-                (verified, known, score) = collect_stats(stats, ids, reverts_info, users_reputation, e, prev, revid, i, verified, known, score, score_numeric, uncertain, edit_text)
+                extra = lambda:wikipedia.output(" \03{lightblue}%s\03{default}" % edit_text)
+                (verified, known, score) = collect_stats(stats, ids, reverts_info, users_reputation, e, prev, revid, i, verified, known, score, score_numeric, uncertain, extra)
 
                 if(i > 500):
                     stats['CRM114 answered ' + crm114_answer + ' on known'][known] += 1
@@ -767,8 +761,8 @@ def main():
     (rev_score_info, reverts_info, users_reputation, edit_info) = analyse_reverts(xmlFilenames)
     wikipedia.output("Analysis time: %f" % (time.time() - start))
 
-    #analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info)
-    analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
+    analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info)
+    #analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
 
 
 if __name__ == "__main__":
