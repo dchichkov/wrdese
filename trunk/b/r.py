@@ -462,8 +462,8 @@ def collect_stats(stats, ids, reverts_info, users_reputation, e, prev, revid, i,
     retrain = (_retrain_arg == True) or (_retrain_arg and ((_retrain_arg.find(e.username) > -1) or (_retrain_arg.find(str(revid)) > -1)))
 
     if(score != known or (not verified and uncertain) or retrain):
-        wikipedia.output("\n\n\n\n\n\n\n >> %d (%s, %s) by %s(%s): \03{lightblue}%s\03{default}   <<< " %   \
-             (revid, mark(reverts_info[i], lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.username, \
+        wikipedia.output("\n\n\n\n\n\n\n >> R%d (%s, %s) by %s(%s): \03{lightblue}%s\03{default}   <<< " %   \
+             (i, mark(reverts_info[i], lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.username, \
                 mark(users_reputation[e.username], lambda x:x>-1), e.comment))
         wikipedia.output("Score is %s." % mark(score, lambda x:x=='good'))
         if(known): wikipedia.output("Known as %s." % mark(known, lambda x:x=='good'))
@@ -472,7 +472,7 @@ def collect_stats(stats, ids, reverts_info, users_reputation, e, prev, revid, i,
         wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % revid)
         if(_show_diffs_arg):
             wikipedia.showDiff(prev.text, e.text)
-        extra()
+        if(extra): extra()
 
         # uncertain = score_numeric < 1 or reverts_info[i] != -1 or uncertain
         if((uncertain and not verified) or retrain):
@@ -507,6 +507,37 @@ def collect_stats(stats, ids, reverts_info, users_reputation, e, prev, revid, i,
 
     return (verified, known, score)
 
+
+
+def check_reputations(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info):
+    users_reputation = defaultdict(int)
+
+    for i, e in enumerate(edit_info):
+        known = k.is_verified_or_known_as_good_or_bad(e.revid)    # previous score (some human verified)
+        if(known == 'good'): users_reputation[e.username] += 1
+        if(known == 'bad'): users_reputation[e.username] -= 1
+    
+    ids = defaultdict(list)
+    stats = defaultdict(lambda:defaultdict(int))
+    prev = None; i = 0
+    
+    for xmlFilename in xmlFilenames:
+        revisions = xmlreader.XmlDump(xmlFilename, allrevisions=True).parse()
+        for e in revisions:
+            if prev:
+                score_numeric = rev_score_info[i]                   
+                score = ('good', 'bad')[score_numeric < 0]              # current analyse_reverts score
+                revid = int(e.revisionid)
+                known = k.is_verified_or_known_as_good_or_bad(revid)    # previous score (some human verified)
+                verified = k.is_known_as_verified(revid)                # if not Empty: human verified
+                reputation = users_reputation[e.username]
+            
+                # Collecting stats and Human verification
+                uncertain = (known == 'good' and reputation < 0) or (known == 'bad' and reputation > -1) or (known != score)
+                extra = None
+                (verified, known, score) = collect_stats(stats, ids, reverts_info, users_reputation, e, prev, revid, i, verified, known, score, score_numeric, uncertain, extra)
+            prev = e; i += 1
+    dump_cstats(stats, ids)
 
 
 
@@ -670,10 +701,7 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
     i = 0
     prev = None
     for xmlFilename in xmlFilenames:
-        #for i in reverts:
-        #    wikipedia.output("Revision %d (%d)" % (i[0], i[1]));
-        dump = xmlreader.XmlDump(xmlFilename, allrevisions=True)
-        revisions = dump.parse()
+        revisions = xmlreader.XmlDump(xmlFilename, allrevisions=True).parse()
         for e in revisions:
             score_numeric = rev_score_info[i]                   
             score = ('good', 'bad')[score_numeric < 0]              # current analyse_reverts score
@@ -748,13 +776,14 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
 
 
 def main():
-    global _retrain_arg, _train_arg, _human_responses
+    global _retrain_arg, _train_arg, _human_responses, _show_diffs_arg
     pattern_arg = None
     for arg in wikipedia.handleArgs():
         if arg.startswith('-xml') and len(arg) > 5: pattern_arg = arg[5:]
         if arg.startswith('-retrain'): _retrain_arg = True
         if arg.startswith('-retrain') and len(arg) > 9: _retrain_arg = arg[9:]
         if arg.startswith('-train'): _train_arg = True
+        if arg.startswith('-diffs'): _show_diffs_arg = True
             
             
     if(not pattern_arg):            # work: lightblue lightgreen lightpurple lightred
@@ -772,7 +801,8 @@ def main():
     (rev_score_info, reverts_info, users_reputation, edit_info) = analyse_reverts(xmlFilenames)
     wikipedia.output("Analysis time: %f" % (time.time() - start))
 
-    analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info)
+    check_reputations(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info)
+    #analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info)
     #analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
 
 
