@@ -9,6 +9,8 @@
 # consecutive edits as one edit
 # self-reverts: reverted edit is bad. no reputation change.
 # tokens lifetime - use relative lifetime
+# switch to F1-score
+
 
 # Users with bad reputation can do good edits:
 # * self reverts
@@ -59,22 +61,18 @@
 # 'vgood' - vandal did a constructive edit
 
 
-# Possible labels: 
-# * misinformation, mass delete, partial delete, offensive, spam, nonsense
-
-# Detecting Wikipedia Vandalism with Active Learning and Statistical Language Models
-# by Si-Chi Chin, W. Nick Street, Padmini Srinivasan, David Eichmann
+# Taxonomy: from "Detecting Wikipedia Vandalism with Active Learning and Statistical Language Models"
+# Possible labels: misinformation, mass delete, partial delete, offensive, spam, nonsense
+# 
+# Actions: change, insert, delete, and revert
+# Types of change: format, content
 #
-# The categorization is systematically organized based on the four primary actions
-# (change, insert, delete, and revert) and types of change (format and content).
-#
-# Common types "blanking,” “large-scale editing”, “graffitti”, “misinformaiton"
-# "image attack", "link spam", "irregular formatting", 
-
+# Common v types: blanking, large-scale editing, graffitti, misinformaiton,
+#                image attack, link spam, irregular formatting
 
 
 # Possible features:
-# large-scale editing - the size of new edits (insertion, delition) twice as large as the median
+# large-scale editing
 # ratio of upper-case letters
 # time of the day
 # maximum length of a word in the new edit
@@ -85,8 +83,6 @@
 # +1 (next), -1 (prev) revisions features
 
 
-
-# calculate F1-score
 
 # diff (partially done in ddiff): 
 # * remove heads/tails
