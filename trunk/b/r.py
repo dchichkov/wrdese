@@ -126,21 +126,8 @@ from ordereddict import OrderedDict
 # pywikipedia (trunk 2010/03/15) in your PYTHONPATH, configured and running 
 import wikipedia, pagegenerators, xmlreader, editarticle
 
-# apt-get apt-get install python-numpy python-scipy 
-import numpy as np
-from scipy import stats
-
 # CRM114, crm.py module by Sam Deane
 import crm114   
-
-# NLTK, the Natural Language Toolkit
-# Note: requires http://code.google.com/p/nltk/issues/detail?id=535 patch
-import nltk, maxent, megam
-# from nltk.classify import maxent, megam
-
-
-# download and extract megam_i686.opt from http://www.cs.utah.edu/~hal/megam/
-megam.config_megam('./megam_i686.opt')
 
 # known good, known bad revisions
 import k
@@ -294,6 +281,55 @@ def dump_cstats(stats, ids):
     wikipedia.output("stats = \\\n%s" % pp.pformat(stats))
     wikipedia.output("===================================================================================")
 
+
+def analyse_dump(xmlFilenames):
+    import marshal
+    FILE = open(_output_arg, 'wb')
+
+    EditInfo = namedtuple('EditInfo', 'id, revid, username, comment, title, size, utc, md5, ipedit')
+    total_size = total_revisions = 0
+    total_pages = 0
+    start = time.time()
+
+    for xmlFilename in xmlFilenames:
+        dump = xmlreader.XmlDump(xmlFilename, allrevisions=True)
+        revisions = dump.parse()
+
+        for e in revisions:
+            # calculate page text hashes and duplicates lists
+            digest = None
+            if(e.text):
+                m = hashlib.md5(e.text.encode('utf-8'))
+                digest = m.digest()
+            try:
+                edit_info = (int(e.id), int(e.revisionid), e.username, e.comment, e.title, 
+                                len(e.text), timestamp_to_time(e.timestamp), digest, e.ipedit)
+                marshal.dump(edit_info, FILE)
+            except:
+                wikipedia.output("Error at: %s %s %s" % (e.id, e.revisionid, e.timestamp))
+
+            total_revisions += 1
+            if(total_revisions%1000 == 0): 
+                wikipedia.output("Revision %d. Analysis time: %f" % (total_revisions, time.time() - start))
+
+    FILE.close()           
+
+
+def analyse_pyc():
+    import cPickle, marshal
+    FILE = open(_pyc_arg, 'rb')
+    
+    total_revisions = 0; total_pages = 0; 
+    start = time.time()
+    try:
+        while True:
+            edit_info = marshal.load(FILE)
+            total_revisions += 1
+            # print(edit_info)
+    except IOError, e:
+        raise
+    except EOFError, e:
+        wikipedia.output("Revision %d. Analysis time: %f" % (total_revisions, time.time() - start))
 
 
 # -------------------------------------------------------------------------
@@ -538,6 +574,18 @@ def check_reputations(xmlFilenames, rev_score_info, reverts_info, users_reputati
 
 
 def analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info):
+    # apt-get apt-get install python-numpy python-scipy
+    import numpy as np
+    from scipy import stats
+
+    # NLTK, the Natural Language Toolkit
+    # Note: requires http://code.google.com/p/nltk/issues/detail?id=535 patch
+    import nltk, maxent, megam
+    # from nltk.classify import maxent, megam
+
+
+    # download and extract megam_i686.opt from http://www.cs.utah.edu/~hal/megam/
+    megam.config_megam('./megam_i686.opt')
 
     # Tracking blankings and near-blankings
     # Establishing user ratings for the user whitelists
@@ -772,15 +820,21 @@ def analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
 
 
 def main():
-    global _retrain_arg, _train_arg, _human_responses, _show_diffs_arg
-    pattern_arg = None
+    global _retrain_arg, _train_arg, _human_responses, _show_diffs_arg, _output_arg, _pyc_arg
+    pattern_arg = None; _pyc_arg = None;
     for arg in wikipedia.handleArgs():
         if arg.startswith('-xml') and len(arg) > 5: pattern_arg = arg[5:]
+        if arg.startswith('-pyc') and len(arg) > 5: _pyc_arg = arg[5:]
         if arg.startswith('-retrain'): _retrain_arg = True
         if arg.startswith('-retrain') and len(arg) > 9: _retrain_arg = arg[9:]
         if arg.startswith('-train'): _train_arg = True
         if arg.startswith('-diffs'): _show_diffs_arg = True
-            
+        if arg.startswith('-output') and len(arg) > 8: _output_arg = arg[8:]
+ 
+    if(_pyc_arg):
+        analyse_pyc()
+        quit()
+        
             
     if(not pattern_arg):            # work: lightblue lightgreen lightpurple lightred
         wikipedia.output('Usage: ./r.py \03{lightblue}-xml:\03{default}path/Wikipedia-Single-Page-Dump-*.xml.7z')
@@ -790,6 +844,9 @@ def main():
     wikipedia.output(u"Files: \n%s\n\n" % xmlFilenames)
     mysite = wikipedia.getSite()
 
+    analyse_dump(xmlFilenames)
+    quit()
+
     # test_ndiff(xmlFilenames)
     # analyse_tokens_lifetime(xmlFilenames)
 
@@ -797,7 +854,7 @@ def main():
     (rev_score_info, reverts_info, users_reputation, edit_info) = analyse_reverts(xmlFilenames)
     wikipedia.output("Analysis time: %f" % (time.time() - start))
 
-    check_reputations(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info)
+    #check_reputations(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info)
     #analyse_maxent(xmlFilenames, rev_score_info, reverts_info, users_reputation, edit_info)
     #analyse_crm114(xmlFilenames, rev_score_info, reverts_info, users_reputation)
 
