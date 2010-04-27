@@ -71,6 +71,14 @@
 #                image attack, link spam, irregular formatting
 
 
+# Future releases/datasets:
+# 1. More detailed edit label: regular; vandalism; revert of v.; partial revert of v.
+# 2. Detailed v. labeling: graffiti; blanking; nonsense; joke, link-spam; revert; misinformation; image-attack; formatting.
+# 3. Detailed regular edits labeling: correction, insertion, deletion, copyedit, formatting, revert, revert war, etc.
+# 4. Article condition before and after the edit: vandalized, normal.
+# 5. Datasets featuring the entire article history.
+
+
 # Possible features:
 # large-scale editing
 # ratio of upper-case letters
@@ -231,6 +239,9 @@ def analyse_tokens_lifetime(xmlFilenames):
 
 # remove more junk symbols?
 def test_ndiff(xmlFilenames):
+    
+    p = re.compile(r'\.|\n')
+
     i = 0
     t0 = time.time()
     for xmlFilename in xmlFilenames:
@@ -238,27 +249,33 @@ def test_ndiff(xmlFilenames):
         revisions = dump.parse()
         prev = None
         for e in revisions:
-            wikipedia.output("Revision %d: %s by %s Comment: %s" % (i, e.timestamp, e.username, e.comment))
-            wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % int(e.revisionid))           
             if prev:
                 edit = []
                 if(e.text and prev.text):
-                    diff = difflib.ndiff(prev.text.split(), e.text.split())
-                    ip = 0; im = 0
-                    for delta in diff:
-                        if   delta[:1] == '+': edit.append('+' + delta[2:]); ip += 1
-                        elif delta[:1] == '-': edit.append('-' + delta[2:]); im += 1
-                        else: continue
-                    wikipedia.output(" \03{lightblue}%s\03{default}\n" % ' '.join(edit))
+                    #diff = difflib.ndiff(prev.text.split(), e.text.split())
+                    #ip = 0; im = 0
+                    #for delta in diff:
+                    #    if   delta[:1] == '+': edit.append('+' + delta[2:]); ip += 1
+                    #    elif delta[:1] == '-': edit.append('-' + delta[2:]); im += 1
+                    #    else: continue
                     
                     
-                    a = prev.text.split(" \t\n[]"); b = e.text.split(" \t\n[]")
+                    
+                    a = p.split(prev.text); b = p.split(e.text)
+                    #a = prev.text.split(" "); b = e.text.split(" ")
                     diff = ddiff.ddiff_v2(a, b)
-                    text = ""
+                    text = ""; text1 = ""; j = 0
                     for d in diff:
-                        text += mark(d, lambda x:x[0]=='+')
-                        text += ' '
-                    wikipedia.output(text)
+                        j += 1
+                        #text += mark(d, lambda x:x[0]=='+') + ' '
+                        #text1 += d + ' '
+                    
+                    #if len(text1) == len(' '.join(edit)):
+                    #    wikipedia.output("%d %d" % (len(text1), len(' '.join(edit))))
+                    #    wikipedia.output("Revision %d: %s by %s Comment: %s" % (i, e.timestamp, e.username, e.comment))
+                    #    wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % int(e.revisionid))           
+                    #    wikipedia.output(" \03{lightblue}%s\03{default}\n" % ' '.join(edit))
+                    #    wikipedia.output(text)
             prev = e
             i += 1
     wikipedia.output("%f seconds" % (time.time() - t0))
@@ -844,10 +861,8 @@ def main():
     wikipedia.output(u"Files: \n%s\n\n" % xmlFilenames)
     mysite = wikipedia.getSite()
 
-    analyse_dump(xmlFilenames)
-    quit()
-
-    # test_ndiff(xmlFilenames)
+    #test_ndiff(xmlFilenames)
+    #quit()
     # analyse_tokens_lifetime(xmlFilenames)
 
     start = time.time()
