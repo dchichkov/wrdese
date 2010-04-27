@@ -1,7 +1,16 @@
 #!/usr/bin/python
 # -*- coding: utf-8  -*-
 
-# Dumb Diff Module
+# Dumb Diff: 
+#  While ugly, it's efficient and works well on Wiki articles.
+#  Accepts lists or article sentences (or words).
+#  Irnores copyedits.
+
+# 1. cut same head, same tail
+# 2. put A into the OrderedDict
+# 3. remove B from the OrderedDict
+# 4. dump nonzero result
+
 
 from difflib import SequenceMatcher, ndiff, Differ
 from collections import defaultdict
@@ -23,6 +32,13 @@ def ddiff_v1(a, b):
 
 
 def ddiff_v2(a, b):
+    d = ddiff_v3(a, b)
+    for t, v in d.items():
+        if(v > 0): yield '+' + t
+        elif(v < 0): yield '-' + t
+
+
+def ddiff_v3(a, b):
     ahi = len(a); bhi = len(b)          # find last matching 
     while ahi > 0 and bhi > 0:
         ahi -= 1; bhi -= 1;
@@ -37,22 +53,19 @@ def ddiff_v2(a, b):
         d[bt] = d.setdefault(bt, 0) + 1
         
     for i in xrange(hi, ahi):
-        at = ait.next();
+        at = ait.next();        
         d[at] = d.setdefault(at, 0) - 1
         
     for i in xrange(hi, bhi):
         bt = bit.next()
         d[bt] = d.setdefault(bt, 0) + 1
-
-    for t, v in d.items():
-        if(v > 0): yield '+' + t
-        elif(v < 0): yield '-' + t
-
+        
+    return d
 
 
 if __name__ == "__main__":
-    a = "HEAD The quick /**/ brown fox jumps over the lazy dog. TAIL".split() 
-    b = "HEAD The quick brown fox FUN jumps over the /**/ lazy dog. TAIL".split()
+    a = "HEAD. The quick /**/ brown fox jumps over the lazy dog. TAIL".split() 
+    b = "HEAD. The quick brown fox FUN jumps over the /**/ lazy dog. TAIL".split()
     print "a = '%s'" % a
     print "b = '%s'" % b
 
