@@ -15,7 +15,13 @@ For fastest processing, XmlDump uses the cElementTree library if available
 http://www.effbot.org/ for earlier versions). If not found, it falls back
 to the older method using regular expressions.
 """
-__version__='$Id: xmlreader.py 7886 2010-01-20 06:31:50Z xqt $'
+#
+# (C) Pywikipedia bot team, 2005-2010
+#
+# Distributed under the terms of the MIT license.
+#
+__version__='$Id$'
+#
 
 import threading
 import xml.sax
@@ -285,9 +291,13 @@ Consider installing the python-celementtree package.''')
         if self.filename.endswith('.bz2'):
             import bz2
             source = bz2.BZ2File(self.filename)
-        if self.filename.endswith('.7z'):
+        elif self.filename.endswith('.7z'):
             import subprocess
-            source = subprocess.Popen('7za e -bd -so %s 2>/dev/null' % self.filename, shell=True, stdout=subprocess.PIPE, bufsize=1024).stdout
+            source = subprocess.Popen('7za e -bd -so %s 2>/dev/null'
+                                      % self.filename,
+                                      shell=True,
+                                      stdout=subprocess.PIPE,
+                                      bufsize=65535).stdout
         else:
             # assume it's an uncompressed XML file
             source = open(self.filename)
@@ -311,6 +321,7 @@ Consider installing the python-celementtree package.''')
 
             revision = elem.find("{%s}revision" % self.uri)
             yield self._create_revision(revision)
+            elem.clear()
             self.root.clear()
 
     def _parse_all(self, event, elem):
@@ -320,6 +331,7 @@ Consider installing the python-celementtree package.''')
 
         if event == "end" and elem.tag == "{%s}revision" % self.uri:
             yield self._create_revision(elem)
+            elem.clear()
             self.root.clear()
     
     def _headers(self, elem):
@@ -327,6 +339,8 @@ Consider installing the python-celementtree package.''')
         self.pageid = elem.findtext("{%s}id" % self.uri)
         self.restrictions = elem.findtext("{%s}restrictions" % self.uri)
         self.isredirect = elem.findtext("{%s}redirect" % self.uri) is not None
+        self.editRestriction, self.moveRestriction \
+                = parseRestrictions(self.restrictions)
 
     def _create_revision(self, revision):
         """Creates a Single revision"""
@@ -338,16 +352,14 @@ Consider installing the python-celementtree package.''')
         username = ipeditor or contributor.findtext("{%s}username" % self.uri)
         # could get comment, minor as well
         text = revision.findtext("{%s}text" % self.uri)
-        editRestriction, moveRestriction \
-                = parseRestrictions(self.restrictions)
         return XmlEntry(title=self.title,
                         id=self.pageid,
                         text=text or u'',
                         username=username or u'', #username might be deleted
                         ipedit=bool(ipeditor),
                         timestamp=timestamp,
-                        editRestriction=editRestriction,
-                        moveRestriction=moveRestriction,
+                        editRestriction=self.editRestriction,
+                        moveRestriction=self.moveRestriction,
                         revisionid=revisionid,
                         comment=comment,
                         redirect=self.isredirect
