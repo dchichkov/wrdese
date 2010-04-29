@@ -239,44 +239,68 @@ def analyse_tokens_lifetime(xmlFilenames):
 
 # remove more junk symbols?
 def test_ndiff(xmlFilenames):
-    
-    p = re.compile(r'\.|\n')
+    import marshal
+    FILE = open(_output_arg, 'wb')
 
-    i = 0
-    t0 = time.time()
+    p = re.compile(r'\, |\. |\s+')
+    #p = re.compile(r'\, |\. |\n')
+    #tab = string.maketrans(',.', '\n\n')
+
+    i = 0; t0 = time.time()
+    al = []; bl = []; bid = None; asndiff = []; bsndiff = []; bndiffid = None
     for xmlFilename in xmlFilenames:
         dump = xmlreader.XmlDump(xmlFilename, allrevisions=True)
         revisions = dump.parse()
-        prev = None
         for e in revisions:
-            if prev:
-                edit = []
-                if(e.text and prev.text):
-                    #diff = difflib.ndiff(prev.text.split(), e.text.split())
-                    #ip = 0; im = 0
-                    #for delta in diff:
-                    #    if   delta[:1] == '+': edit.append('+' + delta[2:]); ip += 1
-                    #    elif delta[:1] == '-': edit.append('-' + delta[2:]); im += 1
-                    #    else: continue
+            if(e.id == bid): al = bl    # previous revision text
+            else: al = []; bid = e.id   # previous revision was from a different page!                
+            bl = e.text.splitlines()
+            (d, dposl) = ddiff.ddiff_v3(al, bl)
+
+            # A - added, R - removed
+            a = []; b = []; ilA = 0; ilR = 0;
+            for t, v in d.items():
+                if(v > 0 and ilA < 5): b.extend(p.split(t)); ilA += 1
+                elif(v < 0 and ilR < 5): a.extend(p.split(t)); ilR += 1
+
+            if(_output_arg):
+                (d, dposw) = ddiff.ddiff_v3(a, b); iwA = 0; iwR = 0;
+                diff = []
+                for t, v in d.items():
+                    if(v > 0 and iwA < 50): diff.append((t, v)); iwA += 1
+                    elif(v < 0 and iwR < 50): diff.append((t, v)); iwR += 1
                     
-                    
-                    
-                    a = p.split(prev.text); b = p.split(e.text)
-                    #a = prev.text.split(" "); b = e.text.split(" ")
-                    diff = ddiff.ddiff_v2(a, b)
-                    text = ""; text1 = ""; j = 0
-                    for d in diff:
-                        j += 1
-                        #text += mark(d, lambda x:x[0]=='+') + ' '
-                        #text1 += d + ' '
-                    
-                    #if len(text1) == len(' '.join(edit)):
-                    #    wikipedia.output("%d %d" % (len(text1), len(' '.join(edit))))
-                    #    wikipedia.output("Revision %d: %s by %s Comment: %s" % (i, e.timestamp, e.username, e.comment))
-                    #    wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % int(e.revisionid))           
-                    #    wikipedia.output(" \03{lightblue}%s\03{default}\n" % ' '.join(edit))
-                    #    wikipedia.output(text)
-            prev = e
+                try:
+                    diff_info = (int(e.id), int(e.revisionid), len(e.text), len(al), len(bl), dposl[0], dposl[1], dposl[2], diff)
+                    marshal.dump(diff_info, FILE)
+                except:
+                    wikipedia.output("Error at: %s %s %s" % (e.id, e.revisionid, e.timestamp))
+                
+            if(_show_diffs_arg):
+                if(e.id == bndiffid): asndiff = bsndiff     # previous revision text
+                else: asndiff = []; bndiffid = e.id         # previous revision was from a different page!                
+                bsndiff = e.text.split()
+                ip = 0; im = 0; edit = [];
+                for delta in difflib.ndiff(asndiff, bsndiff):
+                    if   delta[:1] == '+': edit.append('+' + delta[2:]); ip += 1
+                    elif delta[:1] == '-': edit.append('-' + delta[2:]); im += 1
+                    else: continue                 
+                
+                (d, dposw) = ddiff.ddiff_v3(a, b); iwA = 0; iwR = 0; 
+                text = ""; 
+                for t, v in d.items():
+                    if(v > 0 and iwA < 50): text += mark(' +' + t, lambda x:True); iwA += 1
+                    elif(v < 0 and iwR < 50): text += mark(' -' + t, lambda x:False); iwR += 1
+
+                wikipedia.output("\n-------------------------------------------------------------------------------")
+                wikipedia.output("Revision %d: %s by %s Comment: %s" % (i, e.timestamp, e.username, e.comment))
+                wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % int(e.revisionid))
+                wikipedia.output(" \03{lightblue}%s\03{default}\n" % ' '.join(edit))
+                wikipedia.output(text)
+                wikipedia.output("Old: %s lines. New: %s lines." % (len(al), len(bl)))
+                wikipedia.output("Added: %d lines, %d words" % (ilA, iwA))
+                wikipedia.output("Removed: %d lines, %d words" % (ilR, iwR))
+                wikipedia.output("Diff position: lo = %d, ahi = %d, bhi = %d" % dposl)
             i += 1
     wikipedia.output("%f seconds" % (time.time() - t0))
 
@@ -303,7 +327,6 @@ def analyse_dump(xmlFilenames):
     import marshal
     FILE = open(_output_arg, 'wb')
 
-    EditInfo = namedtuple('EditInfo', 'id, revid, username, comment, title, size, utc, md5, ipedit')
     total_size = total_revisions = 0
     total_pages = 0
     start = time.time()
@@ -340,9 +363,9 @@ def analyse_pyc():
     start = time.time()
     try:
         while True:
-            edit_info = marshal.load(FILE)
+            info = marshal.load(FILE)
             total_revisions += 1
-            # print(edit_info)
+            print(info)
     except IOError, e:
         raise
     except EOFError, e:
@@ -861,9 +884,9 @@ def main():
     wikipedia.output(u"Files: \n%s\n\n" % xmlFilenames)
     mysite = wikipedia.getSite()
 
-    #test_ndiff(xmlFilenames)
-    #quit()
-    # analyse_tokens_lifetime(xmlFilenames)
+    test_ndiff(xmlFilenames)
+    quit()
+    #analyse_tokens_lifetime(xmlFilenames)
 
     start = time.time()
     (rev_score_info, reverts_info, users_reputation, edit_info) = analyse_reverts(xmlFilenames)
