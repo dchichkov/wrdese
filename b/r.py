@@ -378,7 +378,7 @@ def analyse_pyc():
         while True:
             info = marshal.load(FILE)
             total_revisions += 1
-            print(info)
+            if(_show_diffs_arg): print(info)
     except IOError, e:
         raise
     except EOFError, e:
