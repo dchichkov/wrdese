@@ -246,14 +246,14 @@ def test_ndiff(xmlFilenames):
     #p = re.compile(r'\, |\. |\n')
     #tab = string.maketrans(',.', '\n\n')
 
-    i = 0; t0 = time.time()
+    total_revisions = 0; start = time.time()
     al = []; bl = []; bid = None; asndiff = []; bsndiff = []; bndiffid = None
     for xmlFilename in xmlFilenames:
         dump = xmlreader.XmlDump(xmlFilename, allrevisions=True)
         revisions = dump.parse()
         for e in revisions:
             if(e.id == bid): al = bl    # previous revision text
-            else: al = []; bid = e.id   # previous revision was from a different page!                
+            else: al = []; bid = e.id; wikipedia.output("Page: %s %s %s" % (e.id, e.revisionid, e.title))
             bl = e.text.splitlines()
             (d, dposl) = ddiff.ddiff_v3(al, bl)
 
@@ -301,8 +301,12 @@ def test_ndiff(xmlFilenames):
                 wikipedia.output("Added: %d lines, %d words" % (ilA, iwA))
                 wikipedia.output("Removed: %d lines, %d words" % (ilR, iwR))
                 wikipedia.output("Diff position: lo = %d, ahi = %d, bhi = %d" % dposl)
-            i += 1
-    wikipedia.output("%f seconds" % (time.time() - t0))
+
+            total_revisions += 1
+            if(total_revisions%1000 == 0): 
+                wikipedia.output("Revision %d. Analysis time: %f" % (total_revisions, time.time() - start))
+
+    wikipedia.output("%f seconds" % (time.time() - start))
 
 
 
