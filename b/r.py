@@ -246,7 +246,7 @@ def test_ndiff(xmlFilenames):
     #p = re.compile(r'\, |\. |\n')
     #tab = string.maketrans(',.', '\n\n')
 
-    total_revisions = 0; start = time.time()
+    total_revisions = 0; start = time.time(); full_info = None
     al = []; bl = []; bid = None; asndiff = []; bsndiff = []; bndiffid = None
     for xmlFilename in xmlFilenames:
         dump = xmlreader.XmlDump(xmlFilename, allrevisions=True)
@@ -269,10 +269,18 @@ def test_ndiff(xmlFilenames):
                 for t, v in d.items():
                     if(v > 0 and iwA < 50): diff.append((t, v)); iwA += 1
                     elif(v < 0 and iwR < 50): diff.append((t, v)); iwR += 1
+
+                # calculate page text hashes
+                digest = None
+                if(e.text):
+                    m = hashlib.md5(e.text.encode('utf-8'))
+                    digest = m.digest()
                     
                 try:
-                    diff_info = (int(e.id), int(e.revisionid), len(e.text), len(al), len(bl), dposl[0], dposl[1], dposl[2], diff)
-                    marshal.dump(diff_info, FILE)
+                    full_info = (int(e.id), int(e.revisionid), e.username, e.comment, e.title, 
+                                len(e.text), timestamp_to_time(e.timestamp), digest, e.ipedit,
+                                len(al), len(bl), dposl[0], dposl[1], dposl[2], ilA, ilR, iwA, iwR, diff)
+                    marshal.dump(full_info, FILE)
                 except:
                     wikipedia.output("Error at: %s %s %s" % (e.id, e.revisionid, e.timestamp))
                 
@@ -301,6 +309,7 @@ def test_ndiff(xmlFilenames):
                 wikipedia.output("Added: %d lines, %d words" % (ilA, iwA))
                 wikipedia.output("Removed: %d lines, %d words" % (ilR, iwR))
                 wikipedia.output("Diff position: lo = %d, ahi = %d, bhi = %d" % dposl)
+                wikipedia.output("Full: %s" % str(full_info))
 
             total_revisions += 1
             if(total_revisions%1000 == 0): 
