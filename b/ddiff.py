@@ -45,10 +45,11 @@ def ddiff_v3(a, b):
         if(a[ahi] != b[bhi]): ahi += 1; bhi += 1; break
     
     d = OrderedDict()
-    ait = iter(a); bit = iter(b); hi = min(ahi, bhi) 
+    ait = iter(a); bit = iter(b); lo = hi = min(ahi, bhi) 
     for i in xrange(hi):                     
         at = ait.next(); bt = bit.next()
         if(at == bt): continue
+        if(lo == hi): lo = i 
         d[at] = d.setdefault(at, 0) - 1
         d[bt] = d.setdefault(bt, 0) + 1
         
@@ -60,7 +61,7 @@ def ddiff_v3(a, b):
         bt = bit.next()
         d[bt] = d.setdefault(bt, 0) + 1
         
-    return d
+    return (d, (lo, ahi, bhi))
 
 
 if __name__ == "__main__":
