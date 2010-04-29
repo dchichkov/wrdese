@@ -293,7 +293,7 @@ def test_ndiff(xmlFilenames):
                     elif(v < 0 and iwR < 50): text += mark(' -' + t, lambda x:False); iwR += 1
 
                 wikipedia.output("\n-------------------------------------------------------------------------------")
-                wikipedia.output("Revision %d: %s by %s Comment: %s" % (i, e.timestamp, e.username, e.comment))
+                wikipedia.output("Revision %d: %s by %s Comment: %s" % (total_revisions, e.timestamp, e.username, e.comment))
                 wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % int(e.revisionid))
                 wikipedia.output(" \03{lightblue}%s\03{default}\n" % ' '.join(edit))
                 wikipedia.output(text)
