@@ -392,139 +392,6 @@ def display_last_timestamp(xmlFilenames):
     if(total_revisions): wikipedia.output("Timestamp of the last revision: %s" % e.timestamp)
     
 
-# -------------------------------------------------------------------------
-# returns: (rev_score_info, reverts_info, user_reputation)
-
-# reverts_info
-# -1  : regular revision
-# -2 : between duplicates, by single user (reverted, most likely bad)
-# -3 : between duplicates, by other users (reverted, questionable)
-# -4 : between duplicates, (revert that was reverted. revert war.)
-# -5 : self-revert
-# >=0: this revision is a duplicate of
-# -------------------------------------------------------------------------
-def analyse_reverts_legacy(revisions):    
-    rev_hashes = defaultdict(list)      # Filling md5 hashes map (md5 -> [list of revision indexes]) for nonempty
-    user_revisions = defaultdict(int)   # Filling nuber of nonempty revisions made by user
-    total_revisions = len(revisions)
-
-    for i, e in enumerate(revisions):
-        # calculate page text hashes and duplicates lists 
-        if(e.md5):
-            rev_hashes[e.md5].append(i)
-            user_revisions[e.username] += 1;
-
-    # Marking duplicates_info
-    # (-1): regular revision
-    #  >=0: this revision is a duplicate of
-    duplicates_info = [-1] * total_revisions
-    for m, indexes in rev_hashes.iteritems():
-        if len(indexes) > 1:
-            for i in indexes:
-                duplicates_info[i] = indexes[0]
-
-    reverts_info = duplicates_info
-    # Marking (-2, -4, >=0)
-    # -2 : between duplicates, by single user (reverted, most likely bad)
-    # -4 : between duplicates, (revert that was reverted. revert war.)        
-    # ------------------------------------------------------------------
-    # Revision 54 (-1)      User0    Regular edit
-    # Revision 55 (55)      User1    Regular edit
-    # Revision 56 (-2)      User2    Vandalizm
-    # Revision 57 (-2)      User2    Vandalizm
-    # Revision 58 (-2)      User3    Correcting vandalizm, but not quite
-    # Revision 59 (55)      User4    Revert to Revision 55
-
-    reverted_to = -1
-    for i in reversed(xrange(total_revisions)):
-        if(reverted_to != -1):            
-            if(reverts_info[i] == -1): reverts_info[i] = -2
-            elif(reverts_info[i] != reverted_to):
-                # wikipedia.output("Revert war: revision %d is a duplicate of %d was later reverted to %d" % (i, reverts_info[i], reverted_to)) 
-                reverts_info[i] = -4
-        elif(reverts_info[i] >= 0): reverted_to = reverts_info[i]  
-        if(i == reverted_to): reverted_to = -1   
-    
-    # Marking (-3) : between duplicates, by other users (reverted, questionable)
-    # Revision 54 (-1)  ->   (-1)                User0    Regular edit
-    # Revision 55 (55)  ->   (55)                User1    Regular edit
-    # Revision 56 (-2)  ->   (-2)                User2    Vandalizm
-    # Revision 57 (-2)  ->   (-2)                User2    Vandalizm
-    # Revision 58 (-2)  ->   (-3)                User3    Correcting vandalizm, but not quite
-    # Revision 59 (55)  ->   (55)                User4    Revert to Revision 55
-    username = None
-    for i in xrange(total_revisions):
-        if(reverts_info[i] == -2): 
-            if(username == None): username = revisions[i].username
-            elif (username != revisions[i].username): reverts_info[i] = -3
-        else: username = None
-
-    # Marking (-5) : self-reverts
-    # Revision 54 (-1)  ->   (-1)                User0    Regular edit
-    # Revision 55 (55)  ->   (55)                User1    Regular edit
-    # Revision 56 (-2)  ->   (-2)                User1    Self-reverted edit
-    # Revision 59 (55)  ->   (55)                User4    Revert to Revision 55
-    username = None
-    for i in reversed(xrange(total_revisions)):
-        if(reverts_info[i] > -1 and username == None):
-            username = revisions[i].username
-        elif(reverts_info[i] == -2 and username == revisions[i].username):
-            reverts_info[i] = -5
-        else: username = None
-
-
-    # Tracking blankings and near-blankings
-    # Establishing user ratings for the user whitelists
-    users_reputation = defaultdict(int)
-    total_time = total_size = 0
-    prev = revisions[0]
-    for i, e in enumerate(revisions):
-        if(e.size * i < total_size):                                        # new page is smaller than the average
-            users_reputation[e.username] -= 1
-            if(reverts_info[i] == -2):                                      # and it was reverted
-                users_reputation[e.username] -= 10
-        elif(e.username != prev.username):
-            if(reverts_info[i] > -2): users_reputation[e.username] += 1       # regular edit 
-            if(reverts_info[i] == -2): users_reputation[e.username] -= 2      # reverted edit
-        
-        delta_utc = e.utc - prev.utc
-        if(delta_utc * i > total_time):              # prev edition has managed longer than usual
-            #wikipedia.output("Revision (%d, %d). Boosting user %s(%d)" % (i - 1, i, prev.username, users_reputation[prev.username]))
-            #wikipedia.output("    %s" % prev.comment)
-            #wikipedia.output("    %s" % e.comment)
-            users_reputation[prev.username] += 1
-
-        if(e.comment and len(e.comment) > 80):        # we like long comments
-            #wikipedia.output("Revision (%d, %d). Boosting user %s(%d)" % (i - 1, i, e.username, users_reputation[e.username]))
-            #wikipedia.output("    %s" % e.comment)
-            users_reputation[e.username] += 1
-            
-        total_size += e.size
-        total_time += (e.utc - prev.utc)
-        prev = e
-
-    #sorted_users = sorted(users_reputation.items(), key=lambda t: t[1])
-    #for u in sorted_users:
-    #    wikipedia.output("[%d] %s" % (u[1], u[0]))
-
-    # marking initial revision scores
-    # adjusting revision scores with user reputation scores
-    rev_score_info = [0] * total_revisions
-    for i in xrange(total_revisions):
-        rev_score_info[i]= users_reputation[revisions[i].username];
-        if(reverts_info[i] == -2):      rev_score_info[i] += -2     # reverted
-        elif(reverts_info[i] == -5):    rev_score_info[i] = -5      # self-reverted
-        elif(reverts_info[i] < -2):     rev_score_info[i] += -1     
-        elif(reverts_info[i] > -1):     rev_score_info[i] += 1
-
-    #for i, e in enumerate(revisions):
-    #    wikipedia.output(">>>  Revision %d (%s, %s) by %s(%s): %s %s : \03{lightblue}%s\03{default}   <<< " %   \
-    #                     (i, mark(reverts_info[i], lambda x:x>-2), mark(rev_score_info[i], lambda x:x>-1), e.username,  \
-    #                        mark(users_reputation[e.username], lambda x:x>-1), e.utc, e.size, e.comment))
-
-
-    return (rev_score_info, reverts_info, users_reputation)
-
 
 # -------------------------------------------------------------------------
 # returns: user_reputation
@@ -1029,7 +896,7 @@ def main():
  
     if(not pattern_arg and not _pyc_arg):            # work: lightblue lightgreen lightpurple lightred
         wikipedia.output('Usage: ./r.py \03{lightblue}-xml:\03{default}path/Wikipedia-Dump-*.xml.7z -output:Wikipedia-Dump.full -compute-pyc')
-        wikipedia.output('Usage: ./r.py \03{lightblue}-pyc:\03{default}path/Wikipedia-Dump.full -analyze')
+        wikipedia.output('     : ./r.py \03{lightblue}-pyc:\03{default}path/Wikipedia-Dump.full -analyze')
         return
 
     if(pattern_arg):        # XML files input
@@ -1052,14 +919,6 @@ def main():
         start = time.time()
         users_reputation = analyse_reverts(revisions)
         wikipedia.output("Reverts analysis time: %f" % (time.time() - start))
-        (rev_score_info, reverts_info, users_reputation_legacy) = analyse_reverts_legacy(revisions)
-        for e in revisions:
-            if e.rev_score_info != rev_score_info[e.i]: 
-                wikipedia.output("rev_score_info at %d, %d %d" % (e.i, e.rev_score_info, rev_score_info[e.i]))
-            if e.reverts_info != reverts_info[e.i]: 
-                wikipedia.output("reverts_info at %d" % (e.i, e.reverts_info != reverts_info[e.i]))
-        print users_reputation == users_reputation_legacy
-            
     
         #check_reputations(revisions, users_reputation)
         analyse_maxent(revisions, users_reputation)
