@@ -385,7 +385,6 @@ def read_pyc():
 
     wikipedia.output("Reading %s..." % _pyc_arg)
     FILE = open(_pyc_arg, 'rb')
-    total_revisions = 0; total_pages = 0;
     revisions = []; id = None
     start = time.time()
     try:
@@ -396,16 +395,11 @@ def read_pyc():
                     yield revisions
                 revisions = []
                 id = info.id
-                if(total_pages%100 == 0):
-                    wikipedia.output("Page %d. Revision %d. Analysis time: %f" % (total_pages, total_revisions, time.time() - start))
-                total_pages += 1
-
             revisions.append(info)
-            total_revisions += 1
     except IOError, e:
         raise
     except EOFError, e:
-        wikipedia.output("Revisions %d. Read time: %f" % (total_revisions, time.time() - start))
+        wikipedia.output("Done reading %s. Read time: %f." % (_pyc_arg, time.time() - start))
 
     yield revisions
 
@@ -1034,10 +1028,21 @@ def main():
     if(_pyc_arg and _display_pyc_arg): display_pyc(); return
     if(_pyc_arg):
         users_reputation = defaultdict(int)
-
+        
+        total_pages = 0; total_revisions = 0; start = time.time();
         for revisions in read_pyc():
             analyse_reverts(revisions)
             analyse_decisiontree(revisions, users_reputation)
+            total_pages += 1;
+            total_revisions += len(revisions)
+
+            if(total_pages%100 == 0):
+                wikipedia.output("Page %d. Revision %d. Users %d. Analysis time: %f" % 
+                    (total_pages, total_revisions, len(users_reputation), time.time() - start))
+            total_pages += 1
+
+
+
 
     if(_output_arg):
         FILE = open(_output_arg, 'wb')
