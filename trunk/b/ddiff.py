@@ -2,13 +2,13 @@
 # -*- coding: utf-8  -*-
 
 """
-Dumb Diff: 
-  While ugly, it's efficient and works well on Wiki articles.
-  Irnores copyedits
-  Keeps tokens order
-  Returns edit position
-  Detects duplications
-  Removes matching heads/tails
+Dumb Diff: Diff algorithm tailored specifiably for Wikipedia articles (v. detection)
+  While ugly, it's efficient and works well on Wiki articles. It is:
+  * Fast;
+  * Produces human readable results;
+  * Keeps tokens order;
+  * Returns edit position;
+  * Detects duplications.
 
 Algorithm:
  1. cut same head, same tail
@@ -31,6 +31,90 @@ Algorithm:
   for token, v in d.items():
       if(v > 0): itA += 1            # +token
       elif(v < 0): itR += 1          # -token
+
+
+
+In my research I've found that there is a need for a diff algorithm
+designed specifically to diff consecutive revisions of a single
+Wikipedia article for v. detection. More specifically algorithm/
+algorithm implementation with the following properties:
+
+* Fast. (Order of 5*10^3 diffs / second on a regular desktop for a
+  regular article; entire en. Wikipedia history/day);
+* Accuracy and completeness of the generated diff can be sacrificed for speed.
+* Differences that it produces are human-readable;
+* Ignores / detects copy-edits. (see http://en.wikipedia.org/wiki/Copy_editing);
+* Keeps tokens order (trigrams should be left mostly unchanged);
+* Detects and returns approximate edit position in the article;
+* Detects insertions and removal of duplicate tokens;
+* Size of the generated differences could be limited.
+
+I think I was able to address these requirements with a very simple
+algorithm which comes down to adding/removing revisions texts to/from
+an ordered dictionary (map) in two stages - first for lines, next for
+tokens. I'm going to illustrate it on the following example.
+
+Revision 1:
+ HEAD.
+ The quick /**/ brown fox jumps over the lazy dog.
+ TAIL.
+
+Revision 2:
+ HEAD.
+ The quick brown fox FUN FUN FUN jumps over the /**/ lazy dog.
+ TAIL.
+
+Step 1. Split into lines, remove matching head and tail (& store
+approximate edit position). Result:
+ Lines from R1: The quick /**/ brown fox jumps over the lazy dog.
+ Lines from R2: The quick brown fox FUN FUN FUN jumps over the /**/ lazy dog.
+
+Step 2: Create empty ordered dictionary D1 mapping the text into the
+number of occurrences.
+
+Step 3. Add lines from R1 into the D1. Result (D1):
+ The quick /**/ brown fox jumps over the lazy dog.  --->  1
+
+Step 4. Add lines from R2 into the D1 with the opposite sign. Result (D1):
+ The quick /**/ brown fox jumps over the lazy dog.  --->  1
+ The quick brown fox FUN FUN FUN jumps over the /**/ lazy dog.   --->  -1
+
+Step 5. Take all keys (lines) with the positive values from D1, split
+into tokens, add to the list T1. Result (T1):
+ [The, quick, /**/, brown, fox, jumps, over, the, lazy, dog.]
+
+Step 6. Take all keys (lines) with the negative values from D1, split
+into tokens, add to the list T2. Result (T2):
+ [The, quick, brown, fox, FUN, FUN, FUN, jumps, over, the, /**/, lazy, dog.]
+
+Step 7. Create empty ordered dictionary D2 mapping tokens into the
+number of occurrences.
+
+Step 8. Add tokens  from T2 into the D2. Result (D2):
+  [The : 1, quick : 1, brown : 1, fox : 1, FUN : 3, jumps : 1, over :1, 
+  the : 1, /**/ : 1, lazy : 1, dog. : 1]
+
+Step 9. Add tokens from T1 into the D2 with the opposite sign. Result (D2):
+  [The : 0, quick : 0, brown : 0, fox : 0, FUN : 3, jumps : 0, over :0, 
+  the : 0, /**/ : 0, lazy : 0, dog. : 0]
+
+Step 10. Take all keys with nonzero values from D2, that's your diff result:
+  +FUN
+
+As you can see, this algorithm is fairly simple, the only tricky parts
+are the use of ordered dictionary and doing the diff in two stages -
+first for lines and next for tokens. Advantages of doing the diff in
+two stages are 1) speed 2) resulting tokens order remains more or less
+the same.
+
+I've also found that this algorithm resists/detects copy-edits well;
+resulting diffs are remarkably human readable (e.g. better or same as
+ndiff); for typical Wikipedia revisions it is several orders of
+magnitude faster than basic Ratcliff-Obershelp algorithm/gestalt
+approach. With this algorithm it is also fairly easy to limit the size
+of the produced diff, detect repeating tokens and get an approximate
+position of the edit.
+
 """
 
 
@@ -47,7 +131,7 @@ of the License, or (at your option) any later version.
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GNU Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with this program; if not, write to the Free Software
