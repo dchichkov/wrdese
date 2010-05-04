@@ -386,11 +386,18 @@ def read_pyc():
     wikipedia.output("Reading %s..." % _pyc_arg)
     FILE = open(_pyc_arg, 'rb')
     total_revisions = 0; total_pages = 0;
-    revisions = []
+    revisions = []; id = None
     start = time.time()
     try:
         while True:
             info = FullInfo(marshal.load(FILE))
+            if(id != info.id): 
+                revisions = []
+                id = info.id
+                if(total_pages%100 == 0):
+                    wikipedia.output("Page %d. Revision %d. Analysis time: %f" % (total_pages, total_revisions, time.time() - start))
+                total_pages += 1
+
             revisions.append(info)
             total_revisions += 1
     except IOError, e:
