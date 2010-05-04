@@ -911,21 +911,23 @@ def analyse_crm114(revisions, users_reputation):
 reU = re.compile("[A-Z]")
 reL = re.compile("[a-z]")
 reES = re.compile("!")
-def v1_text_test(text):
+reHI = re.compile("(hi |penis|fuck)", re.I)
+reI = re.compile("i ", re.I)
+def comment_score(text):
     uN = len(reU.findall(text))
     lN = len(reL.findall(text))
-    tokN = len(text.split())
-    N = len(text)
     esN = len(reES.findall(text))
 
     if(uN > 5 and lN < uN):                         # uppercase stats is looking bad
-        return True
-    elif(tokN * 20 < N):                            # tokens length is lookinf bad
-        return True
+        return -1
     if(esN > 2):
-        return True
+        return -1
+    if(reHI.search(text) != None):
+        return -1
+    if(reI.search(text) != None):
+        return 0
 
-    return False
+    return 1
 
 
 
@@ -941,25 +943,46 @@ def analyse_decisiontree(revisions, users_reputation):
         known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
         score = 0
 
-        if(e.reverts_info == -2):                               # was reverted            
+        if(e.comment):
+            if(e.comment[:5] == '[[WP:'):
+                if(e.comment[:17] == u'[[WP:AES|←]]Undid'): score += 100
+                elif(e.comment[:19] == u'[[WP:AES|←]]Blanked'): score -= 100
+                elif(e.comment[:20] == u'[[WP:AES|←]]Replaced'): score -= 100
+                elif(e.comment[:20] == u'[[WP:AES|←]] Blanked'): score -= 100
+                elif(e.comment[:21] == u'[[WP:AES|←]] Replaced'): score -= 100
+                elif(e.comment[:41] == u'[[WP:Automatic edit summaries|←]]Replaced'): score -= 100 
+                else: score += 10
+                
+
+
+        if(e.reverts_info == -2):                     # was reverted            
             if(e.ilR > e.ilA and e.iwR > 1):                    # and new page is smaller than the previous
                 score -= 1
-            if(e.iwR == 50):                                  # large scale removal
-                score -= 1
-            if(not e.comment):                                # and no comment
+            if(e.iwR == 50):                                    # large scale removal
+                score -= 1            
+            if(not e.comment):                                  # and no comment
                 score -= 1
             else:
-                if(e.comment[-2:] == '*/'):                       # and no comment
+                if(e.comment[-2:] == '*/'):                     # and no comment
                     score -= 1
-                if(v1_text_test(e.comment)):
+                elif(comment_score(e.comment) < 0):
                     score -= 1
+            
 
-            #if(score != None): continue
-            #else: score = 'good'
+        if(e.reverts_info > -1):                            # is a revert
+            if(e.comment and e.comment[-2:] != '*/'):       # and a comment
+                score += 1
+            elif not e.ipedit:
+                score += 1
+                
+            #else: score -= 1
 
-        #if(e.comment):
-        #    if(e.comment[:8] == '[[WP:AES'):
-        #        score = 'bad'
+        if(e.reverts_info == -1):
+            if(e.comment and e.comment[-2:] != '*/'):       # and a comment
+                score += 1
+            elif not e.ipedit:
+                score += 1
+            
 
         if score == 0: continue
         elif score > 0: score = 'good'
@@ -1020,7 +1043,7 @@ def main():
         users_reputation = analyse_reputations(revisions)
         wikipedia.output("Reputation analysis time: %f" % (time.time() - start))
 
-        # analyse_decisiontree(revisions, users_reputation)
+        analyse_decisiontree(revisions, users_reputation)
         # check_reputations(revisions, users_reputation)
         #analyse_maxent(revisions, users_reputation)
         #analyse_crm114(revisions, users_reputation)
