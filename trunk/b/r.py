@@ -391,7 +391,9 @@ def read_pyc():
     try:
         while True:
             info = FullInfo(marshal.load(FILE))
-            if(id != info.id): 
+            if(id != info.id):
+                if(len(revisions) > 0):
+                    yield revisions
                 revisions = []
                 id = info.id
                 if(total_pages%100 == 0):
@@ -405,7 +407,7 @@ def read_pyc():
     except EOFError, e:
         wikipedia.output("Revisions %d. Read time: %f" % (total_revisions, time.time() - start))
 
-    return revisions
+    yield revisions
 
 
 
@@ -946,11 +948,8 @@ def analyse_decisiontree(revisions, users_reputation):
     stats = defaultdict(lambda:defaultdict(int))
     prev = None;
     
-    users_reputation = defaultdict(int)
-
-
     for e in revisions:
-        known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
+        # known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
         score = 0
 
         if(e.comment):
@@ -981,26 +980,22 @@ def analyse_decisiontree(revisions, users_reputation):
         if(e.iwR == 50):                                    # large scale removal
             score -= 1            
 
-        if score > 1: score = 'good'
-        elif score < -10: score = 'bad'
+        if score > 1:       users_reputation[e.username] += 1; # score = 'good'
+        elif score < -10:   users_reputation[e.username] -= 1; # score = 'bad'
         elif(e.reverts_info == -2):
-            if(score < 0): score = 'bad'
+            if(score < 0):  users_reputation[e.username] -= 1; # score = 'bad'
             else: continue
         else: continue
 
-        if(score == 'good'): users_reputation[e.username] += 1
-        if(score == 'bad'): users_reputation[e.username] -= 1
         # (verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, False, None)
 
-    for e in revisions:
-        if(users_reputation[e.username] > 0): score = 'good'
-        elif(users_reputation[e.username] < 0): score = 'bad'
-        (verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, False, None)
-
-    dump_cstats(stats, ids)
+    #for e in revisions:
+    #    if(users_reputation[e.username] > 0): score = 'good'
+    #    elif(users_reputation[e.username] < 0): score = 'bad'
+    #    else: continue
+    #    (verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, False, None)
+    # dump_cstats(stats, ids)
     
-
-
 
 
 
@@ -1038,7 +1033,19 @@ def main():
     # Precompiled .pyc (.full) files input
     if(_pyc_arg and _display_pyc_arg): display_pyc(); return
     if(_pyc_arg):
-        revisions = read_pyc();
+        users_reputation = defaultdict(int)
+
+        for revisions in read_pyc():
+            analyse_reverts(revisions)
+            analyse_decisiontree(revisions, users_reputation)
+
+    if(_output_arg):
+        FILE = open(_output_arg, 'wb')
+        for u, r in users_reputation.iteritems():
+            marshal.dump((u, r), FILE)
+
+
+
 
     #analyse_tokens_lifetime(xmlFilenames)
 
