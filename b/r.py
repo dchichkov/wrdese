@@ -91,6 +91,27 @@
 # +1 (next), -1 (prev) revisions features
 
 
+
+# ==================================================================================
+# belief propagation
+#
+# (user reputation) -> {edit, edit, edit}
+#        negative for self-reverts
+#
+# (user reputation) -> {previous edit, previous edit}
+#           negative for reverts
+#
+# edit -> user reputation
+#
+
+# 1) Mark edits based on heuristics
+# 2) Calculate reputation based on heuristics
+# 3) Mark edits based on reputation
+# 4) Adjust reputations
+# Repeat 3/4
+
+
+
 """
 This bot goes over multiple revisions and tries bayesian approach to detect spam/vandalism.
 
@@ -394,8 +415,7 @@ def display_last_timestamp(xmlFilenames):
 
 
 # -------------------------------------------------------------------------
-# returns: user_reputation
-# initializes: revisions[].rev_score_info, revisions[].reverts_info
+# initializes: revisions[].reverts_info
 
 # reverts_info
 # -1  : regular revision
@@ -474,6 +494,11 @@ def analyse_reverts(revisions):
         else: username = None
 
 
+# -------------------------------------------------------------------------
+# returns: user_reputation
+# initializes: revisions[].rev_score_info
+# -------------------------------------------------------------------------
+def analyse_reputations(revisions):
     # Tracking blankings and near-blankings
     # Establishing user ratings for the user whitelists
     users_reputation = defaultdict(int)
@@ -537,9 +562,13 @@ def urri(ri):
 
 def show_diff(e):
         text = "";
+        marker = [' *', 
+                  ' +', ' ++', ' +++', ' ++++', ' +++++',
+                  ' -----', ' ----', ' ---', ' --', ' -']
         for (t, v) in e.diff:
-            if(v > 0): text += mark(' +' + t, lambda x:True);
-            elif(v < 0): text += mark(' -' + t, lambda x:False);
+            if(v > 5): v = 5
+            elif(v < -5): v = -5
+            text += mark(marker[v] + t, lambda x:x[1]=='-');
 
         wikipedia.output(text)
         wikipedia.output("Old: %s lines. New: %s lines." % (e.al, e.bl))
@@ -619,17 +648,18 @@ def check_reputations(revisions, users_reputation):
     
     for e in revisions:
         if prev:
-            score_numeric = e.rev_score_info
-            score = ('good', 'bad')[score_numeric < 0]              # current analyse_reverts score
             revid = e.revid
             known = k.is_verified_or_known_as_good_or_bad(revid)    # previous score (some human verified)
             verified = k.is_known_as_verified(revid)                # if not Empty: human verified
             reputation = users_reputation[e.username]
+            
+            if(e.reverts_info == -5):                               # inverse for self-reverts
+                score = ('bad', 'good')[reputation < 0]
+            else:
+                score = ('good', 'bad')[reputation < 0]
         
             # Collecting stats and Human verification
-            uncertain = (known == 'good' and reputation < 0) or (known == 'bad' and reputation > -1) or (known != score)
-            extra = None
-            (verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, uncertain, extra)
+            (verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, False, None)
         prev = e;
     dump_cstats(stats, ids)
 
@@ -658,14 +688,14 @@ def analyse_maxent(revisions, users_reputation):
         edit_features[i][f] = 'present'
 
     def add_uefeature(f):
-        user_features[e.username]['U' + f] += 1
+        #user_features[e.username]['U' + f] += 1
         edit_features[i][f] = 'present'
 
     total_time = total_size = 0
     prev = revisions[0]
     for i, e in enumerate(revisions):
         edit_features[i] = {}
-
+        t = """
         if(e.size * i < total_size):                                        # new page is smaller than the average
             add_uefeature('smaller_than_average')
             if(e.reverts_info == -2):                                       # and it was reverted
@@ -687,7 +717,7 @@ def analyse_maxent(revisions, users_reputation):
 
         delta_utc = e.utc - prev.utc                                        # prev edition has managed longer than usual
         if(delta_utc * i > total_time): add_uefeature('accepted')
-        
+        """
         comment_revert = False
         
         if(e.username.lower().find('bot') > -1):
@@ -877,6 +907,72 @@ def analyse_crm114(revisions, users_reputation):
     dump_cstats(stats, ids)    
 
 
+# some low hanging text statistics
+reU = re.compile("[A-Z]")
+reL = re.compile("[a-z]")
+reES = re.compile("!")
+def v1_text_test(text):
+    uN = len(reU.findall(text))
+    lN = len(reL.findall(text))
+    tokN = len(text.split())
+    N = len(text)
+    esN = len(reES.findall(text))
+
+    if(uN > 5 and lN < uN):                         # uppercase stats is looking bad
+        return True
+    elif(tokN * 20 < N):                            # tokens length is lookinf bad
+        return True
+    if(esN > 2):
+        return True
+
+    return False
+
+
+
+
+
+def analyse_decisiontree(revisions, users_reputation):
+    total_time = total_size = 0
+    ids = defaultdict(list)
+    stats = defaultdict(lambda:defaultdict(int))
+    prev = None;
+    
+    for e in revisions:
+        known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
+        score = 0
+
+        if(e.reverts_info == -2):                               # was reverted            
+            if(e.ilR > e.ilA and e.iwR > 1):                    # and new page is smaller than the previous
+                score -= 1
+            if(e.iwR == 50):                                  # large scale removal
+                score -= 1
+            if(not e.comment):                                # and no comment
+                score -= 1
+            else:
+                if(e.comment[-2:] == '*/'):                       # and no comment
+                    score -= 1
+                if(v1_text_test(e.comment)):
+                    score -= 1
+
+            #if(score != None): continue
+            #else: score = 'good'
+
+        #if(e.comment):
+        #    if(e.comment[:8] == '[[WP:AES'):
+        #        score = 'bad'
+
+        if score == 0: continue
+        elif score > 0: score = 'good'
+        else: score = 'bad'
+        (verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, False, None)
+
+    dump_cstats(stats, ids)
+    
+
+
+
+
+
 def main():
     global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg
     pattern_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None;
@@ -917,11 +1013,16 @@ def main():
 
     if(_analyze_arg):
         start = time.time()
-        users_reputation = analyse_reverts(revisions)
+        analyse_reverts(revisions)
         wikipedia.output("Reverts analysis time: %f" % (time.time() - start))
-    
-        #check_reputations(revisions, users_reputation)
-        analyse_maxent(revisions, users_reputation)
+
+        start = time.time()
+        users_reputation = analyse_reputations(revisions)
+        wikipedia.output("Reputation analysis time: %f" % (time.time() - start))
+
+        # analyse_decisiontree(revisions, users_reputation)
+        # check_reputations(revisions, users_reputation)
+        #analyse_maxent(revisions, users_reputation)
         #analyse_crm114(revisions, users_reputation)
 
 
