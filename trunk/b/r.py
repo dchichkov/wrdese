@@ -939,6 +939,9 @@ def analyse_decisiontree(revisions, users_reputation):
     stats = defaultdict(lambda:defaultdict(int))
     prev = None;
     
+    users_reputation = defaultdict(int)
+
+
     for e in revisions:
         known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
         score = 0
@@ -971,13 +974,20 @@ def analyse_decisiontree(revisions, users_reputation):
         if(e.iwR == 50):                                    # large scale removal
             score -= 1            
 
-
         if score > 1: score = 'good'
         elif score < -10: score = 'bad'
         elif(e.reverts_info == -2):
             if(score < 0): score = 'bad'
             else: continue
         else: continue
+
+        if(score == 'good'): users_reputation[e.username] += 1
+        if(score == 'bad'): users_reputation[e.username] -= 1
+        # (verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, False, None)
+
+    for e in revisions:
+        if(users_reputation[e.username] > 0): score = 'good'
+        elif(users_reputation[e.username] < 0): score = 'bad'
         (verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, False, None)
 
     dump_cstats(stats, ids)
