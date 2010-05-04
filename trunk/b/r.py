@@ -951,7 +951,7 @@ def analyse_decisiontree(revisions, users_reputation):
                 elif(e.comment[:20] == u'[[WP:AES|←]] Blanked'): score -= 100
                 elif(e.comment[:21] == u'[[WP:AES|←]] Replaced'): score -= 100
                 elif(e.comment[:41] == u'[[WP:Automatic edit summaries|←]]Replaced'): score -= 100 
-                else: score += 2
+                else: score += 10
             elif(e.comment[-2:] == '*/'):
                 score -= 1
             else:
