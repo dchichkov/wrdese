@@ -960,9 +960,8 @@ def analyse_decisiontree(revisions, users_reputation):
             score -= 1
                 
 
-
         if(e.reverts_info == -2):        score -= 1
-        elif(e.reverts_info == -1):      score += 1
+        elif(e.reverts_info == -1):      score += 2
 
         if(not e.ipedit): score += 1
         else:         score -= 1
@@ -974,7 +973,10 @@ def analyse_decisiontree(revisions, users_reputation):
 
 
         if score > 1: score = 'good'
-        elif score < -1: score = 'bad'
+        elif score < -10: score = 'bad'
+        elif(e.reverts_info == -2):
+            if(score < 0): score = 'bad'
+            else: continue
         else: continue
         (verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, False, None)
 
