@@ -951,42 +951,31 @@ def analyse_decisiontree(revisions, users_reputation):
                 elif(e.comment[:20] == u'[[WP:AES|←]] Blanked'): score -= 100
                 elif(e.comment[:21] == u'[[WP:AES|←]] Replaced'): score -= 100
                 elif(e.comment[:41] == u'[[WP:Automatic edit summaries|←]]Replaced'): score -= 100 
-                else: score += 10
-                
-
-
-        if(e.reverts_info == -2):                     # was reverted            
-            if(e.ilR > e.ilA and e.iwR > 1):                    # and new page is smaller than the previous
-                score -= 1
-            if(e.iwR == 50):                                    # large scale removal
-                score -= 1            
-            if(not e.comment):                                  # and no comment
+                else: score += 2
+            elif(e.comment[-2:] == '*/'):
                 score -= 1
             else:
-                if(e.comment[-2:] == '*/'):                     # and no comment
-                    score -= 1
-                elif(comment_score(e.comment) < 0):
-                    score -= 1
-            
-
-        if(e.reverts_info > -1):                            # is a revert
-            if(e.comment and e.comment[-2:] != '*/'):       # and a comment
-                score += 1
-            elif not e.ipedit:
-                score += 1
+                score += comment_score(e.comment)
+        else:
+            score -= 1
                 
-            #else: score -= 1
 
-        if(e.reverts_info == -1):
-            if(e.comment and e.comment[-2:] != '*/'):       # and a comment
-                score += 1
-            elif not e.ipedit:
-                score += 1
-            
 
-        if score == 0: continue
-        elif score > 0: score = 'good'
-        else: score = 'bad'
+        if(e.reverts_info == -2):        score -= 1
+        elif(e.reverts_info == -1):      score += 1
+
+        if(not e.ipedit): score += 1
+        else:         score -= 1
+
+        if(e.ilR > e.ilA and e.iwR > 1):                    # and new page is smaller than the previous
+            score -= 1
+        if(e.iwR == 50):                                    # large scale removal
+            score -= 1            
+
+
+        if score > 1: score = 'good'
+        elif score < -1: score = 'bad'
+        else: continue
         (verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, False, None)
 
     dump_cstats(stats, ids)
