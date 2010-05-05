@@ -1,6 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8  -*-
 
+# How comes rep["217.42.224.103"] = -1???
+
+
 #retrain BAD: 167750423, 285306288
 
 # 167750423
@@ -250,7 +253,6 @@ def analyse_tokens_lifetime(xmlFilenames):
 
 # TODO:
 # * remove more junk symbols?
-# * enumerate e.id = None pages
 def compute_pyc(xmlFilenames):
     ''' use _verbose_arg to display verbose output
         use _output_arg to output diffs, md5s and metainfo to .pyc file'''
@@ -261,18 +263,24 @@ def compute_pyc(xmlFilenames):
     # separators between tokens
     p = re.compile(r'\, |\. |\s+')
 
-    total_revisions = 0; start = time.time(); full_info = None
+    total_revisions = 0; start = time.time(); full_info = None; fake_revid = -1; prev_title = None;
     al = []; bl = []; bid = None; asndiff = []; bsndiff = []; bndiffid = None
     for xmlFilename in xmlFilenames:
         dump = xmlreader.XmlDump(xmlFilename, allrevisions=True)
         revisions = dump.parse()
         for e in revisions:
-            if(e.id == bid):        # still analyzing the same page....
+            if(e.id == None):       # process pages without id
+                if(e.title != prev_title): fake_id -= 1;
+                prev_title = e.title
+                id = fake_id;
+            else: id = int(e.id)
+
+            if(id == bid):        # still analyzing the same page....
                 al = bl             # bl - previous revision text (split into lines)
             else: 
-                al = []; bid = e.id; 
-                wikipedia.output("Revision %d. Analysis time: %f   Page: %s %s %s" % 
-                                 (total_revisions, time.time() - start, e.id, e.revisionid, e.title))                
+                al = []; bid = id; 
+                wikipedia.output("Revision %d. Analysis time: %f   Page: %d %s %s %s" % 
+                                 (total_revisions, time.time() - start, id, e.id, e.revisionid, e.title))                
             bl = e.text.splitlines()
 
             # merge (removed, added) lines and split them into tokens (a, b)
@@ -300,18 +308,16 @@ def compute_pyc(xmlFilenames):
                     m = hashlib.md5(e.text.encode('utf-8'))
                     digest = m.digest()
                     
-                try:
-                    full_info = (int(e.id), int(e.revisionid), e.username, e.comment, e.title, 
-                                len(e.text), timestamp_to_time(e.timestamp), digest, e.ipedit,
-                                # e.editRestriction, e.moveRestriction, e.isredirect, ilM, iwM
-                                len(al), len(bl), dposl[0], dposl[1], dposl[2], ilA, ilR, iwA, iwR, diff)
-                    marshal.dump(full_info, FILE)
-                except:
-                    wikipedia.output("Error at: %s %s %s" % (e.id, e.revisionid, e.timestamp))
-                
+                full_info = (id, int(e.revisionid), e.username, e.comment, e.title, 
+                            len(e.text), timestamp_to_time(e.timestamp), digest, e.ipedit,
+                            e.editRestriction, e.moveRestriction, e.isredirect,
+                            len(al), len(bl), dposl[0], dposl[1], dposl[2], 
+                            ilA, ilR, iwA, iwR, ilM, iwM, diff)
+                marshal.dump(full_info, FILE)
+            
             if(_verbose_arg):
-                if(e.id == bndiffid): asndiff = bsndiff     # previous revision text
-                else: asndiff = []; bndiffid = e.id         # previous revision was from a different page!                
+                if(id == bndiffid): asndiff = bsndiff     # previous revision text
+                else: asndiff = []; bndiffid = id         # previous revision was from a different page!                
                 bsndiff = e.text.split()
                 ip = 0; im = 0; edit = [];
                 for delta in difflib.ndiff(asndiff, bsndiff):
@@ -327,9 +333,6 @@ def compute_pyc(xmlFilenames):
                 wikipedia.output("Full: %s" % str(full_info))
 
             total_revisions += 1
-            if(total_revisions%100000 == 0): 
-                wikipedia.output("Revision %d. Analysis time: %f" % (total_revisions, time.time() - start))
-
     wikipedia.output("%f seconds" % (time.time() - start))
 
 
@@ -679,6 +682,7 @@ def check_reputations(revisions, user_reputations):
             known = k.is_verified_or_known_as_good_or_bad(revid)    # previous score (some human verified)
             verified = k.is_known_as_verified(revid)                # if not Empty: human verified
             reputation = user_reputations[e.username]
+            if(reputation == 0): continue
             
             if(e.reverts_info == -5):                               # inverse for self-reverts
                 score = ('bad', 'good')[reputation < 0]
@@ -1080,11 +1084,12 @@ def main():
     global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _reputations_arg
     pattern_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None;
     _display_pyc_arg = None; _compute_reputations = None;_output_arg = None; _analyze_arg = None
-    _reputations_arg = None;
+    _reputations_arg = None; _username_arg = None
     for arg in wikipedia.handleArgs():
         if arg.startswith('-xml') and len(arg) > 5: pattern_arg = arg[5:]
         if arg.startswith('-pyc') and len(arg) > 5: _pyc_arg = arg[5:]
         if arg.startswith('-reputations') and len(arg) > 13: _reputations_arg = arg[13:]
+        if arg.startswith('-username') and len(arg) > 10: _username_arg = arg[10:]
         if arg.startswith('-retrain'): _retrain_arg = True
         if arg.startswith('-retrain') and len(arg) > 9: _retrain_arg = arg[9:]
         if arg.startswith('-train'): _train_arg = True
@@ -1118,6 +1123,9 @@ def main():
 
     if(_reputations_arg):
         user_reputations = read_reputations()
+        if(_username_arg): 
+            wikipedia.output("User %s, has_key %s, reputation %s" %
+                (_username_arg, user_reputations.has_key(_username_arg), user_reputations[_username_arg]))
 
 
     #analyse_tokens_lifetime(xmlFilenames)
