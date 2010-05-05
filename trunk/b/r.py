@@ -404,6 +404,29 @@ def read_pyc():
     yield revisions
 
 
+def read_reputations():
+    wikipedia.output("Reading %s..." % _reputations_arg)
+    FILE = open(_reputations_arg, 'rb')
+    user_reputations = defaultdict(int)
+    start = time.time()
+    try:
+        while True:
+            (u,r) = marshal.load(FILE)
+            user_reputations[u] += r
+    except IOError, e:
+        raise
+    except EOFError, e:
+        wikipedia.output("Done reading %s. Read time: %f. Total users: %d" % (_pyc_arg, time.time() - start, len(user_reputations)))
+
+    if(_output_arg):
+        FILE = open(_output_arg, 'wb')
+        for u, r in user_reputations.iteritems():
+            marshal.dump((u, r), FILE)
+
+    return user_reputations
+
+
+
 
 def display_last_timestamp(xmlFilenames):
     total_revisions = 0
@@ -504,42 +527,42 @@ def analyse_reverts(revisions):
 def analyse_reputations(revisions):
     # Tracking blankings and near-blankings
     # Establishing user ratings for the user whitelists
-    users_reputation = defaultdict(int)
+    user_reputations = defaultdict(int)
     total_time = total_size = 0
     prev = revisions[0]
     for i, e in enumerate(revisions):
         if(e.size * i < total_size):                                        # new page is smaller than the average
-            users_reputation[e.username] -= 1
+            user_reputations[e.username] -= 1
             if(e.reverts_info == -2):                                      # and it was reverted
-                users_reputation[e.username] -= 10
+                user_reputations[e.username] -= 10
         elif(e.username != prev.username):
-            if(e.reverts_info > -2): users_reputation[e.username] += 1       # regular edit 
-            if(e.reverts_info == -2): users_reputation[e.username] -= 2      # reverted edit
+            if(e.reverts_info > -2): user_reputations[e.username] += 1       # regular edit 
+            if(e.reverts_info == -2): user_reputations[e.username] -= 2      # reverted edit
         
         delta_utc = e.utc - prev.utc
         if(delta_utc * i > total_time):              # prev edition has managed longer than usual
-            #wikipedia.output("Revision (%d, %d). Boosting user %s(%d)" % (i - 1, i, prev.username, users_reputation[prev.username]))
+            #wikipedia.output("Revision (%d, %d). Boosting user %s(%d)" % (i - 1, i, prev.username, user_reputations[prev.username]))
             #wikipedia.output("    %s" % prev.comment)
             #wikipedia.output("    %s" % e.comment)
-            users_reputation[prev.username] += 1
+            user_reputations[prev.username] += 1
 
         if(e.comment and len(e.comment) > 80):        # we like long comments
-            #wikipedia.output("Revision (%d, %d). Boosting user %s(%d)" % (i - 1, i, e.username, users_reputation[e.username]))
+            #wikipedia.output("Revision (%d, %d). Boosting user %s(%d)" % (i - 1, i, e.username, user_reputations[e.username]))
             #wikipedia.output("    %s" % e.comment)
-            users_reputation[e.username] += 1
+            user_reputations[e.username] += 1
             
         total_size += e.size
         total_time += (e.utc - prev.utc)
         prev = e
 
-    #sorted_users = sorted(users_reputation.items(), key=lambda t: t[1])
+    #sorted_users = sorted(user_reputations.items(), key=lambda t: t[1])
     #for u in sorted_users:
     #    wikipedia.output("[%d] %s" % (u[1], u[0]))
 
     # marking initial revision scores
     # adjusting revision scores with user reputation scores
     for e in revisions:
-        e.rev_score_info = users_reputation[e.username];
+        e.rev_score_info = user_reputations[e.username];
         if(e.reverts_info == -2):      e.rev_score_info -= 2     # reverted
         elif(e.reverts_info == -5):    e.rev_score_info = -5      # self-reverted
         elif(e.reverts_info < -2):     e.rev_score_info -= 1     
@@ -548,9 +571,9 @@ def analyse_reputations(revisions):
     #for i, e in enumerate(edit_info):
     #    wikipedia.output(">>>  Revision %d (%s, %s) by %s(%s): %s %s : \03{lightblue}%s\03{default}   <<< " %   \
     #                     (i, mark(reverts_info[i], lambda x:x>-2), mark(rev_score_info[i], lambda x:x>-1), e.username,  \
-    #                        mark(users_reputation[e.username], lambda x:x>-1), e.utc, e.size, e.comment))
+    #                        mark(user_reputations[e.username], lambda x:x>-1), e.utc, e.size, e.comment))
 
-    return users_reputation
+    return user_reputations
 
 
 
@@ -581,7 +604,7 @@ def show_diff(e):
 
 
 
-def collect_stats(stats, ids, users_reputation, e, prev, score, uncertain, extra):
+def collect_stats(stats, ids, user_reputations, e, prev, score, uncertain, extra):
     global _retrain_arg, _train_arg, _human_responses
     score_numeric = e.rev_score_info                   
     revid = e.revid
@@ -593,7 +616,7 @@ def collect_stats(stats, ids, users_reputation, e, prev, score, uncertain, extra
     if(score != known or (not verified and uncertain) or retrain):
         wikipedia.output("\n\n\n\n\n\n\n >> R%d (%s, %s) by %s(%s): \03{lightblue}%s\03{default}   <<< " %   \
              (e.i, mark(e.reverts_info, lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.username, \
-                mark(users_reputation[e.username], lambda x:x>-1), e.comment))
+                mark(user_reputations[e.username], lambda x:x>-1), e.comment))
         wikipedia.output("Score is %s." % mark(score, lambda x:x=='good'))
         if(known): wikipedia.output("Known as %s." % mark(known, lambda x:x=='good'))
         if(verified): wikipedia.output("Verified as %s." % mark(verified, lambda x:x[:3]!='bad'))
@@ -637,13 +660,14 @@ def collect_stats(stats, ids, users_reputation, e, prev, score, uncertain, extra
 
 
 
-def check_reputations(revisions, users_reputation):
-    users_reputation = defaultdict(int)
+def check_reputations(revisions, user_reputations):
 
-    for e in revisions:
-        known = k.is_verified_or_known_as_good_or_bad(e.revid)    # previous score (some human verified)
-        if(known == 'good'): users_reputation[e.username] += 1
-        if(known == 'bad'): users_reputation[e.username] -= 1
+    if(not user_reputations):
+        user_reputations = defaultdict(int)
+        for e in revisions:
+            known = k.is_verified_or_known_as_good_or_bad(e.revid)    # previous score (some human verified)
+            if(known == 'good'): user_reputations[e.username] += 1
+            if(known == 'bad'): user_reputations[e.username] -= 1
     
     ids = defaultdict(list)
     stats = defaultdict(lambda:defaultdict(int))
@@ -654,7 +678,7 @@ def check_reputations(revisions, users_reputation):
             revid = e.revid
             known = k.is_verified_or_known_as_good_or_bad(revid)    # previous score (some human verified)
             verified = k.is_known_as_verified(revid)                # if not Empty: human verified
-            reputation = users_reputation[e.username]
+            reputation = user_reputations[e.username]
             
             if(e.reverts_info == -5):                               # inverse for self-reverts
                 score = ('bad', 'good')[reputation < 0]
@@ -662,13 +686,13 @@ def check_reputations(revisions, users_reputation):
                 score = ('good', 'bad')[reputation < 0]
         
             # Collecting stats and Human verification
-            (verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, False, None)
+            (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, False, None)
         prev = e;
     dump_cstats(stats, ids)
 
 
 
-def analyse_maxent(revisions, users_reputation):
+def analyse_maxent(revisions, user_reputations):
     # apt-get apt-get install python-numpy python-scipy
     import numpy as np
     from scipy import stats
@@ -770,7 +794,7 @@ def analyse_maxent(revisions, users_reputation):
     
     #pp = pprint.PrettyPrinter(width=140)
     #for u, uf in user_features.iteritems():    
-    #    wikipedia.output("user %s(%s) features = \\\n%s" % (u, mark(users_reputation[u], lambda x:x>-1), pp.pformat(uf)))
+    #    wikipedia.output("user %s(%s) features = \\\n%s" % (u, mark(user_reputations[u], lambda x:x>-1), pp.pformat(uf)))
 
     train = [None] * len(edit_features)
     for i, features in enumerate(edit_features):
@@ -820,13 +844,13 @@ def analyse_maxent(revisions, users_reputation):
         uncertain = known != score
         score_numeric = e.rev_score_info
         extra = lambda: classifier.explain(features);
-        #(verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, uncertain, extra)
+        #(verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, uncertain, extra)
         stats['Revision analysis score ' + score + ' on known'][known] += 1
     dump_cstats(stats, ids)
 
 
 
-def analyse_crm114(revisions, users_reputation):
+def analyse_crm114(revisions, user_reputations):
     # stats
     ids = defaultdict(list)
     stats = defaultdict(lambda:defaultdict(int))
@@ -893,7 +917,7 @@ def analyse_crm114(revisions, users_reputation):
             
             # Collecting stats and Human verification
             extra = lambda:wikipedia.output(" \03{lightblue}%s\03{default}" % edit_text)
-            (verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, uncertain, extra)
+            (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, uncertain, extra)
 
             if(i > 500):
                 stats['CRM114 answered ' + crm114_answer + ' on known'][known] += 1
@@ -936,7 +960,7 @@ def comment_score(text):
 
 
 
-def analyse_decisiontree(revisions, users_reputation):
+def analyse_decisiontree(revisions, user_reputations):
     total_time = total_size = 0
     ids = defaultdict(list)
     stats = defaultdict(lambda:defaultdict(int))
@@ -974,38 +998,100 @@ def analyse_decisiontree(revisions, users_reputation):
         if(e.iwR == 50):                                    # large scale removal
             score -= 1            
 
-        if score > 1:       users_reputation[e.username] += 1; # score = 'good'
-        elif score < -10:   users_reputation[e.username] -= 1; # score = 'bad'
+        if score > 1:       user_reputations[e.username] += 1; # score = 'good'
+        elif score < -10:   user_reputations[e.username] -= 1; # score = 'bad'
         elif(e.reverts_info == -2):
-            if(score < 0):  users_reputation[e.username] -= 1; # score = 'bad'
+            if(score < 0):  user_reputations[e.username] -= 1; # score = 'bad'
             else: continue
         else: continue
 
-        # (verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, False, None)
+        # (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, False, None)
 
     #for e in revisions:
-    #    if(users_reputation[e.username] > 0): score = 'good'
-    #    elif(users_reputation[e.username] < 0): score = 'bad'
+    #    if(user_reputations[e.username] > 0): score = 'good'
+    #    elif(user_reputations[e.username] < 0): score = 'bad'
     #    else: continue
-    #    (verified, known, score) = collect_stats(stats, ids, users_reputation, e, prev, score, False, None)
+    #    (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, False, None)
     # dump_cstats(stats, ids)
-    
+
+
+def compute_reputations_dictionary():
+    user_reputations = defaultdict(int)
+
+    if(_output_arg):
+        FILE = open(_output_arg, 'wb')
+
+    total_pages = 0; total_revisions = 0; start = time.time();
+    for revisions in read_pyc():
+        analyse_reverts(revisions)
+        analyse_decisiontree(revisions, user_reputations)
+        total_pages += 1;
+        total_revisions += len(revisions)
+
+        if(total_pages%100 == 0):
+            wikipedia.output("Page %d. Revisions %d. Users %s. Analysis time: %f. ETA %f Hours." %
+                (total_pages, total_revisions, len(user_reputations), time.time() - start,
+                 312656476 / total_revisions * (time.time() - start) / 3600 ))
+
+            for u, r in user_reputations.iteritems():
+                marshal.dump((u, r), FILE)
+            user_reputations = defaultdict(int)
+
+    if(_output_arg):
+        for u, r in user_reputations.iteritems():
+            marshal.dump((u, r), FILE)
+
+def compute_reputations_shelve():
+    user_reputations = defaultdict(int)
+
+    if(_output_arg):
+        rdb = shelve.open(_output_arg)
+
+    total_pages = 0; total_revisions = 0; start = time.time();
+    for revisions in read_pyc():
+        analyse_reverts(revisions)
+        analyse_decisiontree(revisions, user_reputations)
+        total_pages += 1;
+        total_revisions += len(revisions)
+
+        if(total_pages%100 == 0):
+            wikipedia.output("Page %d. Revisions %d. Users %s. Analysis time: %f. ETA %f Hours." %
+                (total_pages, total_revisions, len(user_reputations), time.time() - start,
+                 312656476 / total_revisions * (time.time() - start) / 3600 ))
+
+            for u, r in user_reputations.iteritems():
+                ue = u.encode('utf-8')
+                rdb[ue] = rdb.setdefault(ue, 0) + r
+
+            user_reputations = defaultdict(int)
+
+
+    if(_output_arg):
+        for u, r in user_reputations.iteritems():
+            ue = u.encode('utf-8')
+            rdb[ue] = rdb.setdefault(ue, 0) + r
+        rdb.close()
+
+
 
 
 
 def main():
-    global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg
+    global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _reputations_arg
     pattern_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None;
-    _display_pyc_arg = None; _output_arg = None; _analyze_arg = None
+    _display_pyc_arg = None; _compute_reputations = None;_output_arg = None; _analyze_arg = None
+    _reputations_arg = None;
     for arg in wikipedia.handleArgs():
         if arg.startswith('-xml') and len(arg) > 5: pattern_arg = arg[5:]
         if arg.startswith('-pyc') and len(arg) > 5: _pyc_arg = arg[5:]
+        if arg.startswith('-reputations') and len(arg) > 13: _reputations_arg = arg[13:]
         if arg.startswith('-retrain'): _retrain_arg = True
         if arg.startswith('-retrain') and len(arg) > 9: _retrain_arg = arg[9:]
         if arg.startswith('-train'): _train_arg = True
         if arg.startswith('-vvv'): _verbose_arg = True
         if arg.startswith('-output') and len(arg) > 8: _output_arg = arg[8:]
         if arg.startswith('-display-last-timestamp'): _display_last_timestamp_arg = True
+        if arg.startswith('-compute-reputations'): _compute_reputations_arg = True
         if arg.startswith('-compute-pyc'): _compute_pyc_arg = True
         if arg.startswith('-display-pyc'): _display_pyc_arg = True
         if arg.startswith('-analyze'): _analyze_arg = True
@@ -1025,52 +1111,31 @@ def main():
 
 
     # Precompiled .pyc (.full) files input
-    if(_pyc_arg and _display_pyc_arg): display_pyc(); return
-    if(_pyc_arg):
-        users_reputation = defaultdict(int)
+    if(_display_pyc_arg): display_pyc(); return
+    if(_compute_reputations):
+        _compute_reputations_dictionary()
+        #compute_reputations_shelve()
 
-        if(_output_arg):
-            FILE = open(_output_arg, 'wb')
-
-        total_pages = 0; total_revisions = 0; start = time.time();
-        for revisions in read_pyc():
-            analyse_reverts(revisions)
-            analyse_decisiontree(revisions, users_reputation)
-            total_pages += 1;
-            total_revisions += len(revisions)
-
-            if(total_pages%100 == 0):
-                wikipedia.output("Page %d. Revisions %d. Users %d. Analysis time: %f. ETA %f Hours." % 
-                    (total_pages, total_revisions, len(users_reputation), time.time() - start,
-                     341436476 / total_revisions * (time.time() - start) / 3600 ))
-
-                for u, r in users_reputation.iteritems():
-                    marshal.dump((u, r), FILE)
-                users_reputation = defaultdict(int)
-
-
-        if(_output_arg):
-            for u, r in users_reputation.iteritems():
-                marshal.dump((u, r), FILE)
-
-
+    if(_reputations_arg):
+        user_reputations = read_reputations()
 
 
     #analyse_tokens_lifetime(xmlFilenames)
 
     if(_analyze_arg):
-        start = time.time()
-        analyse_reverts(revisions)
-        wikipedia.output("Reverts analysis time: %f" % (time.time() - start))
+        for revisions in read_pyc():
+            start = time.time()
+            analyse_reverts(revisions)
+            wikipedia.output("Reverts analysis time: %f" % (time.time() - start))
 
-        start = time.time()
-        users_reputation = analyse_reputations(revisions)
-        wikipedia.output("Reputation analysis time: %f" % (time.time() - start))
+            #start = time.time()
+            #user_reputations = analyse_reputations(revisions)
+            #wikipedia.output("Reputation analysis time: %f" % (time.time() - start))
 
-        analyse_decisiontree(revisions, users_reputation)
-        # check_reputations(revisions, users_reputation)
-        #analyse_maxent(revisions, users_reputation)
-        #analyse_crm114(revisions, users_reputation)
+            # analyse_decisiontree(revisions, user_reputations)
+            check_reputations(revisions, user_reputations)
+            #analyse_maxent(revisions, user_reputations)
+            #analyse_crm114(revisions, user_reputations)
 
 
 if __name__ == "__main__":
