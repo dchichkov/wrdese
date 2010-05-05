@@ -1028,7 +1028,10 @@ def main():
     if(_pyc_arg and _display_pyc_arg): display_pyc(); return
     if(_pyc_arg):
         users_reputation = defaultdict(int)
-        
+
+        if(_output_arg):
+            FILE = open(_output_arg, 'wb')
+
         total_pages = 0; total_revisions = 0; start = time.time();
         for revisions in read_pyc():
             analyse_reverts(revisions)
@@ -1037,17 +1040,18 @@ def main():
             total_revisions += len(revisions)
 
             if(total_pages%100 == 0):
-                wikipedia.output("Page %d. Revision %d. Users %d. Analysis time: %f" % 
-                    (total_pages, total_revisions, len(users_reputation), time.time() - start))
-            total_pages += 1
+                wikipedia.output("Page %d. Revisions %d. Users %d. Analysis time: %f. ETA %f Hours." % 
+                    (total_pages, total_revisions, len(users_reputation), time.time() - start,
+                     341436476 / total_revisions * (time.time() - start) / 3600 ))
+
+                for u, r in users_reputation.iteritems():
+                    marshal.dump((u, r), FILE)
+                users_reputation = defaultdict(int)
 
 
-
-
-    if(_output_arg):
-        FILE = open(_output_arg, 'wb')
-        for u, r in users_reputation.iteritems():
-            marshal.dump((u, r), FILE)
+        if(_output_arg):
+            for u, r in users_reputation.iteritems():
+                marshal.dump((u, r), FILE)
 
 
 
