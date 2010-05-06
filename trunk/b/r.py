@@ -337,7 +337,7 @@ def compute_pyc(xmlFilenames):
                 
                 wikipedia.output("\n-------------------------------------------------------------------------------")
                 wikipedia.output("Revision %d: %s by %s Comment: %s" % (total_revisions, e.timestamp, e.username, e.comment))
-                wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % int(e.revisionid))
+                wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=%d" % int(e.revisionid))
                 wikipedia.output(" \03{lightblue}%s\03{default}\n" % ' '.join(edit))
                 show_diff(full_info)
                 wikipedia.output("Full: %s" % str(full_info))
@@ -434,12 +434,12 @@ def filter_pyc():
             wikipedia.output("Page %d. Revs %d. Filtered Pages %d. Filtered Revs %d. Analysis time: %f. ETA %f Hours." %
                 (total_pages, total_revisions, filtered_pages, filtered_revisions, time.time() - start,
                  (NNN - total_revisions) / total_revisions * (time.time() - start) / 3600 ))
-
+        
         for e in revisions:
             known = k.is_known_as_verified(e.revid)
             if known: break
         if not known: continue
-
+        k.g[e.revid] = 'known'
         for e in revisions:
             full_info = (e.id, e.revid, e.username, e.comment, e.title,
                 e.size, e.utc, e.md5, e.ipedit,
@@ -448,6 +448,8 @@ def filter_pyc():
             marshal.dump(full_info, FILE)
             filtered_revisions += 1
         filtered_pages += 1
+
+    print k.g
 
 
 def read_reputations():
@@ -667,7 +669,7 @@ def collect_stats(stats, ids, user_reputations, e, prev, score, uncertain, extra
         if(known): wikipedia.output("Known as %s." % mark(known, lambda x:x=='good'))
         if(verified): wikipedia.output("Verified as %s." % mark(verified, lambda x:x[:3]!='bad'))
         if(uncertain): wikipedia.output("Uncertain: %s" % uncertain)
-        wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d" % revid)
+        wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=%d" % revid)
         if(_verbose_arg): show_diff(e)
         if(extra): extra()
 
@@ -715,17 +717,14 @@ def check_reputations(revisions, user_reputations):
             if(known == 'good'): user_reputations[e.username] += 1
             if(known == 'bad'): user_reputations[e.username] -= 1
     
-    ids = defaultdict(list)
-    stats = defaultdict(lambda:defaultdict(int))
     prev = None;
-    
     for e in revisions:
         if prev:
             revid = e.revid
             known = k.is_verified_or_known_as_good_or_bad(revid)    # previous score (some human verified)
             verified = k.is_known_as_verified(revid)                # if not Empty: human verified
             reputation = user_reputations[e.username]
-            if(reputation == 0): continue
+            if not known: continue
             
             if(e.reverts_info == -5):                               # inverse for self-reverts
                 score = ('bad', 'good')[reputation < 0]
@@ -733,9 +732,9 @@ def check_reputations(revisions, user_reputations):
                 score = ('good', 'bad')[reputation < 0]
         
             # Collecting stats and Human verification
-            (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, False, None)
+            extra = lambda: wikipedia.output("Gold Edit: %s\nGold Annotation: %s" % k.info(revid))
+            (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, False, extra)
         prev = e;
-    dump_cstats(stats, ids)
 
 
 
@@ -826,7 +825,7 @@ def analyse_maxent(revisions, user_reputations):
         
         if comment_revert and e.reverts_info == -1:
             print '%30s\t%s' % (e.username, e.comment)
-            wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d\n\n" % e.revid)
+            wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=%d\n\n" % e.revid)
             
 
         total_size += e.size
@@ -1126,7 +1125,7 @@ def compute_reputations_shelve():
 def main():
     global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _reputations_arg
     pattern_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None;
-    _display_pyc_arg = None; _compute_reputations = None;_output_arg = None; _analyze_arg = None
+    _display_pyc_arg = None; _compute_reputations_arg = None;_output_arg = None; _analyze_arg = None
     _reputations_arg = None; _username_arg = None; _filter_pyc_arg = None;
     for arg in wikipedia.handleArgs():
         if arg.startswith('-xml') and len(arg) > 5: pattern_arg = arg[5:]
@@ -1162,8 +1161,8 @@ def main():
     # Precompiled .pyc (.full) files input
     if(_display_pyc_arg): display_pyc(); return
     if(_filter_pyc_arg): filter_pyc(); return
-    if(_compute_reputations):
-        _compute_reputations_dictionary()
+    if(_compute_reputations_arg):
+        compute_reputations_dictionary()
         #compute_reputations_shelve()
 
     if(_reputations_arg):
@@ -1175,20 +1174,23 @@ def main():
 
     #analyse_tokens_lifetime(xmlFilenames)
 
+    global ids, stats
+    ids = defaultdict(list)
+    stats = defaultdict(lambda:defaultdict(int))
+
+    N = 0; start = time.time();
     if(_analyze_arg):
         for revisions in read_pyc():
-            start = time.time()
             analyse_reverts(revisions)
-            wikipedia.output("Reverts analysis time: %f" % (time.time() - start))
-
-            #start = time.time()
             #user_reputations = analyse_reputations(revisions)
-            #wikipedia.output("Reputation analysis time: %f" % (time.time() - start))
+            if(not N%100): wikipedia.output("Reputation analysis time: %f, N = %d" % (time.time() - start, N))
+            N += 1
 
             # analyse_decisiontree(revisions, user_reputations)
-            # check_reputations(revisions, user_reputations)
+            check_reputations(revisions, user_reputations)
             #analyse_maxent(revisions, user_reputations)
             #analyse_crm114(revisions, user_reputations)
+        dump_cstats(stats, ids)
 
 
 if __name__ == "__main__":
