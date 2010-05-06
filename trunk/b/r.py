@@ -152,7 +152,11 @@ import wikipedia, pagegenerators, xmlreader, editarticle
 import crm114   
 
 # known good, known bad revisions
-import k
+import pan_wvc_10_gold as k
+#import k
+
+NNN = 313797035 # total revisions in the dump
+
 
 # This is required for the text that is shown when you run this script
 # with the parameter -help.
@@ -263,24 +267,27 @@ def compute_pyc(xmlFilenames):
     # separators between tokens
     p = re.compile(r'\, |\. |\s+')
 
-    total_revisions = 0; start = time.time(); full_info = None; fake_revid = -1; prev_title = None;
+    total_revisions = 0; start = time.time(); full_info = None; fake_id = -1; prev_title = None;
     al = []; bl = []; bid = None; asndiff = []; bsndiff = []; bndiffid = None
     for xmlFilename in xmlFilenames:
         dump = xmlreader.XmlDump(xmlFilename, allrevisions=True)
         revisions = dump.parse()
         for e in revisions:
-            if(e.id == None):       # process pages without id
+            total_revisions += 1
+            try:
+                id = int(e.id)
+                prev_title = None
+            except:                 # process pages without id
                 if(e.title != prev_title): fake_id -= 1;
                 prev_title = e.title
                 id = fake_id;
-            else: id = int(e.id)
 
-            if(id == bid):        # still analyzing the same page....
+            if(id == bid):          # still analyzing the same page....
                 al = bl             # bl - previous revision text (split into lines)
             else: 
-                al = []; bid = id; 
-                wikipedia.output("Revision %d. Analysis time: %f   Page: %d %s %s %s" % 
-                                 (total_revisions, time.time() - start, id, e.id, e.revisionid, e.title))                
+                al = []; bid = id; drt = (time.time() - start) / 3600;
+                wikipedia.output("R %d T %f ETA %f : %d %s %s %s" % 
+                    (total_revisions, drt, (NNN - total_revisions) / total_revisions * drt, id, e.id, e.revisionid, e.title))
             bl = e.text.splitlines()
 
             # merge (removed, added) lines and split them into tokens (a, b)
@@ -307,13 +314,16 @@ def compute_pyc(xmlFilenames):
                 if(e.text):
                     m = hashlib.md5(e.text.encode('utf-8'))
                     digest = m.digest()
-                    
-                full_info = (id, int(e.revisionid), e.username, e.comment, e.title, 
+
+                try:
+                    full_info = (id, int(e.revisionid), e.username, e.comment, e.title, 
                             len(e.text), timestamp_to_time(e.timestamp), digest, e.ipedit,
                             e.editRestriction, e.moveRestriction, e.isredirect,
                             len(al), len(bl), dposl[0], dposl[1], dposl[2], 
                             ilA, ilR, iwA, iwR, ilM, iwM, diff)
-                marshal.dump(full_info, FILE)
+                    marshal.dump(full_info, FILE)
+                except:
+                    wikipedia.output("Error at: %s %s %s %s" % (e.id, e.revisionid, e.title, e.timestamp))   
             
             if(_verbose_arg):
                 if(id == bndiffid): asndiff = bsndiff     # previous revision text
@@ -332,7 +342,6 @@ def compute_pyc(xmlFilenames):
                 show_diff(full_info)
                 wikipedia.output("Full: %s" % str(full_info))
 
-            total_revisions += 1
     wikipedia.output("%f seconds" % (time.time() - start))
 
 
@@ -370,32 +379,36 @@ def display_pyc():
         wikipedia.output("Revision %d. Analysis time: %f" % (total_revisions, time.time() - start))
 
 
+
+class FullInfo(object):
+    __slots__ = ('i', 'reverts_info', 'rev_score_info',
+                 'id', 'revid', 'username', 'comment', 'title', 'size', 'utc', 'md5', 'ipedit',
+                 'al', 'bl', 'lo', 'ahi', 'bhi', 'ilA', 'ilR', 'iwA', 'iwR', 'diff'
+                  )
+
+    def __init__(self, args):
+        (self.id, self.revid, self.username, self.comment, self.title,
+        self.size, self.utc, self.md5, self.ipedit,
+        self.al, self.bl, self.lo, self.ahi, self.bhi,
+        self.ilA, self.ilR, self.iwA, self.iwR, self.diff) = args
+
+        self.reverts_info = -1
+        self.rev_score_info = 0
+
+
+
 def read_pyc():
-    class FullInfo(object):
-        __slots__ = ('i', 'reverts_info', 'rev_score_info',
-                     'id', 'revid', 'username', 'comment', 'title', 'size', 'utc', 'md5', 'ipedit',
-                     'al', 'bl', 'lo', 'ahi', 'bhi', 'ilA', 'ilR', 'iwA', 'iwR', 'diff'
-                      )
-
-        def __init__(self, args):
-            (self.id, self.revid, self.username, self.comment, self.title, 
-            self.size, self.utc, self.md5, self.ipedit,
-            self.al, self.bl, self.lo, self.ahi, self.bhi, 
-            self.ilA, self.ilR, self.iwA, self.iwR, self.diff) = args
-
-            self.reverts_info = -1
-            self.rev_score_info = 0
-
     wikipedia.output("Reading %s..." % _pyc_arg)
     FILE = open(_pyc_arg, 'rb')
-    revisions = []; id = None
-    start = time.time()
+    start = time.time()    
     try:
+        info = FullInfo(marshal.load(FILE))     # load first in order to  
+        revisions = []; id = info.id;           # initialize id from info.id
+        revisions.append(info)
         while True:
             info = FullInfo(marshal.load(FILE))
             if(id != info.id):
-                if(len(revisions) > 0):
-                    yield revisions
+                yield revisions
                 revisions = []
                 id = info.id
             revisions.append(info)
@@ -405,6 +418,36 @@ def read_pyc():
         wikipedia.output("Done reading %s. Read time: %f." % (_pyc_arg, time.time() - start))
 
     yield revisions
+
+
+def filter_pyc():
+    total_pages = 0
+    FILE = open(_output_arg, 'wb')
+    start = time.time()
+    total_pages = 0; total_revisions = 0;
+    filtered_pages = 0; filtered_revisions = 0;
+
+    for revisions in read_pyc():
+        total_pages += 1;
+        total_revisions += len(revisions)
+        if(total_pages%100 == 0):
+            wikipedia.output("Page %d. Revs %d. Filtered Pages %d. Filtered Revs %d. Analysis time: %f. ETA %f Hours." %
+                (total_pages, total_revisions, filtered_pages, filtered_revisions, time.time() - start,
+                 (NNN - total_revisions) / total_revisions * (time.time() - start) / 3600 ))
+
+        for e in revisions:
+            known = k.is_known_as_verified(e.revid)
+            if known: break
+        if not known: continue
+
+        for e in revisions:
+            full_info = (e.id, e.revid, e.username, e.comment, e.title,
+                e.size, e.utc, e.md5, e.ipedit,
+                e.al, e.bl, e.lo, e.ahi, e.bhi,
+                e.ilA, e.ilR, e.iwA, e.iwR, e.diff)
+            marshal.dump(full_info, FILE)
+            filtered_revisions += 1
+        filtered_pages += 1
 
 
 def read_reputations():
@@ -419,7 +462,7 @@ def read_reputations():
     except IOError, e:
         raise
     except EOFError, e:
-        wikipedia.output("Done reading %s. Read time: %f. Total users: %d" % (_pyc_arg, time.time() - start, len(user_reputations)))
+        wikipedia.output("Done reading %s. Read time: %f. Total users: %d" % (_reputations_arg, time.time() - start, len(user_reputations)))
 
     if(_output_arg):
         FILE = open(_output_arg, 'wb')
@@ -1035,7 +1078,7 @@ def compute_reputations_dictionary():
         if(total_pages%100 == 0):
             wikipedia.output("Page %d. Revisions %d. Users %s. Analysis time: %f. ETA %f Hours." %
                 (total_pages, total_revisions, len(user_reputations), time.time() - start,
-                 312656476 / total_revisions * (time.time() - start) / 3600 ))
+                (NNN - total_revisions) / total_revisions * (time.time() - start) / 3600 ))
 
             for u, r in user_reputations.iteritems():
                 marshal.dump((u, r), FILE)
@@ -1061,7 +1104,7 @@ def compute_reputations_shelve():
         if(total_pages%100 == 0):
             wikipedia.output("Page %d. Revisions %d. Users %s. Analysis time: %f. ETA %f Hours." %
                 (total_pages, total_revisions, len(user_reputations), time.time() - start,
-                 312656476 / total_revisions * (time.time() - start) / 3600 ))
+                 (NNN - total_revisions) / total_revisions * (time.time() - start) / 3600 ))
 
             for u, r in user_reputations.iteritems():
                 ue = u.encode('utf-8')
@@ -1084,13 +1127,14 @@ def main():
     global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _reputations_arg
     pattern_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None;
     _display_pyc_arg = None; _compute_reputations = None;_output_arg = None; _analyze_arg = None
-    _reputations_arg = None; _username_arg = None
+    _reputations_arg = None; _username_arg = None; _filter_pyc_arg = None;
     for arg in wikipedia.handleArgs():
         if arg.startswith('-xml') and len(arg) > 5: pattern_arg = arg[5:]
         if arg.startswith('-pyc') and len(arg) > 5: _pyc_arg = arg[5:]
         if arg.startswith('-reputations') and len(arg) > 13: _reputations_arg = arg[13:]
         if arg.startswith('-username') and len(arg) > 10: _username_arg = arg[10:]
         if arg.startswith('-retrain'): _retrain_arg = True
+        if arg.startswith('-filter-pyc'): _filter_pyc_arg = True
         if arg.startswith('-retrain') and len(arg) > 9: _retrain_arg = arg[9:]
         if arg.startswith('-train'): _train_arg = True
         if arg.startswith('-vvv'): _verbose_arg = True
@@ -1117,6 +1161,7 @@ def main():
 
     # Precompiled .pyc (.full) files input
     if(_display_pyc_arg): display_pyc(); return
+    if(_filter_pyc_arg): filter_pyc(); return
     if(_compute_reputations):
         _compute_reputations_dictionary()
         #compute_reputations_shelve()
@@ -1141,7 +1186,7 @@ def main():
             #wikipedia.output("Reputation analysis time: %f" % (time.time() - start))
 
             # analyse_decisiontree(revisions, user_reputations)
-            check_reputations(revisions, user_reputations)
+            # check_reputations(revisions, user_reputations)
             #analyse_maxent(revisions, user_reputations)
             #analyse_crm114(revisions, user_reputations)
 
