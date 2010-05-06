@@ -12,16 +12,16 @@ Additional extra information (revisions in these lists are already in the 'good'
 == Usage ==
 Add following URL before the revision ID to see the diff:
 {{{
-http://en.wikipedia.org/w/index.php?diff=prev&oldid=
+http://en.wikipedia.org/w/index.php?diff=
 }}}
 
 Example:
-[http://en.wikipedia.org/w/index.php?diff=prev&oldid=7267547 http://en.wikipedia.org/w/index.php?diff=prev&oldid=7267547]
+[http://en.wikipedia.org/w/index.php?diff=7267547 http://en.wikipedia.org/w/index.php?diff=7267547]
 
 In python you can execute this data set as a code and get a dictionary of sorted revisions lists. Here is an example that prints html refs to the Wikipedia diffs for the 'bad' revisions:
 {{{
 for r in ids['bad']:
-    print '<a href="http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d">%d</a>' % (r, r)
+    print '<a href="http://en.wikipedia.org/w/index.php?diff=%d">%d</a>' % (r, r)
 }}}
 
 
