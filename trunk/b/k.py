@@ -51,7 +51,8 @@ def is_verified_or_known_as_good_or_bad(id):
     if(verified): return ('good', 'bad')[verified[:3] == 'bad']
     return is_known_as_good_or_bad(id)
 
-
+def info(id):
+    return None
 
 if __name__ == "__main__":
     import unittest

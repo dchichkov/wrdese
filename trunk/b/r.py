@@ -152,7 +152,8 @@ import wikipedia, pagegenerators, xmlreader, editarticle
 import crm114   
 
 # known good, known bad revisions
-import pan_wvc_10_gold as k
+import wicow08r_chin_microsoft_annotation as k
+#import pan_wvc_10_gold as k
 #import k
 
 NNN = 313797035 # total revisions in the dump
@@ -670,6 +671,7 @@ def collect_stats(stats, ids, user_reputations, e, prev, score, uncertain, extra
         if(verified): wikipedia.output("Verified as %s." % mark(verified, lambda x:x[:3]!='bad'))
         if(uncertain): wikipedia.output("Uncertain: %s" % uncertain)
         wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=%d" % revid)
+        if(k.info(revid)): wikipedia.output("Annotation: %s" % (k.info(revid)))
         if(_verbose_arg): show_diff(e)
         if(extra): extra()
 
@@ -732,8 +734,7 @@ def check_reputations(revisions, user_reputations):
                 score = ('good', 'bad')[reputation < 0]
         
             # Collecting stats and Human verification
-            extra = lambda: wikipedia.output("Gold Edit: %s\nGold Annotation: %s" % k.info(revid))
-            (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, False, extra)
+            (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, False, None)
         prev = e;
 
 
@@ -1008,12 +1009,10 @@ def comment_score(text):
 
 def analyse_decisiontree(revisions, user_reputations):
     total_time = total_size = 0
-    ids = defaultdict(list)
-    stats = defaultdict(lambda:defaultdict(int))
     prev = None;
     
     for e in revisions:
-        # known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
+        known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
         score = 0
 
         if(e.comment):
@@ -1044,14 +1043,14 @@ def analyse_decisiontree(revisions, user_reputations):
         if(e.iwR == 50):                                    # large scale removal
             score -= 1            
 
-        if score > 1:       user_reputations[e.username] += 1; # score = 'good'
-        elif score < -10:   user_reputations[e.username] -= 1; # score = 'bad'
+        if score > 1:       user_reputations[e.username] += 1;  score = 'good'
+        elif score < -10:   user_reputations[e.username] -= 1;  score = 'bad'
         elif(e.reverts_info == -2):
-            if(score < 0):  user_reputations[e.username] -= 1; # score = 'bad'
+            if(score < 0):  user_reputations[e.username] -= 1;  score = 'bad'
             else: continue
         else: continue
-
-        # (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, False, None)
+        if(not known): continue
+        (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, False, None)
 
     #for e in revisions:
     #    if(user_reputations[e.username] > 0): score = 'good'
@@ -1186,8 +1185,8 @@ def main():
             if(not N%100): wikipedia.output("Reputation analysis time: %f, N = %d" % (time.time() - start, N))
             N += 1
 
-            # analyse_decisiontree(revisions, user_reputations)
-            check_reputations(revisions, user_reputations)
+            analyse_decisiontree(revisions, user_reputations)
+            #check_reputations(revisions, user_reputations)
             #analyse_maxent(revisions, user_reputations)
             #analyse_crm114(revisions, user_reputations)
         dump_cstats(stats, ids)
