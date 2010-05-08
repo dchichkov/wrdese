@@ -487,6 +487,13 @@ def display_last_timestamp(xmlFilenames):
     wikipedia.output("Total revision analyzed: %d" % total_revisions)
     if(total_revisions): wikipedia.output("Timestamp of the last revision: %s" % e.timestamp)
     
+def special_export(title)
+    headers = {'User-Agent': 'PythonWikipediaBot/1.0'} # Needs to fool Wikipedia so it will give us the file
+    params = urllib.urlencode({'title': 'Special:Export','pages': 'User:Dc987test', 'action': 'submit', 'limit': 100, }
+    req = urllib2.Request(url='http://en.wikipedia.org/w/index.php',data=params, headers=headers)
+    f = urllib2.urlopen(req)
+    print f.read()
+
 
 
 # -------------------------------------------------------------------------
@@ -1125,7 +1132,7 @@ def main():
     global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _reputations_arg
     pattern_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None;
     _display_pyc_arg = None; _compute_reputations_arg = None;_output_arg = None; _analyze_arg = None
-    _reputations_arg = None; _username_arg = None; _filter_pyc_arg = None;
+    _reputations_arg = None; _username_arg = None; _filter_pyc_arg = None; _export_arg = None
     for arg in wikipedia.handleArgs():
         if arg.startswith('-xml') and len(arg) > 5: pattern_arg = arg[5:]
         if arg.startswith('-pyc') and len(arg) > 5: _pyc_arg = arg[5:]
@@ -1142,7 +1149,12 @@ def main():
         if arg.startswith('-compute-pyc'): _compute_pyc_arg = True
         if arg.startswith('-display-pyc'): _display_pyc_arg = True
         if arg.startswith('-analyze'): _analyze_arg = True
+        if arg.startswith('-export'): _export_arg = True
  
+    if(_export_arg):
+        special_export()
+        return
+
     if(not pattern_arg and not _pyc_arg):            # work: lightblue lightgreen lightpurple lightred
         wikipedia.output('Usage: ./r.py \03{lightblue}-xml:\03{default}path/Wikipedia-Dump-*.xml.7z -output:Wikipedia-Dump.full -compute-pyc')
         wikipedia.output('     : ./r.py \03{lightblue}-pyc:\03{default}path/Wikipedia-Dump.full -analyze')
