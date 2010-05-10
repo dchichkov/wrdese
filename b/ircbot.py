@@ -50,11 +50,14 @@ def on_priv_message ( connection, e ):
 
 # Public messages
 def on_pub_message ( connection, e ):
-    # print e.target() + '> ' + e.source().split ( '!' )[ 0 ] + ': ' + e.arguments() [ 0 ]
+    if connection == c:
+        print e.target() + '> ' + e.source().split ( '!' )[ 0 ] + ': ' + e.arguments() [ 0 ]
+        return    
+    
     match = re_edit.match(e.arguments()[0])
 
     if not match:
-            print "Warning: Regexp does not match (raw): ", e.arguments()[0]
+            # print "Warning: Regexp does not match (raw): ", e.arguments()[0]
             return
     try:
         msg = unicode(e.arguments()[0],'utf-8')
@@ -70,7 +73,7 @@ def on_pub_message ( connection, e ):
     d = match.groupdict()
     reputation = user_reputations.get(d['user'])
     if(reputation != None and reputation < 0):
-        print d['user'], '(', reputation , ')', d['page'], d['url']
+        # print d['user'], '(', reputation , ')', d['page'], d['url']
         c.privmsg("#cvn-wp-en-reputation", ("Reputation %s. " % reputation)  +  e.arguments()[0])
     return
 
