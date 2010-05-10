@@ -76,7 +76,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 def is_known_as_verified(id):
-    return None
+    return g.get(id) #None
 
 def is_known_as_good_or_bad(id):
     return g.get(id)
