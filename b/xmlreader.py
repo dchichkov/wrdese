@@ -297,7 +297,7 @@ Consider installing the python-celementtree package.''')
                                       % self.filename,
                                       shell=True,
                                       stdout=subprocess.PIPE,
-                                      bufsize=65535).stdout
+                                      bufsize=65536).stdout
         else:
             # assume it's an uncompressed XML file
             source = open(self.filename)
