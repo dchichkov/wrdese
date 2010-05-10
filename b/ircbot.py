@@ -69,7 +69,7 @@ def on_pub_message ( connection, e ):
     
     d = match.groupdict()
     reputation = user_reputations.get(d['user'])
-    if(reputation == None or reputation < 0):
+    if(reputation != None and reputation < 0):
         print d['user'], '(', reputation , ')', d['page'], d['url']
         c.privmsg("#cvn-wp-en-reputation", ("Reputation %s. " % reputation)  +  e.arguments()[0])
     return
