@@ -8,7 +8,8 @@
 # Joel Rosdahl <joel@rosdahl.net>
 
 import irclib
-import sys, re
+import sys, re, cPickle
+from time import time
 import r
 
 
@@ -31,29 +32,28 @@ def on_join(connection, event):
 # Private messages
 def on_priv_message ( connection, e ):
     print e.source().split ( '!' ) [ 0 ] + ': ' + e.arguments() [ 0 ]
-    # Respond to a 'hello' message
-    if e.arguments() [ 0 ].lower().find ( 'hello' ) == 0:
-        connection.privmsg ( e.source().split ( '!' ) [ 0 ], 'Hello.' )
-    else:
-        try:
-            msg = unicode(e.arguments()[0],'utf-8')
-        except UnicodeDecodeError:
-            connection.privmsg ( e.source().split ( '!' ) [ 0 ], 'Exception: UnicodeDecodeError.' )
-            print "Exception: UnicodeDecodeError"
-            return
-
-        reputation = user_reputations.get(msg)
-        if(reputation == None): reputation = "User not found. (If user was created before 2010 please report this as a bug.)"
-        connection.privmsg ( e.source().split ( '!' ) [ 0 ], "User %s reputation: %s" % (msg, reputation) )
+    print '\n'
+    try:
+        msg = unicode(e.arguments()[0],'utf-8')
+    except UnicodeDecodeError:
+        connection.privmsg ( e.source().split ( '!' ) [ 0 ], 'Exception: UnicodeDecodeError.' )
+        print "Exception: UnicodeDecodeError"
         return
-         
+
+    reputation = user_reputations.get(msg)
+    if(reputation == None): reputation = "User not found. (If user was created before 2010 please report this as a bug.)"
+    connection.privmsg ( e.source().split ( '!' ) [ 0 ], "User %s reputation: %s" % (msg, reputation) )
+    return
+     
 
 # Public messages
 def on_pub_message ( connection, e ):
     if connection == c:
-        print e.target() + '> ' + e.source().split ( '!' )[ 0 ] + ': ' + e.arguments() [ 0 ]
+        print e.source().split ( '!' ) [ 0 ] + ': ' + e.arguments()[0]
+        print '\n'
         return    
     
+    cPickle.dump(e.arguments()[0], FILE)   
     match = re_edit.match(e.arguments()[0])
 
     if not match:
@@ -72,9 +72,9 @@ def on_pub_message ( connection, e ):
     
     d = match.groupdict()
     reputation = user_reputations.get(d['user'])
-    if(reputation != None and reputation < 0):
+    if(reputation != None and reputation < 2):
         # print d['user'], '(', reputation , ')', d['page'], d['url']
-        c.privmsg("#cvn-wp-en-reputation", ("Reputation %s. " % reputation)  +  e.arguments()[0])
+        c.privmsg("#cvn-wp-en-reputation", ("Reputation: %s. " % reputation)  +  e.arguments()[0])
     return
 
 def on_disconnect(connection, event):
@@ -82,7 +82,7 @@ def on_disconnect(connection, event):
     sys.exit(0)
 
 
-if len(sys.argv) != 3:
+if len(sys.argv) < 3:
     print "Usage: testbot <nickname> reputations.pkl"
     sys.exit(1)
 
@@ -91,12 +91,14 @@ r._reputations_arg = sys.argv[2]
 r._output_arg = None
 user_reputations = r.read_reputations()
 re_edit = re.compile(r'^C14\[\[^C07(?P<page>.+?)^C14\]\]^C4 (?P<flags>.*?)^C10 ^C02(?P<url>.+?)^C ^C5\*^C ^C03(?P<user>.+?)^C ^C5\*^C \(?^B?(?P<bytes>[+-]?\d+?)^B?\) ^C10(?P<summary>.*)^C'.replace('^B', '\002').replace('^C', '\003').replace('^U', '\037'))
+FILE = open('irc.en.wikipedia.%s.pkl' % time(), 'wb')
 
 # irclib.DEBUG = True
 irc = irclib.IRC()
 try:
     c = irc.server().connect("irc.freenode.net", 6667, nickname)
-    w = irc.server().connect("irc.wikimedia.org", 6667, nickname)
+    #w = irc.server().connect("irc.wikimedia.org", 6667, nickname)
+    w = None
     
 except irclib.ServerConnectionError, x:
     print x
