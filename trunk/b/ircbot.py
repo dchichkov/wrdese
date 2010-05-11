@@ -32,7 +32,7 @@ def on_join(connection, event):
 # Private messages
 def on_priv_message ( connection, e ):
     print e.source().split ( '!' ) [ 0 ] + ': ' + e.arguments() [ 0 ]
-    print '\n'
+    sys.stdout.flush();
     try:
         msg = unicode(e.arguments()[0],'utf-8')
     except UnicodeDecodeError:
@@ -50,7 +50,7 @@ def on_priv_message ( connection, e ):
 def on_pub_message ( connection, e ):
     if connection == c:
         print e.source().split ( '!' ) [ 0 ] + ': ' + e.arguments()[0]
-        print '\n'
+        sys.stdout.flush();
         return    
     
     cPickle.dump(e.arguments()[0], FILE)   
@@ -97,8 +97,7 @@ FILE = open('irc.en.wikipedia.%s.pkl' % time(), 'wb')
 irc = irclib.IRC()
 try:
     c = irc.server().connect("irc.freenode.net", 6667, nickname)
-    #w = irc.server().connect("irc.wikimedia.org", 6667, nickname)
-    w = None
+    w = irc.server().connect("irc.wikimedia.org", 6667, nickname)
     
 except irclib.ServerConnectionError, x:
     print x
