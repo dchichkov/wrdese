@@ -322,11 +322,9 @@ def compute_pyc(xmlFilenames):
                 try:
                     full_info = (id, int(e.revisionid), e.username, e.comment, e.title, 
                             len(e.text), timestamp_to_time(e.timestamp), digest, e.ipedit,
-                            # e.editRestriction, e.moveRestriction, e.isredirect,
+                            e.editRestriction, e.moveRestriction, e.isredirect,
                             len(al), len(bl), dposl[0], dposl[1], dposl[2], 
-                            ilA, ilR, iwA, iwR, 
-                            #ilM, iwM, 
-                            diff)
+                            ilA, ilR, iwA, iwR, ilM, iwM, diff)
                     marshal.dump(full_info, FILE)
                 except:
                     wikipedia.output("Error at: %s %s %s %s" % (e.id, e.revisionid, e.title, e.timestamp))   
@@ -389,14 +387,16 @@ def display_pyc():
 class FullInfo(object):
     __slots__ = ('i', 'reverts_info', 'rev_score_info',
                  'id', 'revid', 'username', 'comment', 'title', 'size', 'utc', 'md5', 'ipedit',
-                 'al', 'bl', 'lo', 'ahi', 'bhi', 'ilA', 'ilR', 'iwA', 'iwR', 'diff'
+                 'editRestriction', 'moveRestriction', 'isredirect',
+                 'al', 'bl', 'lo', 'ahi', 'bhi', 'ilA', 'ilR', 'iwA', 'iwR', 'ilM', 'iwM', 'diff'
                   )
 
     def __init__(self, args):
         (self.id, self.revid, self.username, self.comment, self.title,
         self.size, self.utc, self.md5, self.ipedit,
+        self.editRestriction, self.moveRestriction, self.isredirect,
         self.al, self.bl, self.lo, self.ahi, self.bhi,
-        self.ilA, self.ilR, self.iwA, self.iwR, self.diff) = args
+        self.ilA, self.ilR, self.iwA, self.iwR, self.ilM, self.iwM, self.diff) = args
 
         self.reverts_info = -1
         self.rev_score_info = 0
@@ -442,20 +442,34 @@ def filter_pyc():
                  (NNN - total_revisions) / total_revisions * (time.time() - start) / 3600 ))
         
         for e in revisions:
-            known = k.is_known_as_verified(e.revid)
+            known = k.is_verified_or_known_as_good_or_bad(e.revid)
             if known: break
         if not known: continue
-        k.g[e.revid] = 'known'
+
+        # mark 'known'
+        for e in revisions:
+            known = k.is_verified_or_known_as_good_or_bad(e.revid)
+            if known: k.g[e.revid] = 'known'
+
         for e in revisions:
             full_info = (e.id, e.revid, e.username, e.comment, e.title,
                 e.size, e.utc, e.md5, e.ipedit,
+                e.editRestriction, e.moveRestriction, e.isredirect,
                 e.al, e.bl, e.lo, e.ahi, e.bhi,
-                e.ilA, e.ilR, e.iwA, e.iwR, e.diff)
+                e.ilA, e.ilR, e.iwA, e.iwR, e.ilM, e.iwM, e.diff)
             marshal.dump(full_info, FILE)
             filtered_revisions += 1
         filtered_pages += 1
 
-    print k.g
+    l = []
+    for e, v in k.g.iteritems():
+        if v != 'known': l.append(e)
+    
+    print "Known list:", k.g
+    print "Missing list", sorted(l)
+    print "Known revisions: ", len(k.g)
+    print "Missing revisions total: ", len(l)
+    print "Filtered pages: ", filtered_pages, "Filtered revisions", filtered_revisions
 
 
 def read_reputations():
@@ -1018,7 +1032,7 @@ def analyse_decisiontree(revisions, user_reputations):
     prev = None;
     
     for e in revisions:
-        known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
+        # known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
         score = 0
 
         if(e.comment):
@@ -1049,15 +1063,16 @@ def analyse_decisiontree(revisions, user_reputations):
         if(e.iwR == 50):                                    # large scale removal
             score -= 1            
 
-        if score > 1:       user_reputations[e.username] += 1;  score = 'good'
-        elif score < -10:   user_reputations[e.username] -= 1;  score = 'bad'
+        if score > 1:       user_reputations[e.username] += 1;  #score = 'good'
+        elif score < -10:   user_reputations[e.username] -= 1;  #score = 'bad'
         elif(e.reverts_info == -2):
-            if(score < 0):  user_reputations[e.username] -= 1;  score = 'bad'
+            if(score < 0):  user_reputations[e.username] -= 1;  #score = 'bad'
             else: continue
         else: continue
-        if(not known): continue
-        uncertain = (user_reputations[e.username] > 0 and score == 'bad') or (user_reputations[e.username] < 0 and score == 'good')
-        (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, uncertain, None)
+
+        # if(not known): continue
+        # uncertain = (user_reputations[e.username] > 0 and score == 'bad') or (user_reputations[e.username] < 0 and score == 'good')
+        # (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, uncertain, None)
 
     #for e in revisions:
     #    if(user_reputations[e.username] > 0): score = 'good'
