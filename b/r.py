@@ -155,8 +155,8 @@ import crm114
 
 # known good, known bad revisions
 #import wicow08r_chin_microsoft_annotation as k
-import wicow08r_chin_lincoln_annotation as k
-#import pan_wvc_10_gold as k
+#import wicow08r_chin_lincoln_annotation as k
+import pan_wvc_10_gold as k
 #import k
 
 NNN = 313797035 # total revisions in the dump
@@ -677,7 +677,7 @@ def collect_stats(stats, ids, user_reputations, e, prev, score, uncertain, extra
         if(verified): wikipedia.output("Verified as %s." % mark(verified, lambda x:x[:3]!='bad'))
         if(uncertain): wikipedia.output("Uncertain: %s" % uncertain)
         wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=%d" % revid)
-        if(k.info(revid)): wikipedia.output("Annotation: %s" % (k.info(revid)))
+        if(k.info(revid)): wikipedia.output("Annotation: %s" % str(k.info(revid)))
         if(_verbose_arg): show_diff(e)
         if(extra): extra()
 
