@@ -1,16 +1,14 @@
 #! /usr/bin/env python
-#
-# Example program using irclib.py.
-#
-# This program is free without restrictions; do anything you like with
-# it.
-#
-# Joel Rosdahl <joel@rosdahl.net>
+# Dmitry Chichkov <dchichkov@gmail.com>
 
 import irclib
 import sys, re, cPickle
 from time import time
 import r
+
+from pprint import pprint
+from ordereddict import OrderedDict
+from time import time
 
 
 def on_connect(connection, event):
@@ -70,9 +68,37 @@ def on_pub_message ( connection, e ):
         print "Warning: Regexp does not match (unicode)"
         return
     
+
     d = match.groupdict()
     reputation = user_reputations.get(d['user'])
-    if(reputation != None and reputation < 2):
+
+    if(reputation == None):     # TODO
+        return
+
+    page = d['page']
+    __utc = time()
+
+    if(reputation < 10):
+        d['reputation'] = reputation
+        d['utc'] = __utc
+        d['expire'] = __utc + 60*60
+        __recent[page] = d
+    elif(page in __recent):
+        d['reputation'] = reputation
+        d['utc'] = __utc
+        d['expire'] = __utc + 60
+        __recent[page] = d
+    
+    print(page, reputation)
+    pprint(__recent)
+
+
+    for p, r in __recent.iteritems():
+        if(r['expire'] < __utc):
+            del p
+    pprint(__recent)
+
+    if(c and reputation < 2):
         # print d['user'], '(', reputation , ')', d['page'], d['url']
         c.privmsg("#cvn-wp-en-reputation", ("Reputation: %s. " % reputation)  +  e.arguments()[0])
     return
@@ -92,11 +118,16 @@ r._output_arg = None
 user_reputations = r.read_reputations()
 re_edit = re.compile(r'^C14\[\[^C07(?P<page>.+?)^C14\]\]^C4 (?P<flags>.*?)^C10 ^C02(?P<url>.+?)^C ^C5\*^C ^C03(?P<user>.+?)^C ^C5\*^C \(?^B?(?P<bytes>[+-]?\d+?)^B?\) ^C10(?P<summary>.*)^C'.replace('^B', '\002').replace('^C', '\003').replace('^U', '\037'))
 FILE = open('irc.en.wikipedia.%s.pkl' % time(), 'wb')
+__recent = OrderedDict()
+__utc = time()
+
+
+
 
 # irclib.DEBUG = True
-irc = irclib.IRC()
+irc = irclib.IRC(); c = None; w = None;
 try:
-    c = irc.server().connect("irc.freenode.net", 6667, nickname)
+    # c = irc.server().connect("irc.freenode.net", 6667, nickname)
     w = irc.server().connect("irc.wikimedia.org", 6667, nickname)
     
 except irclib.ServerConnectionError, x:
@@ -112,13 +143,13 @@ try:
     irc.process_forever()
     
 except KeyboardInterrupt:
-    c.quit("Ctrl-C at console")
-    w.quit("Ctrl-C at console")
+    if c: c.quit("Ctrl-C at console")
+    if w: w.quit("Ctrl-C at console")
     print "Quit IRC."
 
 except Exception, e:
-    c.quit("Exception")
-    w.quit("Exception")
+    if c: c.quit("Exception")
+    if w: w.quit("Exception")
     print("%s: %s" % (e.__class__.__name__, e.args))
     raise 
  
