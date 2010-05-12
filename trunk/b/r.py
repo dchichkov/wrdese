@@ -1166,7 +1166,7 @@ def main():
         if arg.startswith('-analyze'): _analyze_arg = True
  
 
-    if(not pattern_arg and not _pyc_arg):            # work: lightblue lightgreen lightpurple lightred
+    if(not pattern_arg and not _pyc_arg and not _reputations_arg):            # work: lightblue lightgreen lightpurple lightred
         wikipedia.output('Usage: ./r.py \03{lightblue}-xml:\03{default}path/Wikipedia-Dump-*.xml.7z -output:Wikipedia-Dump.full -compute-pyc')
         wikipedia.output('     : ./r.py \03{lightblue}-pyc:\03{default}path/Wikipedia-Dump.full -analyze')
         return
