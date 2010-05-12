@@ -485,11 +485,11 @@ def read_reputations():
         raise
     except EOFError, e:
         wikipedia.output("Done reading %s. Read time: %f. Total users: %d" % (_reputations_arg, time.time() - start, len(user_reputations)))
-
     if(_output_arg):
+        wikipedia.output("Filtering reputations <0 or >10")
         FILE = open(_output_arg, 'wb')
         for u, r in user_reputations.iteritems():
-            marshal.dump((u, r), FILE)
+            if(r < 0 or r > 10): marshal.dump((u, r), FILE)
 
     return user_reputations
 
