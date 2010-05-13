@@ -1,0 +1,52 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
+  <html>
+  <head> <title>Example Style Settings</title> </head>
+
+<style type="text/css" title="currentStyle">
+  @import "datatables/media/css/demo_table.css";
+</style>
+
+<script type="text/javascript"
+    language="javascript"
+         src="datatables/media/js/jquery.js">
+</script>
+<script type="text/javascript"
+    language="javascript"
+         src="datatables/media/js/jquery.dataTables.js">
+</script>
+
+<script type="text/javascript" charset="utf-8">
+  $(document).ready(function() {
+    $('#table_here').dataTable({
+        "bProcessing": true,
+        "bServerSide": true,
+        "sAjaxSource": "w",
+        "fnServerData": function (sSource, aoData, fnCallback) {
+            $.ajax ( {
+              "dataType": 'json',
+              "type": "POST",
+              "url": sSource,
+              "data": aoData,
+              "success": fnCallback
+            } );
+         }
+     } );
+  } );
+</script>
+
+
+<body>  
+	<div>
+	<table cellspacing="0" border="0" class="display" id="table_here">
+	        <thead>
+	                <tr>
+	                        <th width="20%">Name</th>
+	                        <th width="25%">Gender</th>
+	                </tr>
+	        </thead>
+	        <tbody>
+	        </tbody>
+	</table>
+	</div>
+</body>
+</html>

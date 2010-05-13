@@ -1,5 +1,6 @@
 # Create your views here.
 
+import whelf.settings as settings
 from django.http import HttpResponse
 from django.utils import simplejson
 from django.core import serializers
@@ -8,7 +9,7 @@ from django.core import serializers
 def index(request):
     return HttpResponse("Hello, world. You're at the poll index.")
 
-def ajax_table(request):
+def web(request):
     if settings.DEBUG:
         print 'iDisplayStart: %s' % request.POST.get('iDisplayStart','')
         print 'iDisplayLength: %s' % request.POST.get('iDisplayLength','')
@@ -19,8 +20,12 @@ def ajax_table(request):
         print 'sEcho: %s' % request.POST.get('sEcho','')
     json = simplejson.dumps({
         'sEcho': request.POST.get('sEcho','1'),
-        'iTotalRecords': 2,
-        'iTotalDisplayRecords': 2,
-        'aaData': [['mark','m'],['nicki','f']]})
+        'iTotalRecords': 100,
+        'iTotalDisplayRecords': 100,
+        'aaData': [['mark','m']] * 100})
     return HttpResponse(json, mimetype='application/json')
 
+
+def irc(request):
+    if settings.DEBUG:
+        print 'DEBUG POST: %s' % request.POST

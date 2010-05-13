@@ -6,7 +6,11 @@ from django.conf.urls.defaults import *
 
 urlpatterns = patterns('',
     # Example:
-    (r'^$', 'w.views.index'),
+    (r'^w$', 'w.views.web'),
+    (r'^i$', 'w.views.irc'),
+
+    (r'^(?P<path>.*)$', 'django.views.static.serve',
+        {'document_root': './media'}),
 
     # Uncomment the admin/doc line below and add 'django.contrib.admindocs' 
     # to INSTALLED_APPS to enable admin documentation:
