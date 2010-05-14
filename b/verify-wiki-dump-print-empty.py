@@ -3,23 +3,33 @@
 
 
 """
+REQ: pywikipedia (>= r8139, May 2010) in your PYTHONPATH, configured and running
+     http://pywikipediabot.sourceforge.net/
+
+Usage: verify-wiki-dump-print-empty.py enwiki-20100312-pages-meta-history.xml.7z
 """
 
-__version__='$Id: .py 7909 2010-02-05 06:42:52Z Dc987 $'
+
+__license__ = """
+Copyright (C) 2010 Dmitry Chichkov.
+
+This work is licensed under the Creative Commons Attribution-Share Alike 3.0
+Unported License. To view a copy of this license, visit
+http://creativecommons.org/licenses/by-sa/3.0/ or send a letter to
+Creative Commons, 171 Second Street, Suite 300, San Francisco, California, 94105, USA.
+"""
+
+__version__='$Id: verify-wiki-dump-print-empty.py 7909 2010-02-05 06:42:52Z Dc987 $'
 
 
-# pywikipedia (trunk 2010/03/15) in your PYTHONPATH, configured and running 
+# pywikipedia (>= r8139) in your PYTHONPATH, configured and running 
 import wikipedia, xmlreader, time, sys
-NNN = 313797035 
+NNN = 313797035  # total number of revisions number (used for ETA calculations)
 
 
 def main():
-#    _xml1_arg = None; _xml2_arg = None
-#    for arg in wikipedia.handleArgs():
-#        if arg.startswith('-xml1') and len(arg) > 6: _xml1_arg = arg[6:]
-#        if arg.startswith('-xml2') and len(arg) > 6: _xml2_arg = arg[6:]
     if len(sys.argv) < 2:
-        print "Usage: verify-wiki-dump.py enwiki-20100312-pages-meta-history.xml.7z"
+        print "Usage: verify-wiki-dump-print-empty.py enwiki-20100312-pages-meta-history.xml.7z"
         sys.exit(1)
 
     _xml1_arg = sys.argv[1];
@@ -40,14 +50,10 @@ def main():
         if(e.id != bid):          # next page....
             bid = e.id; drt = (time.time() - start) / 3600;
             wikipedia.output("N = %d, N_empty = %d, T %f ETA %f : %s %s %s" %
-                (N, N_empty, drt, (NNN - N) / N * drt, e.id, e.revisionid, e.title))
+                (N, N_empty, drt, (NNN - N) * drt / N, e.id, e.revisionid, e.title))
             
     wikipedia.output("%f seconds, N = %d, N_empty = %d" % (time.time() - start, N, N_empty))
 
 
 if __name__ == "__main__":
-#    try:
-        main()
-#    finally:
-#        wikipedia.stopme()
-
+    main()
