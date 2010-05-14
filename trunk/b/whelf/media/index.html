@@ -3,13 +3,13 @@
   <head> <title>Example Style Settings</title> </head>
 
 <style type="text/css" title="currentStyle">
-  @import "datatables/media/css/demo_table.css";
+  @import "m/datatables/media/css/demo_table.css";
   table td {white-space: nowrap;}
 </style>
 
-<script type="text/javascript" language="javascript" src="datatables/media/js/jquery.js"></script>
-<script type="text/javascript" language="javascript" src="datatables/media/js/jquery.dataTables.js"></script>
-<script type="text/javascript" language="javascript" src="js/jquery.timeFormat.js"></script>
+<script type="text/javascript" language="javascript" src="m/datatables/media/js/jquery.js"></script>
+<script type="text/javascript" language="javascript" src="m/datatables/media/js/jquery.dataTables.js"></script>
+<script type="text/javascript" language="javascript" src="m/js/jquery.timeFormat.js"></script>
 
 <script type="text/javascript" charset="utf-8">
 	var t;
@@ -46,12 +46,12 @@
                             var $cell=$('td:eq(3)', nRow);
                             $cell.html('<a href="' + $cell.text() + ' " target="_blank">diff...</a>');
 							$cell.attr("alt", page)
-							$cell.click(function() {$.post("c", $(this).attr("alt"));});
+							$cell.click(function() {$.post("s/c", $(this).attr("alt"));});
                             return nRow;
                     },
         "bProcessing": false,
         "bServerSide": true,
-        "sAjaxSource": "w",
+        "sAjaxSource": "s/w",
         "fnServerData": function (sSource, aoData, fnCallback) {
             $.ajax ( {
               "dataType": 'json',

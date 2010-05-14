@@ -28,7 +28,7 @@ def on_pub_message ( connection, e ):
     # print e.source().split ( '!' ) [ 0 ] + ': ' + e.arguments()[0]
     # sys.stdout.flush();
     cPickle.dump(e.arguments()[0], FILE)
-    c.request('PUT', '/i', e.arguments()[0], {'CONTENT-TYPE' : 'octet/stream'})
+    c.request('PUT', '/s/i', e.arguments()[0], {'CONTENT-TYPE' : 'octet/stream'})
     print c.getresponse()
     
 
@@ -39,16 +39,20 @@ def on_disconnect(connection, event):
 
 
 if __name__ == "__main__":
+    port = '8080'
+    if(len(sys.argv) > 2):
+        port = sys.argv[2]
+
     # test mode
-    if len(sys.argv) == 2:        
+    if len(sys.argv) > 1:        
         try:
-            c = httplib.HTTPConnection('localhost:8080')
+            c = httplib.HTTPConnection('localhost:' + port)
             FILE = open(sys.argv[1], 'rb')            
             while True:
-                print cPickle.load(FILE)
-                c.request('PUT', '/i', cPickle.load(FILE), {'CONTENT-TYPE' : 'octet/stream'})
+                # print cPickle.load(FILE)
+                c.request('PUT', '/s/i', cPickle.load(FILE), {'CONTENT-TYPE' : 'octet/stream'})
                 c.getresponse().read()
-                sleep(0.1)
+                sleep(0.01)
                 #raw_input(c.getresponse().read())
         except EOFError, e: pass            
         sys.exit(0)
@@ -66,7 +70,7 @@ if __name__ == "__main__":
     c = None; w = None;
     try:
         w = irc.server().connect("irc.wikimedia.org", 6667, nickname)
-        c = httplib.HTTPConnection('localhost:8080')
+        c = httplib.HTTPConnection('localhost:' + port)
         FILE = open('irc.en.wikipedia.%s.pkl' % time(), 'wb')
         
     except irclib.ServerConnectionError, x:
