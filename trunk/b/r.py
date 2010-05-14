@@ -401,6 +401,31 @@ class FullInfo(object):
         self.reverts_info = -1
         self.rev_score_info = 0
 
+def read_pyc_count_empty():
+    wikipedia.output("Reading %s..." % _pyc_arg)
+    FILE = open(_pyc_arg, 'rb')
+    start = time.time()
+    total_revisions = 0; empty_revisions = 0;
+    try:
+        while True:
+            e = FullInfo(marshal.load(FILE))     # load first in order to
+            if(e.size == 0): empty_revisions += 1; print("%d, %d" % (e.id, e.revid))
+            total_revisions += 1
+
+            if(total_revisions%100000 == 0):
+                wikipedia.output("Revisions %d. Empty Revisions %d. Analysis time: %f. ETA %f Hours." %
+                    (total_revisions, empty_revisions, time.time() - start,
+                    (NNN - total_revisions) / total_revisions * (time.time() - start) / 3600 ))
+
+    except IOError, e:
+        raise
+    except EOFError, e:
+        wikipedia.output("Done reading %s. Read time: %f." % (_pyc_arg, time.time() - start))
+
+    wikipedia.output("Revisions %d. Empty Revisions %d. Analysis time: %f. ETA %f Hours." %
+         (total_revisions, empty_revisions, time.time() - start,
+         (NNN - total_revisions) / total_revisions * (time.time() - start) / 3600 ))
+
 
 
 def read_pyc():
@@ -473,6 +498,9 @@ def filter_pyc():
 
 
 def read_reputations():
+    import redis
+    rds = redis.Redis()
+    print rds.info()
     wikipedia.output("Reading %s..." % _reputations_arg)
     FILE = open(_reputations_arg, 'rb')
     user_reputations = defaultdict(int)
@@ -480,7 +508,8 @@ def read_reputations():
     try:
         while True:
             (u,r) = marshal.load(FILE)
-            user_reputations[u] += r
+            if(u): rds.set(u.replace(' ', '_').encode('utf-8'), r)
+            #user_reputations[u] += r
     except IOError, e:
         raise
     except EOFError, e:
@@ -490,6 +519,7 @@ def read_reputations():
         FILE = open(_output_arg, 'wb')
         for u, r in user_reputations.iteritems():
             if(r < 0 or r > 10): marshal.dump((u, r), FILE)
+    rds.info()
 
     return user_reputations
 
@@ -1147,7 +1177,7 @@ def main():
     global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _reputations_arg
     pattern_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None;
     _display_pyc_arg = None; _compute_reputations_arg = None;_output_arg = None; _analyze_arg = None
-    _reputations_arg = None; _username_arg = None; _filter_pyc_arg = None; 
+    _reputations_arg = None; _username_arg = None; _filter_pyc_arg = None; _count_empty_arg = None
     for arg in wikipedia.handleArgs():
         if arg.startswith('-xml') and len(arg) > 5: pattern_arg = arg[5:]
         if arg.startswith('-pyc') and len(arg) > 5: _pyc_arg = arg[5:]
@@ -1163,6 +1193,7 @@ def main():
         if arg.startswith('-compute-reputations'): _compute_reputations_arg = True
         if arg.startswith('-compute-pyc'): _compute_pyc_arg = True
         if arg.startswith('-display-pyc'): _display_pyc_arg = True
+        if arg.startswith('-count-empty'): _count_empty_arg = True
         if arg.startswith('-analyze'): _analyze_arg = True
  
 
@@ -1182,6 +1213,7 @@ def main():
 
     # Precompiled .pyc (.full) files input
     if(_display_pyc_arg): display_pyc(); return
+    if(_count_empty_arg): read_pyc_count_empty(); return
     if(_filter_pyc_arg): filter_pyc(); return
     if(_compute_reputations_arg):
         compute_reputations_dictionary()
