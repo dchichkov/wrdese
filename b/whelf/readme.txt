@@ -1,4 +1,5 @@
-http://www.assembla.com/code/datatables_demo/subversion/nodes/trunk/1_6_2/datatables_demo?rev=2
+Performance: http://lsimons.wordpress.com/2009/03/15/getting-a-feel-for-the-performance-of-mod_wsgi/
+
 
 
 LOG RAW SOURCE DATA, NOT SOME POST PROCESSED JUNK

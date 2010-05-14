@@ -147,8 +147,9 @@ import pprint, ddiff
 from collections import defaultdict, namedtuple
 from ordereddict import OrderedDict
 
-# pywikipedia (trunk 2010/03/15) in your PYTHONPATH, configured and running 
+# pywikipedia (trunk 2010/03/15) in your PYTHONPATH, configured and running
 import wikipedia, pagegenerators, xmlreader, editarticle
+
 
 # CRM114, crm.py module by Sam Deane
 import crm114   
@@ -498,9 +499,6 @@ def filter_pyc():
 
 
 def read_reputations():
-    import redis
-    rds = redis.Redis()
-    print rds.info()
     wikipedia.output("Reading %s..." % _reputations_arg)
     FILE = open(_reputations_arg, 'rb')
     user_reputations = defaultdict(int)
@@ -508,8 +506,7 @@ def read_reputations():
     try:
         while True:
             (u,r) = marshal.load(FILE)
-            if(u): rds.set(u.replace(' ', '_').encode('utf-8'), r)
-            #user_reputations[u] += r
+            user_reputations[u] += r
     except IOError, e:
         raise
     except EOFError, e:
@@ -519,8 +516,6 @@ def read_reputations():
         FILE = open(_output_arg, 'wb')
         for u, r in user_reputations.iteritems():
             if(r < 0 or r > 10): marshal.dump((u, r), FILE)
-    rds.info()
-
     return user_reputations
 
 

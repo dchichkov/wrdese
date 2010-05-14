@@ -5,24 +5,27 @@ from django.http import HttpResponse
 from django.utils import simplejson
 from django.core import serializers
 
-
-import r
+import marshal, re
 from ordereddict import OrderedDict
+from collections import defaultdict
 from time import time
-
-#r._reputations_arg = "/home/dmitry/b/p/ratings-pan-wvc-10.merged"
-r._reputations_arg = "/home/dmitry/b/p/filtered.reputations-enwiki-20100130.none.full"
-r._output_arg = None
-user_reputations = r.read_reputations()
-__recent = OrderedDict()
-__utc = time()
-
-
-import re
 from pprint import pprint
-re_edit = re.compile(r'^C14\[\[^C07(?P<page>.+?)^C14\]\]^C4 (?P<flags>.*?)^C10 ^C02(?P<url>.+?)^C ^C5\*^C ^C03(?P<user>.+?)^C ^C5\*^C \(?^B?(?P<bytes>[+-]?\d+?)^B?\) ^C10(?P<summary>.*)^C'.replace('^B', '\002').replace('^C', '\003').replace('^U', '\037'))
 
-print __utc
+
+def read_reputations(_reputations_arg):
+    print("Reading %s..." % _reputations_arg)
+    FILE = open(_reputations_arg, 'rb')
+    user_reputations = defaultdict(int)
+    start = time()
+    try:
+        while True:
+            (u,r) = marshal.load(FILE)
+            user_reputations[u] += r
+    except IOError, e:
+        raise
+    except EOFError, e:
+        print("Done reading %s. Read time: %f. Total users: %d" % (_reputations_arg, time() - start, len(user_reputations)))
+    return user_reputations
 
 
 
@@ -72,23 +75,23 @@ def irc(request):
     
     
     d = match.groupdict()
-    reputation = user_reputations.get(d['user'])
+    reputation = __user_reputations.get(d['user'])
     if(reputation == None):     # TODO
         return HttpResponse()
     
     
     page = d['page']
-    __utc = time()
+    utc = time()
     if(reputation < 1):
         d['reputation'] = reputation
-        d['utc'] = __utc
-        d['expire'] = __utc + 1000
+        d['utc'] = utc
+        d['expire'] = utc + 1000
         d['views'] = 0
         __recent[page] = d
     elif(page in __recent):
         d['reputation'] = reputation
-        d['utc'] = __utc
-        d['expire'] = __utc + 60
+        d['utc'] = utc
+        d['expire'] = utc + 60
         d['views'] = 0
         __recent[page] = d
     
@@ -96,8 +99,17 @@ def irc(request):
     # pprint(__recent)
 
     for p, r in __recent.iteritems():
-        if(r['expire'] < __utc):
+        if(r['expire'] < utc):
             del __recent[p]
     
     return HttpResponse()
+
+
+
+
+# "/home/dmitry/b/p/filtered.reputations-enwiki-20100130.none.full"
+__user_reputations = read_reputations("/home/dmitry/b/p/ratings-pan-wvc-10.merged")
+__recent = OrderedDict()
+
+re_edit = re.compile(r'^C14\[\[^C07(?P<page>.+?)^C14\]\]^C4 (?P<flags>.*?)^C10 ^C02(?P<url>.+?)^C ^C5\*^C ^C03(?P<user>.+?)^C ^C5\*^C \(?^B?(?P<bytes>[+-]?\d+?)^B?\) ^C10(?P<summary>.*)^C'.replace('^B', '\002').replace('^C', '\003').replace('^U', '\037'))
 
