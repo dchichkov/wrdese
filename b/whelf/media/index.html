@@ -4,21 +4,52 @@
 
 <style type="text/css" title="currentStyle">
   @import "datatables/media/css/demo_table.css";
+  table td {white-space: nowrap;}
 </style>
 
-<script type="text/javascript"
-    language="javascript"
-         src="datatables/media/js/jquery.js">
-</script>
-<script type="text/javascript"
-    language="javascript"
-         src="datatables/media/js/jquery.dataTables.js">
-</script>
+<script type="text/javascript" language="javascript" src="datatables/media/js/jquery.js"></script>
+<script type="text/javascript" language="javascript" src="datatables/media/js/jquery.dataTables.js"></script>
+<script type="text/javascript" language="javascript" src="js/jquery.timeFormat.js"></script>
 
 <script type="text/javascript" charset="utf-8">
+	var t;
+	
+	function ellipsis(text, n) {
+    if(text.length>n)
+        return text.substring(0,n)+"...";
+    else
+        return text;	
+	}
+
   $(document).ready(function() {
-    $('#table_here').dataTable({
-        "bProcessing": true,
+  	t = $('#table_here').dataTable({
+		
+		"fnRowCallback": function( nRow, aData, iDisplayIndex ) {
+                            var $cell=$('td:eq(0)', nRow);
+                            $cell.text( $.timeFormat($cell.text()) );
+
+							
+                            var $cell=$('td:eq(1)', nRow);
+							if($cell.text() < -5) $cell.css({fontWeight:"bold", color:"#FF0000"}); 
+							else if($cell.text() < 0) $cell.css("color", "#FF0000");
+							else if($cell.text() > 100) $cell.css("color", "#348017");
+						
+							
+                            var $cell=$('td:eq(4)', nRow);
+                            $cell.text(ellipsis($cell.text(),30));
+
+							
+                            var $cell=$('td:eq(5)', nRow);
+							page = $cell.text()
+                            $cell.text(ellipsis($cell.text(),30));
+							
+                            var $cell=$('td:eq(3)', nRow);
+                            $cell.html('<a href="' + $cell.text() + ' " target="_blank">diff...</a>');
+							$cell.attr("alt", page)
+							$cell.click(function() {$.post("c", $(this).attr("alt"));});
+                            return nRow;
+                    },
+        "bProcessing": false,
         "bServerSide": true,
         "sAjaxSource": "w",
         "fnServerData": function (sSource, aoData, fnCallback) {
@@ -31,6 +62,9 @@
             } );
          }
      } );
+	 t.fnDraw();
+	 window.setInterval(function() { t.fnDraw();}, 1000);
+
   } );
 </script>
 
@@ -40,8 +74,13 @@
 	<table cellspacing="0" border="0" class="display" id="table_here">
 	        <thead>
 	                <tr>
-	                        <th width="20%">Name</th>
-	                        <th width="25%">Gender</th>
+	                        <th width="10%">Time</th>
+	                        <th width="5%">Trust</th>
+	                        <th width="3%">Views</th>
+	                        <th width="3%">Url</th>
+	                        <th width="10%">User</th>
+	                        <th width="20%">Page</th>
+	                        <th width="50%">Summary</th>
 	                </tr>
 	        </thead>
 	        <tbody>

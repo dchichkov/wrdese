@@ -8,6 +8,7 @@ urlpatterns = patterns('',
     # Example:
     (r'^w$', 'w.views.web'),
     (r'^i$', 'w.views.irc'),
+    (r'^c$', 'w.views.click'),
 
     (r'^(?P<path>.*)$', 'django.views.static.serve',
         {'document_root': './media'}),
