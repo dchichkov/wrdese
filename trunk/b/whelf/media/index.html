@@ -2,17 +2,23 @@
   <html>
   <head> <title>Example Style Settings</title> </head>
 
+<!-- link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.1/themes/cupertino/jquery-ui.css" type="text/css"/-->
+
 <style type="text/css" title="currentStyle">
-  @import "m/datatables/media/css/demo_table.css";
+  @import "m/datatables/media/css/demo_table_jui.css";
+  @import "http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.1/themes/ui-lightness/jquery-ui.css";
   table td {white-space: nowrap;}
 </style>
 
-<script type="text/javascript" language="javascript" src="m/datatables/media/js/jquery.js"></script>
+<script type="text/javascript" language="javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+<script type="text/javascript" language="javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.1/jquery-ui.min.js"></script>
 <script type="text/javascript" language="javascript" src="m/datatables/media/js/jquery.dataTables.js"></script>
 <script type="text/javascript" language="javascript" src="m/js/jquery.timeFormat.js"></script>
+<script type="text/javascript" language="javascript" src="m/js/jquery.cookie.js"></script>
+<script type="text/javascript" language="javascript" src="m/js/jquery.Guid.js"></script>
 
 <script type="text/javascript" charset="utf-8">
-	var t;
+	var t, tid;
 	
 	function ellipsis(text, n) {
     if(text.length>n)
@@ -21,7 +27,34 @@
         return text;	
 	}
 
+    function checkTrust()
+    {
+        tid = $.cookie('tid_cookie')
+        if(tid)
+        {
+            $.get("s/tid", function(data){
+                alert( "Your ip: " + data.ip);
+            });
+        }
+
+        // $.cookie('tid_cookie', 'the_value'); // set cookie
+        // $.cookie('tid_cookie', 'the_value', { expires: 7 }); // set cookie with an expiration date seven days in the future
+        // $.cookie('the_cookie', '', { expires: -1 }); // delete cookie
+
+        var $dialog = $('<div></div>')
+            .html('Establishing connection...<br>' + jQuery.Guid.New())
+            .dialog({title: 'Welcome.'});
+        
+         $.get("s/ip", function(data){
+            alert( "Your ip: " + data.ip);
+        });
+
+    }
+
+
   $(document).ready(function() {
+    checkTrust();
+
   	t = $('#table_here').dataTable({
 		
 		"fnRowCallback": function( nRow, aData, iDisplayIndex ) {
@@ -49,6 +82,8 @@
 							$cell.click(function() {$.post("s/c", $(this).attr("alt"));});
                             return nRow;
                     },
+        "bJQueryUI": true,
+        // "sPaginationType": "full_numbers",
         "bProcessing": false,
         "bServerSide": true,
         "sAjaxSource": "s/w",
@@ -63,7 +98,7 @@
          }
      } );
 	 t.fnDraw();
-	 window.setInterval(function() { t.fnDraw();}, 1000);
+	 window.setInterval(function() { t.fnDraw();}, 2000);
 
   } );
 </script>

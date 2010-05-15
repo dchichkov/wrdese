@@ -1,0 +1,141 @@
+S'\x0314[[\x0307Japanzine\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201137&oldid=354908446\x03 \x035*\x03 \x0303WhisperToMe\x03 \x035*\x03 (+45) \x0310\x03'
+p1
+.S'\x0314[[\x0307List of Glenn Martin, DDS episodes\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201138&oldid=362201069\x03 \x035*\x03 \x0303Agent4453\x03 \x035*\x03 (+1) \x0310/* Season 1: 2009-2010 */ \x03'
+p1
+.S'\x0314[[\x0307Ray Henault\x0314]]\x034 MB\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201139&oldid=361837208\x03 \x035*\x03 \x0303FrescoBot\x03 \x035*\x03 (+1) \x0310Bot: fixing section wikilinks\x03'
+p1
+.S'\x0314[[\x0307Strawberry Fields Forever\x0314]]\x034 M\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201140&oldid=362139468\x03 \x035*\x03 \x0303Hyacinth\x03 \x035*\x03 (-2) \x0310-->[[Cadence (music)#Deceptive cadence|deceptive cadence]]\x03'
+p1
+.S'\x0314[[\x0307NOFX\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201141&oldid=361802602\x03 \x035*\x03 \x0303173.3.85.24\x03 \x035*\x03 (+345) \x0310/* Relationship with the media */ \x03'
+p1
+.S'\x0314[[\x0307Wikipedia:Version 1.0 Editorial Team/Macintosh articles by quality log\x0314]]\x034 B\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201142&oldid=362201132\x03 \x035*\x03 \x0303WP 1.0 bot\x03 \x035*\x03 (-92) \x0310Log for May 14, 2010 (2G r298) [chunk 18 of 27]\x03'
+p1
+.S'\x0314[[\x0307Wikipedia:Administrator intervention against vandalism\x0314]]\x034 MB\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201143&oldid=362201015\x03 \x035*\x03 \x0303HBC AIV helperbot7\x03 \x035*\x03 (-267) \x03101 IP left. rm [[Special:Contributions/IShallSpam|IShallSpam]] (blocked indef by [[User:Explicit|Explicit]] [[User:HBC AIV helperbot/Legend|(ACB)]]). \x03'
+p1
+.S'\x0314[[\x0307Forty Fort, Pennsylvania\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201144&oldid=360721096\x03 \x035*\x03 \x030368.82.54.25\x03 \x035*\x03 (+181) \x0310/* History */ \x03'
+p1
+.S'\x0314[[\x0307Category:String manipulation templates\x0314]]\x034 MB\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201145&oldid=320354569\x03 \x035*\x03 \x0303TXiKiBoT\x03 \x035*\x03 (+62) \x0310robot Adding: [[pt:Categoria:!Predefini\xc3\xa7\xc3\xb5es de manipula\xc3\xa7\xc3\xa3o de strings]]\x03'
+p1
+.S'\x0314[[\x0307One Less Lonely Girl\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201146&oldid=362186495\x03 \x035*\x03 \x0303Candyo32\x03 \x035*\x03 (+0) \x0310/* Chart performance */ \x03'
+p1
+.S'\x0314[[\x0307User talk:75.56.58.246\x0314]]\x034 N\x0310 \x0302http://en.wikipedia.org/w/index.php?oldid=362201147&rcid=372748361\x03 \x035*\x03 \x0303Dl2000\x03 \x035*\x03 (+603) \x0310uw-unsor\x03'
+p1
+.S'\x0314[[\x0307Computational verb logic\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201148&oldid=362200768\x03 \x035*\x03 \x030359.57.204.10\x03 \x035*\x03 (+94) \x0310/* Computational verb similarity */ \x03'
+p1
+.S'\x0314[[\x0307User:MaW Film Works\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201149&oldid=362200814\x03 \x035*\x03 \x0303AgnosticPreachersKid\x03 \x035*\x03 (-11) \x0310Undid revision 362200814 by [[Special:Contributions/AgnosticPreachersKid|AgnosticPreachersKid]] ([[User talk:AgnosticPreachersKid|talk]])\x03'
+p1
+.S'\x0314[[\x0307Wikipedia:Version 1.0 Editorial Team/Macintosh articles by quality log\x0314]]\x034 B\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201150&oldid=362201142\x03 \x035*\x03 \x0303WP 1.0 bot\x03 \x035*\x03 (-359) \x0310Log for May 14, 2010 (2G r298) [chunk 17 of 27]\x03'
+p1
+.S'\x0314[[\x0307Larry Doyle (baseball)\x0314]]\x034 MB\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201151&oldid=334282388\x03 \x035*\x03 \x0303FrescoBot\x03 \x035*\x03 (+2) \x0310Bot: fixing section wikilinks\x03'
+p1
+.S'\x0314[[\x0307Special:Log/newusers\x0314]]\x034 create\x0310 \x0302\x03 \x035*\x03 \x0303Gavengrod\x03 \x035*\x03  \x0310new user account\x03'
+p1
+.S'\x0314[[\x0307Faith in the Earth\x0314]]\x034 M\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201152&oldid=361849906\x03 \x035*\x03 \x0303Gregbard\x03 \x035*\x03 (+34) \x0310Adding category [[:Category:Friedrich Nietzsche]] (using [[WP:HOTCAT|HotCat]])\x03'
+p1
+.S'\x0314[[\x0307Sale of the Century\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201153&oldid=362199370\x03 \x035*\x03 \x0303NJM2010\x03 \x035*\x03 (+121) \x0310\x03'
+p1
+.S"\x0314[[\x0307Category:Harrah's Entertainment\x0314]]\x034 M\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201154&oldid=280562636\x03 \x035*\x03 \x0303Vegaswikian\x03 \x035*\x03 (-46) \x0310More specific category\x03"
+p1
+.S'\x0314[[\x0307The Vampire Diaries\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201155&oldid=362200811\x03 \x035*\x03 \x0303Amalik914\x03 \x035*\x03 (+78) \x0310\x03'
+p1
+.S'\x0314[[\x0307George O. Gore II\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201156&oldid=359702859\x03 \x035*\x03 \x0303Sepguilherme\x03 \x035*\x03 (+0) \x0310\x03'
+p1
+.S'\x0314[[\x0307Internet meme\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201157&oldid=362015948\x03 \x035*\x03 \x0303173.171.240.37\x03 \x035*\x03 (-288) \x0310Removed "Inadvertent celebrity" section for lack of content and reference to "Christina Aguilera\'s chocolate starfish."\x03'
+p1
+.S"\x0314[[\x0307Talk:David Letterman\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201158&oldid=360314377\x03 \x035*\x03 \x0303All Hallow's Wraith\x03 \x035*\x03 (+513) \x0310reply\x03"
+p1
+.S'\x0314[[\x0307Adelaide Productions\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201159&oldid=361046973\x03 \x035*\x03 \x030376.189.162.7\x03 \x035*\x03 (+76) \x0310/* Inherited material */ \x03'
+p1
+.S'\x0314[[\x0307Wikipedia:Version 1.0 Editorial Team/Macintosh articles by quality log\x0314]]\x034 B\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201160&oldid=362201150\x03 \x035*\x03 \x0303WP 1.0 bot\x03 \x035*\x03 (+115) \x0310Log for May 14, 2010 (2G r298) [chunk 16 of 27]\x03'
+p1
+.S'\x0314[[\x0307Showdown (AFL)\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201161&oldid=361748107\x03 \x035*\x03 \x0303121.223.168.1\x03 \x035*\x03 (-2) \x0310/* Showdown XXI - XXVIII */ \x03'
+p1
+.S'\x0314[[\x0307Prisoner of war\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201162&oldid=362180201\x03 \x035*\x03 \x0303Caden\x03 \x035*\x03 (+181) \x0310/* Further reading */Re-insert edit that is on topic \x03'
+p1
+.S'\x0314[[\x0307Kansas\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201163&oldid=361729554\x03 \x035*\x03 \x0303Andy120290\x03 \x035*\x03 (+169) \x0310Added legislature to infobox.\x03'
+p1
+.S'\x0314[[\x0307Near-field scanning optical microscope\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201164&oldid=356589515\x03 \x035*\x03 \x0303Srleffler\x03 \x035*\x03 (+4) \x0310/* Instrumentation and standard setup */ [[stray light]]\x03'
+p1
+.S'\x0314[[\x0307SAVAK\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201165&oldid=360421082\x03 \x035*\x03 \x0303202.124.75.12\x03 \x035*\x03 (+22) \x0310\x03'
+p1
+.S'\x0314[[\x0307Goldwyn Pictures\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201166&oldid=354365735\x03 \x035*\x03 \x0303Fastily\x03 \x035*\x03 (-1) \x0310adjust image name\x03'
+p1
+.S'\x0314[[\x0307Philippine Air Force\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201167&oldid=362200870\x03 \x035*\x03 \x0303180.192.3.18\x03 \x035*\x03 (-29) \x0310/* Aircraft inventory */ \x03'
+p1
+.S'\x0314[[\x0307Fred Singer\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201168&oldid=362200925\x03 \x035*\x03 \x0303SlimVirgin\x03 \x035*\x03 (+235) \x0310/* Further reading */ + another one\x03'
+p1
+.S'\x0314[[\x0307Witchblade\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201169&oldid=362201103\x03 \x035*\x03 \x030376.90.181.132\x03 \x035*\x03 (+0) \x0310/* The Thriteen Artifacts */ \x03'
+p1
+.S'\x0314[[\x0307User talk:Yodogword\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201170&oldid=362199288\x03 \x035*\x03 \x0303Spitfire19\x03 \x035*\x03 (+582) \x0310Final warning: Not adhering to neutral point of view on [[Milwaukee Brewers]]. ([[WP:TW|TW]])\x03'
+p1
+.S'\x0314[[\x0307Water monitor\x0314]]\x034 M\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201171&oldid=362164303\x03 \x035*\x03 \x0303Mokele\x03 \x035*\x03 (+2458) \x0310Reverted 4 edits by [[Special:Contributions/96.243.131.15|96.243.131.15]] identified as [[WP:VAND|vandalism]] to last revision by [[User:119.74.210.26|119.74.210.26]]. ([[WP:TW|TW]])\x03'
+p1
+.S"\x0314[[\x0307Armond White\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201172&oldid=362060899\x03 \x035*\x03 \x0303GoingBatty\x03 \x035*\x03 (+33) \x0310bad link repair, replaced: ''[[Slate]]'' \xe2\x86\x92 ''[[Slate (magazine)|Slate]]'' (2) using [[Project:AWB|AWB]]\x03"
+p1
+.S'\x0314[[\x0307Bette Davis\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201173&oldid=362195365\x03 \x035*\x03 \x0303Medeis\x03 \x035*\x03 (+18) \x0310/* Comments and criticism */ a matter of culture, not orientation\x03'
+p1
+.S'\x0314[[\x0307Ford Fiesta\x0314]]\x034 M\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201174&oldid=362200951\x03 \x035*\x03 \x0303842U\x03 \x035*\x03 (-19) \x0310\x03'
+p1
+.S'\x0314[[\x0307Wikipedia:Version 1.0 Editorial Team/Macintosh articles by quality log\x0314]]\x034 B\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201175&oldid=362201160\x03 \x035*\x03 \x0303WP 1.0 bot\x03 \x035*\x03 (+19) \x0310Log for May 14, 2010 (2G r298) [chunk 15 of 27]\x03'
+p1
+.S'\x0314[[\x0307Talk:Curp\xc4\x83nu River\x0314]]\x034 M\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201176&oldid=354830890\x03 \x035*\x03 \x0303Kmusser\x03 \x035*\x03 (+10) \x0310cat\x03'
+p1
+.S'\x0314[[\x0307Wikipedia:Sandbox\x0314]]\x034 M\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201177&oldid=362201039\x03 \x035*\x03 \x0303Dc987\x03 \x035*\x03 (+2) \x03104AB96246-AC5F-65E0-EE6B-701A45A83141\x03'
+p1
+.S'\x0314[[\x0307Special:Log/newusers\x0314]]\x034 create\x0310 \x0302\x03 \x035*\x03 \x0303Afghanaim\x03 \x035*\x03  \x0310new user account\x03'
+p1
+.S'\x0314[[\x0307Category:Bass-baritones\x0314]]\x034 MB\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201178&oldid=356301358\x03 \x035*\x03 \x0303TXiKiBoT\x03 \x035*\x03 (+33) \x0310robot Adding: [[pt:Categoria:Baixo-bar\xc3\xadtono]]\x03'
+p1
+.S'\x0314[[\x0307List of programs broadcast by GMA Network\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201179&oldid=362200843\x03 \x035*\x03 \x0303112.203.232.5\x03 \x035*\x03 (+0) \x0310\x03'
+p1
+.S'\x0314[[\x0307Wikipedia:Usernames for administrator attention/Bot\x0314]]\x034 MB\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201180&oldid=362200868\x03 \x035*\x03 \x0303HBC AIV helperbot7\x03 \x035*\x03 (-370) \x03104 users left. rm [[Special:Contributions/IShallSpam|IShallSpam]] (blocked indef by [[User:Explicit|Explicit]] [[User:HBC AIV helperbot/Legend|(ACB)]]).  3 comment(s) removed.\x03'
+p1
+.S'\x0314[[\x0307Hyderabad, India\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201181&oldid=362200981\x03 \x035*\x03 \x0303124.123.55.199\x03 \x035*\x03 (+64) \x0310/* History */ \x03'
+p1
+.S'\x0314[[\x0307Andrews Geyser\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201182&oldid=356764733\x03 \x035*\x03 \x0303Dwalter5\x03 \x035*\x03 (+925) \x0310\x03'
+p1
+.S'\x0314[[\x0307User talk:96.243.131.15\x0314]]\x034 !N\x0310 \x0302http://en.wikipedia.org/w/index.php?oldid=362201183&rcid=372748399\x03 \x035*\x03 \x0303Mokele\x03 \x035*\x03 (+660) \x0310Only warning: Vandalism on [[Water monitor]]. ([[WP:TW|TW]])\x03'
+p1
+.S'\x0314[[\x0307Wikipedia:Version 1.0 Editorial Team/Macintosh articles by quality log\x0314]]\x034 B\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201184&oldid=362201175\x03 \x035*\x03 \x0303WP 1.0 bot\x03 \x035*\x03 (-43) \x0310Log for May 14, 2010 (2G r298) [chunk 14 of 27]\x03'
+p1
+.S'\x0314[[\x0307Book talk:Nobel Prize in Physics\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201185&oldid=361893377\x03 \x035*\x03 \x0303WildBot\x03 \x035*\x03 (+150) \x0310Problems with book (duplicate articles)\x03'
+p1
+.S'\x0314[[\x0307User:Mclucas603\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201186&oldid=362186370\x03 \x035*\x03 \x0303Mclucas603\x03 \x035*\x03 (+161) \x0310/* 3\xc2\xaa Temporada: 2005 - 2006 */ \x03'
+p1
+.S'\x0314[[\x0307Washington, D.C. mayoral election, 2010\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201187&oldid=362201066\x03 \x035*\x03 \x0303Quackslikeaduck\x03 \x035*\x03 (+28) \x0310/* Potential */ fix citation\x03'
+p1
+.S'\x0314[[\x0307Lewis & Clarke (band)\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201188&oldid=362201038\x03 \x035*\x03 \x0303166.137.140.37\x03 \x035*\x03 (+1) \x0310/* Discography */ \x03'
+p1
+.S'\x0314[[\x0307User talk:Fnlayson\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201189&oldid=362030204\x03 \x035*\x03 \x030368.180.27.173\x03 \x035*\x03 (+557) \x0310/* Stryker articles */ \x03'
+p1
+.S'\x0314[[\x0307Mohawk hairstyle\x0314]]\x034 M\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201190&oldid=362088612\x03 \x035*\x03 \x0303Useight\x03 \x035*\x03 (-1) \x0310/* Fauxhawk or faux-hawk */ removed extra period\x03'
+p1
+.S'\x0314[[\x0307List of concert halls\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201191&oldid=362200702\x03 \x035*\x03 \x0303200.131.19.54\x03 \x035*\x03 (-2) \x0310/* South America */ \x03'
+p1
+.S'\x0314[[\x0307User:AlexNewArtBot/UnionismSearchResult\x0314]]\x034 B\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201192&oldid=361635542\x03 \x035*\x03 \x0303AlexNewArtBot\x03 \x035*\x03 (+125) \x0310from bot\x03'
+p1
+.S'\x0314[[\x0307Hogwarts staff\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201193&oldid=361453633\x03 \x035*\x03 \x030372.94.117.235\x03 \x035*\x03 (+62) \x0310/* Argus Filch */ \x03'
+p1
+.S'\x0314[[\x0307The Hit Parade\x0314]]\x034 M\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201194&oldid=351645153\x03 \x035*\x03 \x0303RepublicanJacobite\x03 \x035*\x03 (+3) \x0310/* Songs */ ---Link fix on Burroughs.\x03'
+p1
+.S'\x0314[[\x0307Leo Burnett Worldwide\x0314]]\x034 M\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201195&oldid=359482207\x03 \x035*\x03 \x0303Logical Fuzz\x03 \x035*\x03 (+6) \x0310Repairing links to disambiguation pages - [[Wikipedia:Disambiguation pages with links|You can help!]]\x03'
+p1
+.S'\x0314[[\x0307Talk:La Dehesa\x0314]]\x034 !NM\x0310 \x0302http://en.wikipedia.org/w/index.php?oldid=362201196&rcid=372748412\x03 \x035*\x03 \x0303Ruodyssey\x03 \x035*\x03 (+37) \x0310adding {{WPChile|class=stub|importance=low}}\x03'
+p1
+.S'\x0314[[\x0307Wikipedia:Version 1.0 Editorial Team/Macintosh articles by quality log\x0314]]\x034 B\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201197&oldid=362201184\x03 \x035*\x03 \x0303WP 1.0 bot\x03 \x035*\x03 (+52) \x0310Log for May 14, 2010 (2G r298) [chunk 13 of 27]\x03'
+p1
+.S'\x0314[[\x0307American Airlines accidents and incidents\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201198&oldid=361436613\x03 \x035*\x03 \x0303Anti I A\x03 \x035*\x03 (+183) \x0310/* 2000s */ \x03'
+p1
+.S'\x0314[[\x0307List of films considered the worst\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201199&oldid=362144979\x03 \x035*\x03 \x030367.247.128.13\x03 \x035*\x03 (+1661) \x0310\x03'
+p1
+.S'\x0314[[\x0307Muri, Ranchi\x0314]]\x034 M\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201200&oldid=354939694\x03 \x035*\x03 \x0303Joy1963\x03 \x035*\x03 (+8) \x0310Removed [[:Category:Cities and towns in Jharkhand]]; Adding category [[:Category:Cities and towns in Ranchi district]] (using [[WP:HOTCAT|HotCat]])\x03'
+p1
+.S"\x0314[[\x0307Ian Bremmer\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201201&oldid=362028439\x03 \x035*\x03 \x0303GoingBatty\x03 \x035*\x03 (+50) \x0310bad link repair, replaced: ''[[Slate]]'' \xe2\x86\x92 ''[[Slate (magazine)|Slate]]'' (3) using [[Project:AWB|AWB]]\x03"
+p1
+.S'\x0314[[\x0307Devour\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201202&oldid=352568314\x03 \x035*\x03 \x0303C628\x03 \x035*\x03 (-116) \x0310clean up per MOSDAB; remove non-notable record label\x03'
+p1
+.S'\x0314[[\x0307Leo the Lion (MGM)\x0314]]\x034 \x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201203&oldid=361527589\x03 \x035*\x03 \x0303Fastily\x03 \x035*\x03 (-1) \x0310adjust file name\x03'
+p1
+.S'\x0314[[\x0307Portal:Current events/Wikinews/Today\x0314]]\x034 M\x0310 \x0302http://en.wikipedia.org/w/index.php?diff=362201204&oldid=362194264\x03 \x035*\x03 \x0303Wikinews Importer Bot\x03 \x035*\x03 (+110) \x0310Updating from [[n:Wikinews:Wikinews Importer Bot/Today|Wikinews:Wikinews Importer Bot/Today]]\x03'
+p1
+.

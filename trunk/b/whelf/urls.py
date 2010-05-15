@@ -7,13 +7,13 @@ from django.conf.urls.defaults import *
 
 urlpatterns = patterns('',
     # Example:
-    (r'^w$', 'w.views.web'),
-    (r'^i$', 'w.views.irc'),
-    (r'^c$', 'w.views.click'),
+    (r'^s/w$', 'w.views.web'),
+    (r'^s/i$', 'w.views.irc'),
+    (r'^s/c$', 'w.views.click'),
 
     (r'^m/(?P<path>.*)$', 'django.views.static.serve',
        {'document_root': './media'}),
-    (r'^(?P<path>.*)$', 'django.views.static.serve',
+    (r'^(?P<path>index.html)$', 'django.views.static.serve',
        {'document_root': './media'}),
 
     # Uncomment the admin/doc line below and add 'django.contrib.admindocs' 
