@@ -23,3 +23,24 @@ UI: viewed - display glasses
     marked bad - red & stay
 
 Feed/update strings & expiration time. Always feed complete records.
+
+
+AUTH:
+http://en.wikipedia.org/w/index.php?title=Wikipedia:Sandbox&action=edit&minor=true&section=0&summary=4AB96246-AC5F-65E0-EE6B-701A45A83141
+
+
+ User requests auth: 
+   USER: GUID, ip    ---> {GUID : (ip, '')}
+   IRC: (GUID, user) ---> {GUID : (ip, user)}
+   USER: GUID, ip    ---> 
+                     <--- user, encrypted user
+   USER: store encrypted user to cookie
+   
+ After that USER always uses encrypted cookie to authentify
+ 
+
+
+comment in the sandbox -> username
+ 
+
+
