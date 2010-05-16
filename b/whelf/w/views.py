@@ -35,8 +35,13 @@ def click(request):
         __recent[page]['views'] += 1
     return HttpResponse()
 
+
+def ip(request):
+    return HttpResponse({'ip' : request.META['REMOTE_ADDR'], 'host' : request.META['REMOTE_HOST']} )
+
+
 def web(request):
-    if False and settings.DEBUG:
+    if settings.DEBUG:
         print 'iDisplayStart: %s' % request.POST.get('iDisplayStart','')
         print 'iDisplayLength: %s' % request.POST.get('iDisplayLength','')
         print 'sSearch: %s' % request.POST.get('sSearch','')
@@ -45,14 +50,17 @@ def web(request):
         print 'iSortingCols: %s' % request.POST.get('iSortingCols','')
         print 'sEcho: %s' % request.POST.get('sEcho','')
     
-    data = [ [p['utc'], p['reputation'], p['views'], p['url'], p['user'], p['page'], p['summary'] ] for p in __recent.values()]
-    # print data
+    data = [ [p['utc'], p['reputation'], p['views'], p['url'], p['user'], p['page'], p['summary'] ] 
+            for p in __recent.values()]
+
+    start = int(request.POST.get('iDisplayStart',''))
+    length = int(request.POST.get('iDisplayLength',''))
     
     json = simplejson.dumps({
         'sEcho': request.POST.get('sEcho','1'),
         'iTotalRecords': len(data),
         'iTotalDisplayRecords': len(data),
-        'aaData': data})
+        'aaData': data[start:length]})
     return HttpResponse(json, mimetype='application/json')
 
 
@@ -82,7 +90,7 @@ def irc(request):
     
     page = d['page']
     utc = time()
-    if(reputation < 1):
+    if(reputation < 10):
         d['reputation'] = reputation
         d['utc'] = utc
         d['expire'] = utc + 1000
