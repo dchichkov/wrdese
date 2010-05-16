@@ -36,8 +36,24 @@ def click(request):
     return HttpResponse()
 
 
+
 def ip(request):
     return HttpResponse({'ip' : request.META['REMOTE_ADDR'], 'host' : request.META['REMOTE_HOST']} )
+
+
+def users(request):
+    data = [ [p['utc'], p['reputation'], p['views'], p['url'], p['user'], p['page'], p['summary'] ] 
+            for p in __recent.values()]
+
+    start = int(request.POST.get('iDisplayStart',''))
+    length = int(request.POST.get('iDisplayLength',''))
+    
+    json = simplejson.dumps({
+        'sEcho': request.POST.get('sEcho','1'),
+        'iTotalRecords': len(data),
+        'iTotalDisplayRecords': len(data),
+        'aaData': data[start:length]})
+    return HttpResponse(json, mimetype='application/json')
 
 
 def web(request):
@@ -117,6 +133,7 @@ def irc(request):
 
 # "/home/dmitry/b/p/filtered.reputations-enwiki-20100130.none.full"
 __user_reputations = read_reputations("/home/dmitry/b/p/ratings-pan-wvc-10.merged")
+__users = OrderedDict()
 __recent = OrderedDict()
 
 re_edit = re.compile(r'^C14\[\[^C07(?P<page>.+?)^C14\]\]^C4 (?P<flags>.*?)^C10 ^C02(?P<url>.+?)^C ^C5\*^C ^C03(?P<user>.+?)^C ^C5\*^C \(?^B?(?P<bytes>[+-]?\d+?)^B?\) ^C10(?P<summary>.*)^C'.replace('^B', '\002').replace('^C', '\003').replace('^U', '\037'))
