@@ -11,6 +11,7 @@ urlpatterns = patterns('',
     (r'^s/i$', 'w.views.irc'),
     (r'^s/c$', 'w.views.click'),
     (r'^s/ip$', 'w.views.ip'),
+    (r'^s/users$', 'w.views.users'),
 
     (r'^m/(?P<path>.*)$', 'django.views.static.serve',
        {'document_root': './media'}),

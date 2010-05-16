@@ -10,20 +10,8 @@
 <style type="text/css" title="currentStyle">
   @import "m/datatables/media/css/demo_table_jui.css";
   table td {white-space: nowrap;}
-  .ui-icon-refresh-min {background-position:-67px -83px; height:10px; width:10px;}
   .toolbar {float:left; margin-top:2px; margin-right:2px;}
-  /* inner divs inside Outer East/West panes */
- 
-	.header { 
-		background: #80ade5 url(../img/80ade5_40x100_textures_04_highlight_hard_100.png) 0 50% repeat-x;
-		border-bottom: 1px solid #777;
-		font-weight: bold;
-		text-align: center;
-		padding: 2px 0 4px;
-		position: relative;
-		overflow: hidden;
-	}
-
+  
 </style>
 
 <script type="text/javascript" language="javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
@@ -78,7 +66,7 @@
 						
 	$('body').layout({ applyDefaultStyles: true });
 	
-  	t = $('#table_here').dataTable({
+  	t = $('#table').dataTable({
 		
 		"fnRowCallback": function( nRow, aData, iDisplayIndex ) {
                             var $cell=$('td:eq(0)', nRow);
@@ -111,19 +99,13 @@
                     },
         "bJQueryUI": true,
         "sPaginationType": "full_numbers",
-        "bProcessing": false,
+        "bProcessing": true,
         "bServerSide": true,
 		"bAutoWidth": false,
         "sAjaxSource": "s/w",
 		"sDom": '<"H" <"toolbar"> lfr >t<"F"ip>',
         "fnServerData": function (sSource, aoData, fnCallback) {
-            $.ajax ( {
-              "dataType": 'json',
-              "type": "POST",
-              "url": sSource,
-              "data": aoData,
-              "success": fnCallback
-            } );
+			$.ajax ( {"dataType": 'json', "type": "POST", "url": sSource, "data": aoData, "success": fnCallback} );		
          }
      } );
 	 
@@ -135,45 +117,66 @@
 	$(document).ajaxError(function(r,s) {refresh.addClass('ui-state-error')});
 	$(document).ajaxSuccess(function(r,s) {refresh.removeClass('ui-state-error')});
 
+
+  	users = $('#users').dataTable({
+		
+		"fnRowCallback": function( nRow, aData, iDisplayIndex ) {
+                            var $cell=$('td:eq(0)', nRow);
+                            $cell.text( $.timeFormat($cell.text()) );
+                            return nRow;
+                    },
+		"aoColumns": [{ "bSortable": false }, { "bSortable": false }],
+        "bJQueryUI": true,
+        "bProcessing": false,
+        "bFilter": false,
+		"bLengthChange": false,
+		// "bSort": false,
+		"bInfo": false,
+        "bServerSide": true,
+		"bAutoWidth": true,
+        "sAjaxSource": "s/users",
+        "fnServerData": function (sSource, aoData, fnCallback) {
+            $.ajax ( {"dataType": 'json', "type": "GET", "url": sSource, "data": aoData, "success": fnCallback} );
+         }
+     } );
+
+
   } );
 </script>
 
 
 <body>  
 	<div class="ui-layout-center">
-	<table cellspacing="0" border="0" class="display" id="table_here">
-	        <thead>
-	                <tr>
-	                        <th width="10%">Time</th>
-	                        <th width="5%">Trust</th>
-	                        <th width="3%">Views</th>
-	                        <th width="3%">Url</th>
-	                        <th width="10%">User</th>
-	                        <th width="20%">Page</th>
-	                        <th width="50%">Summary</th>
-	                </tr>
-	        </thead>
-	        <tbody>
-	        </tbody>
-	</table>
+		<table cellspacing="0" border="0" class="display" id="table">
+		        <thead>
+		                <tr>
+		                        <th width="10%">Time</th>
+		                        <th width="5%">Trust</th>
+		                        <th width="3%">Views</th>
+		                        <th width="3%">Url</th>
+		                        <th width="10%">User</th>
+		                        <th width="20%">Page</th>
+		                        <th width="50%">Summary</th>
+		                </tr>
+		        </thead>
+		        <tbody>
+		        </tbody>
+		</table>
 	</div>
 	
 	<DIV id="status" class="ui-layout-north">Status:</DIV>
+
 	
 	<div class="ui-layout-west">
-		<div class="header">Users</div>
-
-		<table id="users" class="ui-widget ui-widget-content">
-			<thead>
-				<tr class="ui-widget-header ">
-					<th>Name</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr>
-					<td>John Doe</td>
-				</tr>
-			</tbody>
+		<table cellspacing="0" border="0" class="display" id="users">
+		        <thead>
+		                <tr>
+		                        <th width="60%">User</th>
+		                        <th width="30%">Seen</th>
+		                </tr>
+		        </thead>
+		        <tbody>
+		        </tbody>
 		</table>
 	</div>
 
