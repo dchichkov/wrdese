@@ -1,17 +1,36 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2//EN">
   <html>
-  <head> <title>Example Style Settings</title> </head>
+  <head> <title>WP CVN</title> </head>
 
-<!-- link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.1/themes/cupertino/jquery-ui.css" type="text/css"/-->
-<!--  @import "http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.1/themes/ui-lightness/jquery-ui.css"; -->
-<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.1/themes/smoothness/jquery-ui.css" type="text/css" />
+<link rel="stylesheet" type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.1/themes/smoothness/jquery-ui.css"/>
+<link rel="stylesheet" type="text/css" href="m/datatables/media/css/demo_table_jui.css" />
+<link rel="stylesheet" type="text/css" href="m/css/layout-default-latest.css" />
 
 
 <style type="text/css" title="currentStyle">
-  @import "m/datatables/media/css/demo_table_jui.css";
   table td {white-space: nowrap;}
   .toolbar {float:left; margin-top:2px; margin-right:2px;}
-  
+
+	/* Layout Theme */
+	.ui-layout-pane { 
+		padding:	0px; 
+		overflow:	hidden;
+	} 
+	.ui-layout-pane-north { 
+		padding:	5px; 
+		overflow:	hidden;
+	}
+	
+	.ui-layout-south {
+		display:	none;
+		overflow:	hidden;
+	}
+	iframe {
+		padding:	0 !important; /* iframes should not have padding */
+		overflow:	auto !important;		
+	}
+
+	
 </style>
 
 <script type="text/javascript" language="javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
@@ -20,7 +39,7 @@
 <script type="text/javascript" language="javascript" src="m/js/jquery.timeFormat.js"></script>
 <script type="text/javascript" language="javascript" src="m/js/jquery.cookie.js"></script>
 <script type="text/javascript" language="javascript" src="m/js/jquery.Guid.js"></script>
-<script type="text/javascript" language="javascript" src="m/js/jquery.layout.js"></script>
+<script type="text/javascript" language="javascript" src="m/js/jquery.layout-latest.js"></script>
 
 
 <script type="text/javascript" charset="utf-8">
@@ -62,9 +81,17 @@
     checkTrust();
 	
 	$.ajaxSetup('timeout', 1000) 
-					
-						
-	$('body').layout({ applyDefaultStyles: true });
+
+
+	myLayout = $("body").layout({
+		initClosed:		false
+	,	north__size:	40
+	,	south__size:	222
+	,	west__size:		200
+	,	autoStateManagement:	true	// enable state management	
+	,	useStateCookie:		true		// enable state autoSave
+	});
+	
 	
   	t = $('#table').dataTable({
 		
@@ -99,7 +126,7 @@
                     },
         "bJQueryUI": true,
         "sPaginationType": "full_numbers",
-        "bProcessing": true,
+        "bProcessing": false,
         "bServerSide": true,
 		"bAutoWidth": false,
         "sAjaxSource": "s/w",
@@ -146,8 +173,17 @@
 
 
 <body>  
+	<div id="status" class="ui-layout-north">
+		<form id="status" action="s/status" method="post"> 
+    		Nick: <input type="text" name="name" /> 
+    		<input type="submit" value="Autoconfirm" /> 
+		</form>			
+	</div>
+
+
+
 	<div class="ui-layout-center">
-		<table cellspacing="0" border="0" class="display" id="table">
+		<table cellspacing="0" border="0" class="display ui-helper-reset" id="table">
 		        <thead>
 		                <tr>
 		                        <th width="10%">Time</th>
@@ -164,8 +200,6 @@
 		</table>
 	</div>
 	
-	<DIV id="status" class="ui-layout-north">Status:</DIV>
-
 	
 	<div class="ui-layout-west">
 		<table cellspacing="0" border="0" class="display" id="users">
@@ -178,6 +212,10 @@
 		        <tbody>
 		        </tbody>
 		</table>
+	</div>
+	
+	<div class="ui-layout-south">	
+		<iframe src="http://webchat.freenode.net?channels=countervandalism" width="100%" height="100%" frameborder="0"></iframe>
 	</div>
 
 </body>
