@@ -7,7 +7,7 @@ from django.conf.urls.defaults import *
 
 urlpatterns = patterns('',
     # Example:
-    (r'^s/w$', 'w.views.web'),
+    (r'^s/w$', 'w.views.w'),
     (r'^s/i$', 'w.views.irc'),
     (r'^s/c$', 'w.views.click'),
     (r'^s/ip$', 'w.views.ip'),

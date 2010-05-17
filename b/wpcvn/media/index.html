@@ -49,7 +49,7 @@
 
 
 <script type="text/javascript" charset="utf-8">
-	var t, tid;
+	var t, users, wid = '';
 	
 	function ellipsis(text, n) {
     if(text.length>n)
@@ -58,11 +58,11 @@
         return text;	
 	}
 
+
     function login()
     {
-		//$.get("s/tid", function(data){
-        //		alert( "Your ip: " + data.ip);
-		//		}
+		// $.get("s/ip", function(data){ip = data.ip})
+		
 
 		
         //tid = $.cookie('tid_cookie')
@@ -77,15 +77,20 @@
         // $.cookie('tid_cookie', 'the_value', { expires: 7 }); // set cookie with an expiration date seven days in the future
         // $.cookie('the_cookie', '', { expires: -1 }); // delete cookie
 
-        // var $dialog = $('<div></div>')
-        //    .html('Establishing connection...<br>' + jQuery.Guid.New())
-        //    .dialog({title: 'Welcome.'});
         
         // $.get("s/ip", function(data){
         //    alert( "Your ip: " + data.ip);
 		//		});
 
     }
+
+	function autoconfirm()
+	{		
+        //var $dialog = $('<div></div>')
+        //    .html('Establishing connection...<br>' + jQuery.Guid.New())
+        //    .dialog({title: 'Welcome.'});
+		window.alert("Nick = " + String($("#nick").val()))
+	}	
 
 
   $(document).ready(function() {  		
@@ -146,6 +151,8 @@
         "sAjaxSource": "s/w",
 		"sDom": '<"H" <"toolbar"> lfr >t<"F"ip>',
         "fnServerData": function (sSource, aoData, fnCallback) {
+			aoData.push( { "name": "nick", "value": $("#nick").val() } );
+			aoData.push( { "name": "wid", "value": wid } );
 			$.ajax ( {"dataType": 'json', "type": "POST", "url": sSource, "data": aoData, "success": fnCallback} );		
          }
      } );
@@ -153,7 +160,6 @@
 	 // Main Window datatable Toolbar/Refresh
 	 $("div.toolbar").html('<div id="refresh" class="ui-state-default ui-corner-all"><span class="ui-icon ui-icon-refresh">close</span></div>')
 	 refresh = $("#refresh")
-	 window.setInterval(function() {t.fnDraw();}, 2000);
 	 $(document).ajaxSend(function(r,s) {refresh.addClass('ui-state-highlight')});
 	 $(document).ajaxStop(function(r,s) {refresh.removeClass('ui-state-highlight')});
 	 $(document).ajaxError(function(r,s) {refresh.addClass('ui-state-error')});
@@ -164,7 +170,7 @@
   	users = $('#users').dataTable({
 		
 		"fnRowCallback": function( nRow, aData, iDisplayIndex ) {
-                            var $cell=$('td:eq(0)', nRow);
+                            var $cell=$('td:eq(1)', nRow);
                             $cell.text( $.timeFormat($cell.text()) );
                             return nRow;
                     },
@@ -176,15 +182,21 @@
 		// "bSort": false,
 		"bInfo": false,
         "bServerSide": true,
-		"bAutoWidth": true,
+		"bAutoWidth": false,
         "sAjaxSource": "s/users",
         "fnServerData": function (sSource, aoData, fnCallback) {
+			aoData.push( { "name": "nick", "value": $("#nick").val() } );
+			aoData.push( { "name": "wid", "value": wid } );
             $.ajax ( {"dataType": 'json', "type": "GET", "url": sSource, "data": aoData, "success": fnCallback} );
          }
      } );
 
+	// Start Refreshing
+	window.setInterval(function() {t.fnDraw(); users.fnDraw();}, 10000);
+
+
 	// Misc
-	$("#autoconfirm").button({icons: {primary: 'ui-icon-locked'}})
+	$("#autoconfirm").click(autoconfirm).button({icons: {primary: 'ui-icon-locked'}})
 
   } );
 </script>
@@ -192,9 +204,9 @@
 
 <body>  
 	<div id="status" class="ui-layout-north">
-		<form id="status" action="s/status" method="post"> 
-    		Nick: <input class="ui-corner-all" type="text" ip="name" /> 
+    		Nick: <input id="nick" type="text"/> 
     		<button id="autoconfirm" class="fg-button ui-state-default ui-corner-all">Autoconfirm...</button> 
+		<form id="status" action="s/status" method="post"> 
 		</form>			
 	</div>
 
@@ -224,7 +236,7 @@
 		        <thead>
 		                <tr>
 		                        <th width="60%">User</th>
-		                        <th width="30%">Seen</th>
+		                        <th width="40%">Last Activity</th>
 		                </tr>
 		        </thead>
 		        <tbody>

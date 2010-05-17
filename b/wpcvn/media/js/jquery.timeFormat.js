@@ -19,7 +19,7 @@
             2. calculate current time
             3. find difference
             4. Display:
-                    Now
+                    Seconds ago
                     2 mins ago
                     3 hours ago
                     1 day ago
@@ -51,7 +51,7 @@
     function handleSinceDateEndings( t, original_timestamp ) {
         var ago = " ", date;
         if( t <= 1 ) {
-            ago += "Now";
+            ago += "Seconds ago";
         } else if( t<60) {
             ago += t + " mins ago";
         } else if( t>= 60 && t<= 120) {
