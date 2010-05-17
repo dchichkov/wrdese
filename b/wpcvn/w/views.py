@@ -1,6 +1,6 @@
 # Create your views here.
 
-import whelf.settings as settings
+import wpcvn.settings as settings
 from django.http import HttpResponse
 from django.utils import simplejson
 from django.core import serializers

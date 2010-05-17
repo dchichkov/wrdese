@@ -1,4 +1,4 @@
-# Django settings for whelf project.
+# Django settings for wpcvn project.
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
