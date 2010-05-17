@@ -15,7 +15,8 @@
 
   table td {white-space: nowrap;}
   .toolbar {float:left; margin-top:3px; margin-right:3px;}
-
+  .refresh {float:left; margin-right:3px;}
+  
 
 	/* Layout Theme */
 	.ui-layout-pane { 
@@ -49,7 +50,9 @@
 
 
 <script type="text/javascript" charset="utf-8">
-	var t, users, wid = '';
+	var t, users, nick = '', wid = '', guid = String(jQuery.Guid.New());
+	
+	guid = "4AB96246-AC5F-65E0-EE6B-701A45A83141";
 	
 	function ellipsis(text, n) {
     if(text.length>n)
@@ -79,17 +82,60 @@
 
         
         // $.get("s/ip", function(data){
-        //    alert( "Your ip: " + data.ip);
+        //    alert("Your ip: " + data.ip);
 		//		});
 
     }
 
-	function autoconfirm()
-	{		
-        //var $dialog = $('<div></div>')
-        //    .html('Establishing connection...<br>' + jQuery.Guid.New())
-        //    .dialog({title: 'Welcome.'});
-		window.alert("Nick = " + String($("#nick").val()))
+	function successful_autoconfirm()
+	{
+        var $dialog = $('<div></div>')
+            .html("wid = " + wid + "<br>" + "nick = " + nick) 
+            .dialog({ 	title: 'Autoconfirmation Successful',
+						modal: true, 
+					  	buttons: { "Ok": function() { $(this).dialog("close"); } },
+					  	width: 400,									
+						});		
+	}
+
+	function try_autoconfirm()
+	{	
+        var $dialog = $('<div></div>')
+            .html("<p>It's a hassle. But you only have to do it once. And it is a good idea to do it, "
+				  + "because other members will be able to see your contributions having Verified Status. "
+				  + "Verificaion is a single-step process, basically you need to do a nonempty edit to the Wikipedia:Sandbox and leave the following ugly string as a comment: "
+				  + guid + "</p>"
+				  + "<p>Here is a "
+				  + '<a href="http://en.wikipedia.org/w/index.php?title=Wikipedia:Sandbox&action=edit&minor=true&section=0&summary=' + guid +'" target="_blank">link</a>' 
+				  + " that would take you to the Wikipedia:Sandbox and prefill the comment. </p>"
+				  + "<p>Make sure you are <b>using your Wikipedia account</b>. You also need to actually modify the sandbox content, <b>empty edit won't register</b>. "
+				  + "A good idea would be to patrol, to add some fancy markup, or just to add a token, like 'wpcvn'.</p>"
+				  + '<p><div class="refresh ui-state-default ui-corner-all"><span class="ui-icon ui-icon-refresh">close</span></div> Waiting for your edit...' 
+				   )
+				  		
+            .dialog({ 	title: 'Autoconfirmation',
+						modal: true, 
+					  	buttons: { "Cancel": function() { $(this).dialog("close"); } },
+					  	width: 600,									
+						open: function() { this.updater = window.setInterval(update_wid, 500);},						 
+ 						close: function() { window.clearInterval(this.updater)}									
+						});
+						
+		function update_wid()
+		{
+			$.post("s/wid", {'guid': guid}, 
+					function(data) 
+					{
+						wid = data.wid;
+						nick = data.nick;
+						if(nick || wid)
+						{ 
+							$dialog.dialog('close');
+							successful_autoconfirm();							
+						}
+					}
+					);									
+		}
 	}	
 
 
@@ -158,12 +204,11 @@
      } );
 	 
 	 // Main Window datatable Toolbar/Refresh
-	 $("div.toolbar").html('<div id="refresh" class="ui-state-default ui-corner-all"><span class="ui-icon ui-icon-refresh">close</span></div>')
-	 refresh = $("#refresh")
-	 $(document).ajaxSend(function(r,s) {refresh.addClass('ui-state-highlight')});
-	 $(document).ajaxStop(function(r,s) {refresh.removeClass('ui-state-highlight')});
-	 $(document).ajaxError(function(r,s) {refresh.addClass('ui-state-error')});
-	 $(document).ajaxSuccess(function(r,s) {refresh.removeClass('ui-state-error')});
+	 $("div.toolbar").html('<div class="refresh ui-state-default ui-corner-all"><span class="ui-icon ui-icon-refresh">close</span></div>')
+	 $(document).ajaxSend(function(r,s) {$(".refresh").addClass('ui-state-highlight')});
+	 $(document).ajaxStop(function(r,s) {$(".refresh").removeClass('ui-state-highlight')});
+	 $(document).ajaxError(function(r,s) {$(".refresh").addClass('ui-state-error')});
+	 $(document).ajaxSuccess(function(r,s) {$(".refresh").removeClass('ui-state-error')});
 
 
 	// Users datatable
@@ -196,7 +241,7 @@
 
 
 	// Misc
-	$("#autoconfirm").click(autoconfirm).button({icons: {primary: 'ui-icon-locked'}})
+	$("#autoconfirm").click(try_autoconfirm).button({icons: {primary: 'ui-icon-locked'}})
 
   } );
 </script>
