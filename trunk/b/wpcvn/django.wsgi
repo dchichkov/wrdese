@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.append('/home/dmitry/b/whelf')
+sys.path.append('/home/dmitry/b/wpcvn')
 sys.path.append('/home/dmitry/b')
 sys.path.append('/home/dmitry/b/pywikipedia')
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
