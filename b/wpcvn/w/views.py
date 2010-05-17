@@ -5,6 +5,9 @@ from django.http import HttpResponse
 from django.utils import simplejson
 from django.core import serializers
 
+import secret
+from aes_encryption import EncodeAES, DecodeAES
+
 import marshal, re
 from ordereddict import OrderedDict
 from collections import defaultdict
@@ -45,6 +48,16 @@ def ip(request):
                         mimetype='application/json')
 
 
+def wid(request):
+    guid = request.POST.get('guid','')
+    wid = __guids.setdefault(guid, {'wid':''})
+    wid['utc'] = time()
+    print wid
+    return HttpResponse(simplejson.dumps(wid), 
+                        mimetype='application/json')
+
+
+
 def users(request):
     data = [ [p['nick'], p['utc']] 
             for p in __users.values()]
@@ -76,8 +89,8 @@ def w(request):
     nick = request.POST.get('nick','')
     if wid and wid in __users:
         user = __users[wid]
-    elif wid and DecodeAES(secret.cipher):
-        user = __users.setdefault(wid, {'nick' : DecodeAES(secret.cipher), 'confirmed' : True})
+    elif wid and DecodeAES(secret.cipher, wid):
+        user = __users.setdefault(wid, {'nick' : DecodeAES(secret.cipher, wid), 'confirmed' : True})
     elif nick:
         user = __users.setdefault(nick, {'nick' : nick, 'confirmed' : False})
         
@@ -87,6 +100,7 @@ def w(request):
     # Fill data
     data = [ [p['utc'], p['reputation'], p['views'], p['url'], p['user'], p['page'], p['summary'] ] 
             for p in __recent.values()]
+    print data
 
     start = int(request.POST.get('iDisplayStart',''))
     length = int(request.POST.get('iDisplayLength',''))
@@ -116,12 +130,19 @@ def irc(request):
         print "Warning: Regexp does not match (unicode)"
         return HttpResponse()
     
-    
     d = match.groupdict()
     reputation = __user_reputations.get(d['user'])
-    if(reputation == None):     # TODO
-        return HttpResponse()
-    
+
+    if d['summary'] in __guids:
+        guid = d['summary']
+        print "Wow. We have a match. User:", d['user'], "Reputation:", reputation
+        __guids[guid]['reputation'] = reputation
+        __guids[guid]['nick'] = d['user']
+        if(reputation and reputation > 100):
+            __guids[guid]['wid'] = EncodeAES(secret.cipher, d['user'])
+ 
+    if(reputation == None):
+        return HttpResponse()       # TODO
     
     page = d['page']
     utc = time()
@@ -138,13 +159,10 @@ def irc(request):
         d['views'] = 0
         __recent[page] = d
     
-    # print(page, reputation)
-    # pprint(__recent)
-
     for p, r in __recent.iteritems():
         if(r['expire'] < utc):
             del __recent[p]
-    
+    sys.stdout.flush()
     return HttpResponse()
 
 
@@ -154,6 +172,8 @@ def irc(request):
 __user_reputations = read_reputations("/home/dmitry/b/p/ratings-pan-wvc-10.merged")
 __users = OrderedDict()
 __recent = OrderedDict()
+__guids = {}
+
 
 re_edit = re.compile(r'^C14\[\[^C07(?P<page>.+?)^C14\]\]^C4 (?P<flags>.*?)^C10 ^C02(?P<url>.+?)^C ^C5\*^C ^C03(?P<user>.+?)^C ^C5\*^C \(?^B?(?P<bytes>[+-]?\d+?)^B?\) ^C10(?P<summary>.*)^C'.replace('^B', '\002').replace('^C', '\003').replace('^U', '\037'))
 

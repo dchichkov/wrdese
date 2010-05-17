@@ -8,10 +8,11 @@ from django.conf.urls.defaults import *
 urlpatterns = patterns('',
     # Example:
     (r'^s/w$', 'w.views.w'),
+    (r'^s/users$', 'w.views.users'),
     (r'^s/i$', 'w.views.irc'),
     (r'^s/c$', 'w.views.click'),
     (r'^s/ip$', 'w.views.ip'),
-    (r'^s/users$', 'w.views.users'),
+    (r'^s/wid$', 'w.views.wid'),
 
     (r'^m/(?P<path>.*)$', 'django.views.static.serve',
        {'document_root': './media'}),
