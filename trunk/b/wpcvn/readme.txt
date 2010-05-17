@@ -26,6 +26,10 @@ Feed/update strings & expiration time. Always feed complete records.
 
 
 AUTH:
+Priority:
+ wid - use if available
+ nick - use if available
+
 http://en.wikipedia.org/w/index.php?title=Wikipedia:Sandbox&action=edit&minor=true&section=0&summary=4AB96246-AC5F-65E0-EE6B-701A45A83141
 
 
@@ -37,10 +41,6 @@ http://en.wikipedia.org/w/index.php?title=Wikipedia:Sandbox&action=edit&minor=tr
    USER: store encrypted user to cookie
    
  After that USER always uses encrypted cookie to authentify
- 
-
-
-comment in the sandbox -> username
  
 
 

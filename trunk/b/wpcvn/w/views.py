@@ -10,6 +10,7 @@ from ordereddict import OrderedDict
 from collections import defaultdict
 from time import time
 from pprint import pprint
+import sys
 
 
 def read_reputations(_reputations_arg):
@@ -38,25 +39,25 @@ def click(request):
 
 
 def ip(request):
-    return HttpResponse({'ip' : request.META['REMOTE_ADDR'], 'host' : request.META['REMOTE_HOST']} )
+    return HttpResponse(simplejson.dumps({
+                                          'ip' : request.META['REMOTE_ADDR'], 
+                                          'host' : request.META['REMOTE_HOST'] }), 
+                        mimetype='application/json')
 
 
 def users(request):
-    data = [ [p['utc'], p['reputation'], p['views'], p['url'], p['user'], p['page'], p['summary'] ] 
-            for p in __recent.values()]
-
-    start = int(request.POST.get('iDisplayStart',''))
-    length = int(request.POST.get('iDisplayLength',''))
+    data = [ [p['nick'], p['utc']] 
+            for p in __users.values()]
     
     json = simplejson.dumps({
-        'sEcho': request.POST.get('sEcho','1'),
+        'sEcho': request.GET.get('sEcho','1'),
         'iTotalRecords': len(data),
         'iTotalDisplayRecords': len(data),
-        'aaData': data[start:length]})
+        'aaData': data})
     return HttpResponse(json, mimetype='application/json')
 
 
-def web(request):
+def w(request):
     if settings.DEBUG:
         print 'iDisplayStart: %s' % request.POST.get('iDisplayStart','')
         print 'iDisplayLength: %s' % request.POST.get('iDisplayLength','')
@@ -65,7 +66,25 @@ def web(request):
         print 'iColumns: %s' % request.POST.get('iColumns','')
         print 'iSortingCols: %s' % request.POST.get('iSortingCols','')
         print 'sEcho: %s' % request.POST.get('sEcho','')
+        print 'nick: %s' % request.POST.get('nick','')
+        print 'wid: %s' % request.POST.get('wid','')
+        sys.stdout.flush()
+
+    # Authentication: use wid if available, use nick if available
+    user = None
+    wid = request.POST.get('wid','')
+    nick = request.POST.get('nick','')
+    if wid and wid in __users:
+        user = __users[wid]
+    elif wid and DecodeAES(secret.cipher):
+        user = __users.setdefault(wid, {'nick' : DecodeAES(secret.cipher), 'confirmed' : True})
+    elif nick:
+        user = __users.setdefault(nick, {'nick' : nick, 'confirmed' : False})
+        
+    if(user): user['utc'] = time()               
+
     
+    # Fill data
     data = [ [p['utc'], p['reputation'], p['views'], p['url'], p['user'], p['page'], p['summary'] ] 
             for p in __recent.values()]
 
