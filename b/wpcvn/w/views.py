@@ -42,9 +42,7 @@ def click(request):
 
 
 def ip(request):
-    return HttpResponse(simplejson.dumps({
-                                          'ip' : request.META['REMOTE_ADDR'], 
-                                          'host' : request.META['REMOTE_HOST'] }), 
+    return HttpResponse(simplejson.dumps({'ip' : request.META['REMOTE_ADDR']}), 
                         mimetype='application/json')
 
 
@@ -169,7 +167,11 @@ def irc(request):
 
 
 # "/home/dmitry/b/p/filtered.reputations-enwiki-20100130.none.full"
-__user_reputations = read_reputations("/home/dmitry/b/p/ratings-pan-wvc-10.merged")
+if settings.DEBUG:
+    __user_reputations = read_reputations("/home/dmitry/b/p/ratings-pan-wvc-10.merged")
+else:
+    __user_reputations = read_reputations("/home/dmitry/b/p/reputations-enwiki-20100130.none.full.merged")
+    
 __users = OrderedDict()
 __recent = OrderedDict()
 __guids = {}
