@@ -193,16 +193,15 @@
 							$cell.click(function() {$.post("s/c", $(this).attr("alt"));});
                             return nRow;
                     },
-        "aoColumns": [{ "bSortable": true }, { "bSortable": true }, { "bSortable": true }, { "bSortable": false },
-                        { "bSortable": false }, { "bSortable": false }, { "bSortable": false }],
         "bJQueryUI": true,
         "sPaginationType": "full_numbers",
+		"aaSorting" : [],
         "bProcessing": false,
         "bServerSide": true,
 		"bAutoWidth": false,
         "sAjaxSource": "s/w",
 		"sDom": '<"H" <"toolbar"> lfr >t<"F"ip>',
-        "oLanguage" : {"sSearch": "Filter Users:"},
+        "oLanguage" : {"sSearch": "Filter by User or Page:"},
         "fnServerData": function (sSource, aoData, fnCallback) {
 			aoData.push( { "name": "nick", "value": $("#nick").val() } );
 			aoData.push( { "name": "wid", "value": wid } );
@@ -245,7 +244,7 @@
      } );
 
 	// Start Refreshing
-	window.setInterval(function() {t.fnDraw(); users.fnDraw();}, 2000);
+	window.setInterval(function() {t.fnDraw(false); users.fnDraw(false);}, 4000);
 
     // Mics
     $("#autoconfirm").click(try_autoconfirm)

@@ -11,9 +11,11 @@ from aes_encryption import EncodeAES, DecodeAES
 import marshal, re
 from ordereddict import OrderedDict
 from collections import defaultdict
+from operator import itemgetter
 from time import time
 from pprint import pprint
 import sys
+
 
 
 def read_reputations(_reputations_arg):
@@ -68,6 +70,7 @@ def users(request):
     return HttpResponse(json, mimetype='application/json')
 
 
+# default responce - prencode ajax / cash ajax for later use
 def w(request):
     if settings.DEBUG:
         print 'iDisplayStart: %s' % request.POST.get('iDisplayStart','')
@@ -76,6 +79,8 @@ def w(request):
         print 'bEscapeRegex: %s' % request.POST.get('bEscapeRegex','')
         print 'iColumns: %s' % request.POST.get('iColumns','')
         print 'iSortingCols: %s' % request.POST.get('iSortingCols','')
+        print 'iSortCol_0: %s' % request.POST.get('iSortCol_0','')
+        print 'sSortDir_0: %s' % request.POST.get('sSortDir_0','')
         print 'sEcho: %s' % request.POST.get('sEcho','')
         print 'nick: %s' % request.POST.get('nick','')
         print 'wid: %s' % request.POST.get('wid','')
@@ -85,6 +90,14 @@ def w(request):
     user = None
     wid = request.POST.get('wid','')
     nick = request.POST.get('nick','')
+    sSearch = request.POST.get('sSearch','')
+    iSortingCols = request.POST.get('iSortingCols', '')
+    iSortCol = int(request.POST.get('iSortCol_0', '0'))
+    bSortDir = (request.POST.get('sSortDir_0', 'asc') == 'desc')
+    start = int(request.POST.get('iDisplayStart',''))
+    length = int(request.POST.get('iDisplayLength',''))
+    
+    
     if wid and wid in __users:
         user = __users[wid]
     elif wid and DecodeAES(secret.cipher, wid):
@@ -95,19 +108,22 @@ def w(request):
     if(user): user['utc'] = time()               
 
     
-    # Fill data
-    data = [ [p['utc'], p['reputation'], p['views'], p['url'], p['user'], p['page'], p['summary'] ] 
-            for p in __recent.values()]
-    print data
+    # Fill data, apply search and sorting parameters
+    if sSearch:
+        data = [ [p['utc'], p['reputation'], p['views'], p['url'], p['user'], p['page'], p['summary'] ] 
+                for p in __recent.values() if p['user'].startswith(sSearch) or p['page'].startswith(sSearch)]
+    else:
+        data = [ [p['utc'], p['reputation'], p['views'], p['url'], p['user'], p['page'], p['summary'] ] 
+                for p in __recent.values()]
+        
+    if iSortingCols == '1':
+        data.sort(key = itemgetter(iSortCol), reverse = bSortDir)
 
-    start = int(request.POST.get('iDisplayStart',''))
-    length = int(request.POST.get('iDisplayLength',''))
-    
     json = simplejson.dumps({
         'sEcho': request.POST.get('sEcho','1'),
-        'iTotalRecords': len(data),
+        'iTotalRecords': len(__recent),
         'iTotalDisplayRecords': len(data),
-        'aaData': data[start:length]})
+        'aaData': data[start:start+length]})
     return HttpResponse(json, mimetype='application/json')
 
 
