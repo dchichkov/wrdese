@@ -8,15 +8,15 @@
 
 
 <style type="text/css" title="currentStyle">
-	body {font-size: 85%;}	
+	body {font-size: 80%;}	
 	table {font-size: 1em;}	
 
-	.fg-button {font-size: 75%;}
-
-  table td {white-space: nowrap;}
-  .toolbar {float:left; margin-top:3px; margin-right:3px;}
-  .refresh {float:left; margin-right:3px;}
+    table td {white-space: nowrap;}
+    .toolbar {float:left; margin-top:3px; margin-right:3px;}
+    .refresh {float:left; margin-right:3px;}
   
+    #status {padding: 2px;}
+    .sm-button {font-size:80%; margin-left:1px;}
 
 	/* Layout Theme */
 	.ui-layout-pane { 
@@ -24,7 +24,7 @@
 		overflow:	hidden;
 	} 
 	.ui-layout-pane-north { 
-		padding:	5px; 
+		padding:	0px; 
 		overflow:	hidden;
 	}
 	
@@ -94,23 +94,27 @@
             .dialog({ 	title: 'Autoconfirmation Successful',
 						modal: true, 
 					  	buttons: { "Ok": function() { $(this).dialog("close"); } },
-					  	width: 400,									
+					  	width: 400									
 						});		
 	}
 
 	function try_autoconfirm()
 	{	
         var $dialog = $('<div></div>')
-            .html("<p>It's a hassle. But you only have to do it once. And it is a good idea to do it, "
-				  + "because other members will be able to see your contributions having Verified Status. "
-				  + "Verificaion is a single-step process, basically you need to do a nonempty edit to the Wikipedia:Sandbox and leave the following ugly string as a comment: "
+            .html("<p>Verificaion is a single-step process, basically you need to do a nonempty edit to the Wikipedia:Sandbox and leave the following ugly string as a comment: "
 				  + guid + "</p>"
+
+                  + "<p>It's a hassle. But you only have to do it once. And it is a good idea to do it, "
+                  + "because other members will be able to see your contributions having Verified Status. "
+
 				  + "<p>Here is a "
-				  + '<a href="http://en.wikipedia.org/w/index.php?title=Wikipedia:Sandbox&action=edit&minor=true&section=0&summary=' + guid +'" target="_blank">link</a>' 
+				  + '<a class="ui-priority-primary ui-state-highlight" href="http://en.wikipedia.org/w/index.php?title=Wikipedia:Sandbox&action=edit&minor=true&section=0&summary=' + guid +'" target="_blank">link</a>' 
 				  + " that would take you to the Wikipedia:Sandbox and prefill the comment. </p>"
 				  + "<p>Make sure you are <b>using your Wikipedia account</b>. You also need to actually modify the sandbox content, <b>empty edit won't register</b>. "
 				  + "A good idea would be to patrol, to add some fancy markup, or just to add a token, like 'wpcvn'.</p>"
-				  + '<p><div class="refresh ui-state-default ui-corner-all"><span class="ui-icon ui-icon-refresh">close</span></div> Waiting for your edit...' 
+				  + '<p><div class="refresh ui-state-default ui-corner-all">'
+                  +  '<span class="ui-icon ui-icon-refresh">close</span></div>'
+                  +  '<span class="ui-button-text">Waiting for your edit...</span></p>' 
 				   )
 				  		
             .dialog({ 	title: 'Autoconfirmation',
@@ -140,9 +144,9 @@
 
 
   $(document).ready(function() {  		
-	// Generic Setup 
+	// Generic Setup
 	$.ajaxSetup('timeout', 1000)
-		  
+    
 	// Try authentication  		
     login();
 	
@@ -189,6 +193,8 @@
 							$cell.click(function() {$.post("s/c", $(this).attr("alt"));});
                             return nRow;
                     },
+        "aoColumns": [{ "bSortable": true }, { "bSortable": true }, { "bSortable": true }, { "bSortable": false },
+                        { "bSortable": false }, { "bSortable": false }, { "bSortable": false }, { "bSortable": false }],
         "bJQueryUI": true,
         "sPaginationType": "full_numbers",
         "bProcessing": false,
@@ -196,6 +202,7 @@
 		"bAutoWidth": false,
         "sAjaxSource": "s/w",
 		"sDom": '<"H" <"toolbar"> lfr >t<"F"ip>',
+        "oLanguage" : {"sSearch": "Filter Users:"},
         "fnServerData": function (sSource, aoData, fnCallback) {
 			aoData.push( { "name": "nick", "value": $("#nick").val() } );
 			aoData.push( { "name": "wid", "value": wid } );
@@ -205,6 +212,7 @@
 	 
 	 // Main Window datatable Toolbar/Refresh
 	 $("div.toolbar").html('<div class="refresh ui-state-default ui-corner-all"><span class="ui-icon ui-icon-refresh">close</span></div>')
+
 	 $(document).ajaxSend(function(r,s) {$(".refresh").addClass('ui-state-highlight')});
 	 $(document).ajaxStop(function(r,s) {$(".refresh").removeClass('ui-state-highlight')});
 	 $(document).ajaxError(function(r,s) {$(".refresh").addClass('ui-state-error')});
@@ -239,20 +247,22 @@
 	// Start Refreshing
 	window.setInterval(function() {t.fnDraw(); users.fnDraw();}, 10000);
 
-
-	// Misc
-	$("#autoconfirm").click(try_autoconfirm).button({icons: {primary: 'ui-icon-locked'}})
-
+    // Mics
+    $("#autoconfirm").click(try_autoconfirm)
   } );
 </script>
 
 
 <body>  
-	<div id="status" class="ui-layout-north">
-    		Nick: <input id="nick" type="text"/> 
-    		<button id="autoconfirm" class="fg-button ui-state-default ui-corner-all">Autoconfirm...</button> 
-		<form id="status" action="s/status" method="post"> 
-		</form>			
+	<div class="ui-layout-north">
+        <div id="status" class="ui-widget-header ui-corner-all">
+            Nick:         
+            <input id="nick" type="text" class="ui-widget"/>
+            <button id="autoconfirm" class="sm-button ui-button ui-button-text-icon ui-widget ui-state-default ui-corner-all">
+                <span class="ui-button-icon-primary ui-icon ui-icon-locked"></span>
+                <span class="ui-button-text">Autoconfirm...</span>
+            </button>
+        </div>
 	</div>
 
 
@@ -263,11 +273,11 @@
 		                <tr>
 		                        <th width="10%">Time</th>
 		                        <th width="5%">Trust</th>
-		                        <th width="3%">Views</th>
-		                        <th width="3%">Url</th>
+		                        <th width="5%">Views</th>
+		                        <th width="5%">Url</th>
 		                        <th width="10%">User</th>
 		                        <th width="20%">Page</th>
-		                        <th width="50%">Summary</th>
+		                        <th width="45%">Summary</th>
 		                </tr>
 		        </thead>
 		        <tbody>
@@ -280,8 +290,8 @@
 		<table cellspacing="0" border="0" class="display" id="users">
 		        <thead>
 		                <tr>
-		                        <th width="60%">User</th>
-		                        <th width="40%">Last Activity</th>
+		                        <th width="60%">Nick</th>
+		                        <th width="40%">Last Seen</th>
 		                </tr>
 		        </thead>
 		        <tbody>
