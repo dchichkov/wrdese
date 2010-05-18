@@ -194,7 +194,7 @@
                             return nRow;
                     },
         "aoColumns": [{ "bSortable": true }, { "bSortable": true }, { "bSortable": true }, { "bSortable": false },
-                        { "bSortable": false }, { "bSortable": false }, { "bSortable": false }, { "bSortable": false }],
+                        { "bSortable": false }, { "bSortable": false }, { "bSortable": false }],
         "bJQueryUI": true,
         "sPaginationType": "full_numbers",
         "bProcessing": false,
@@ -245,7 +245,7 @@
      } );
 
 	// Start Refreshing
-	window.setInterval(function() {t.fnDraw(); users.fnDraw();}, 10000);
+	window.setInterval(function() {t.fnDraw(); users.fnDraw();}, 2000);
 
     // Mics
     $("#autoconfirm").click(try_autoconfirm)

@@ -1,6 +1,12 @@
 # Django settings for wpcvn project.
 
-DEBUG = True
+import os,sys
+if 'APACHE_PID_FILE' in os.environ:
+    DEBUG = False
+else:
+    DEBUG = True
+
+DEBUG = True    
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
