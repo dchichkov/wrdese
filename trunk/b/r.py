@@ -410,13 +410,17 @@ def read_pyc_count_empty():
     try:
         while True:
             e = FullInfo(marshal.load(FILE))     # load first in order to
-            if(e.size == 0): empty_revisions += 1; print("%d, %d" % (e.id, e.revid))
+            if(e.size == 0 and e.comment and e.comment[:2] == '/*' and not e.ipedit): 
+                title = None; 
+                if e.title: title =  e.title.encode('utf-8');
+                empty_revisions += 1; print("%d,%d,%s,%s" % (e.id, e.revid, e.utc, title))
             total_revisions += 1
 
             if(total_revisions%100000 == 0):
+                RPS = total_revisions / (time.time() - start);
                 wikipedia.output("Revisions %d. Empty Revisions %d. Analysis time: %f. ETA %f Hours." %
                     (total_revisions, empty_revisions, time.time() - start,
-                    (NNN - total_revisions) / total_revisions * (time.time() - start) / 3600 ))
+                    (NNN - total_revisions) / RPS / 3600 ))
 
     except IOError, e:
         raise
