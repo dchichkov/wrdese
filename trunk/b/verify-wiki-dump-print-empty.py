@@ -39,18 +39,26 @@ def main():
     revisions = xmlreader.XmlDump(_xml1_arg, allrevisions=True).parse()
    
     N = 0; start = time.time(); bid = None;
-    N_empty = 0;
+    N_empty = 0; R = 0; R_empty = 0;
     for e in revisions:
-        N += 1; 
-        if(len(e.text) == 0): 
-            N_empty += 1
-            wikipedia.output("* EMPTY N %d N_empty %d Page1 %s, Revision %s, Timestamp %s Title %s. Comment %s" % 
-                (N, N_empty, e.id, e.revisionid, e.timestamp, e.title, e.comment))
+        N += 1; R = R + 1;
+        if(len(e.text) == 0): R_empty += 1;
+
+        if(len(e.text) == 0 and e.comment and e.comment[:2] == '/*' and not e.ipedit): 
+            N_empty += 1; R_empty += 1;
+            if(True or e.timestamp[:10] < '2005-01-14' or e.timestamp[:10] > '2005-05-14'):
+                wikipedia.output("* EMPTY N %d N_empty %d Page1 %s, Revision %s, Timestamp %s Title %s. Comment %s" % 
+                    (N, N_empty, e.id, e.revisionid, e.timestamp, e.title, e.comment))
+       # elif(len(e.text) == 0): # and e.timestamp[:10] > '2005-01-14' and e.timestamp[:10] < '2005-05-14'):
+       #    wikipedia.output("* REGUL N %d N_empty %d Page1 %s, Revision %s, Timestamp %s Title %s. Comment %s" %
+       #        (N, N_empty, e.id, e.revisionid, e.timestamp, e.title, e.comment))
+
 
         if(e.id != bid):          # next page....
             bid = e.id; drt = (time.time() - start) / 3600;
-            wikipedia.output("N = %d, N_empty = %d, T %f ETA %f : %s %s %s" %
-                (N, N_empty, drt, (NNN - N) * drt / N, e.id, e.revisionid, e.title))
+            wikipedia.output("N = %d, N_empty = %d, R = %d, R_empty = %d, T %f ETA %f : %s %s \n\n%s" %
+                (N, N_empty, R, R_empty, drt, (NNN - N) * drt / N, e.id, e.revisionid, e.title))
+            R = 0; R_empty = 0;
             
     wikipedia.output("%f seconds, N = %d, N_empty = %d" % (time.time() - start, N, N_empty))
 
