@@ -152,7 +152,7 @@ def irc(request):
         print "Wow. We have a match. User:", d['user'], "Reputation:", reputation
         __guids[guid]['reputation'] = reputation
         __guids[guid]['nick'] = d['user']
-        if(reputation and reputation > 100):
+        if(reputation and reputation > 2):
             __guids[guid]['wid'] = EncodeAES(secret.cipher, d['user'])
  
     if(reputation == None):

@@ -37,6 +37,8 @@
 		overflow:	auto !important;		
 	}
 
+	/* Fixing wrong .ui-dialog .ui-dialog-buttonpane buttons order */
+	.ui-dialog .ui-dialog-buttonpane{text-align:right;} .ui-dialog .ui-dialog-buttonpane button{float:none;} 
 	
 </style>
 
@@ -51,18 +53,16 @@
 
 
 <script type="text/javascript" charset="utf-8">
-	var t, users, nick = '', wid = '', guid = String(jQuery.Guid.New());
+	// Settings:
+	STAFF = ' <a href="http://en.wikipedia.org/wiki/User_talk:Dc987" target="_blank">User_talk:Dc987</a> '
+	REPORT = " Please report it at the " + STAFF + ". "
 	
-	guid = "4AB96246-AC5F-65E0-EE6B-701A45A83141";
 	
-	function ellipsis(text, n) {
-    if(text.length>n)
-        return text.substring(0,n)+"...";
-    else
-        return text;	
-	}
-
-
+	// ==================================================================================
+	// User nicknames and autoconfirmation stuff.
+	// ==================================================================================	
+	var t, users, nick = '', wid = '', guid = String(jQuery.Guid.New());	
+	guid = "4AB96246-AC5F-65E0-EE6B-701A45A83141";	
     function login()
     {
 		// $.get("s/ip", function(data){ip = data.ip})        
@@ -70,6 +70,11 @@
         if(nick) $('#nick').val(nick)
         else nick = $('#nick').val()        // Failover to browser cash
         wid = $.cookie('wid')
+		
+		// nick updater (smart)
+		$('#nick').bind("active.idleTimer", function() {$("#nick").addClass('ui-state-highlight')})
+    	$('#nick').bind("idle.idleTimer", function() {update_nick($("#nick").removeClass('ui-state-highlight').val());})
+    	$('#nick').idleTimer(2000);
 	}
 
     function update_nick(updatedNick)
@@ -77,6 +82,8 @@
         if(nick != updatedNick)
             nick = updatedNick
             $.cookie('nick', nick, { expires: 60 });
+		if($('#nick').val() != nick)
+			$('#nick').val(nick)
     }
 
 
@@ -86,18 +93,7 @@
         $.cookie('wid', wid, { expires: 60 });
     }
 
-	function successful_autoconfirm()
-	{
-        var $dialog = $('<div></div>')
-            .html("wid = " + wid + "<br>" + "nick = " + nick) 
-            .dialog({ 	title: 'Autoconfirmation Successful',
-						modal: true, 
-					  	buttons: { "Ok": function() { $(this).dialog("close"); } },
-					  	width: 400									
-						});		
-	}
-
-	function try_autoconfirm()
+	function try_autoconfirmation()
 	{	
         var $dialog = $('<div></div>')
             .html("<p>Verificaion is a single-step process, basically you need to do a nonempty edit to the Wikipedia:Sandbox and leave the following ugly string as a comment: "
@@ -120,29 +116,96 @@
 						modal: true, 
 					  	buttons: { "Cancel": function() { $(this).dialog("close"); } },
 					  	width: 600,									
-						open: function() { this.updater = window.setInterval(update_wid, 500);},						 
+						open: function() { this.updater = window.setInterval(request_autoconfirmation, 1000);},						 
  						close: function() { window.clearInterval(this.updater)}									
 						});
 						
-		function update_wid()
+		function request_autoconfirmation()
 		{
-			$.post("s/wid", {'guid': guid}, 
-					function(data) 
-					{
-						wid = data.wid;
-						nick = data.nick;
-						if(nick || wid)
-						{ 
-							$dialog.dialog('close');
-							successful_autoconfirm();
-                            $.cookie('wid', wid, { expires: 60 });							
-						}
-					}
-					);									
+			$.post("s/wid", {'guid': guid}, function(data) {
+				if(data.nick || data.wid) { 
+					successful_autoconfirmation(data);
+					$dialog.dialog('close');
+					}});
+		}
+
+		function successful_autoconfirmation(data)
+		{
+			var title, buttons, text =  "<br>Excellant. Your edit was identfied successfully."
+										+ "<br>Your username is: " + data.nick;
+
+			if(!data.wid)
+			{
+				title = 'Autoconfirmation is partially successfull';
+
+				text += "<br><br>Unfortunately autoconfirmation was only partially successfull as your username was not found in the WP CVN database. "
+						 + "If you are using well-established Wikipedia account registered before 2010, this is a bug." + REPORT 						 
+						 + "<br><br>If your Wikipedia account is new, please contact the WP CVN maintainers at the "
+						 + STAFF + "for manual account confirmation."
+						 
+				if(data.nick != nick)
+				{ 
+					 text += '<br><br>Do you want to use your Wikipedia account username as your nickname?"'						 
+					 buttons = { "Yes": function() { update_nick(data.nick); $(this).dialog("close"); }, 
+								"No": function() { $(this).dialog("close"); }						};
+				}						 										 
+				else buttons = { "Ok": function() {$(this).dialog("close");} };						 										 					
+			}
+			else
+			{
+				title = 'Autoconfirmation Successfull';
+								
+				text += '<br><br>Just in case, your key is: ' + data.wid + '<br>It is not required to save it manually.'				
+				if(nick && data.nick != nick)
+				{ 
+					text += "<br><br>Your current nickname is not the same as your Wikipedia account username. "
+					text += "To get the Verified status it needs to be the same. "				
+					text += "Do you want to use your Wikipedia account username as your Verified nickname?"				
+					buttons = { "Yes": function() { update_wid(data); $(this).dialog("close"); }, 
+								"No and Cancel": function() { $(this).dialog("close"); }						};						 										 
+				}
+				else
+				{
+					update_wid(data);					 
+					buttons = { "Ok": function() {$(this).dialog("close");} };
+				}						 										 					
+			}
+				
+	        $('<div></div>').html(text).dialog(  {title: title, modal: true, buttons: buttons, width: 450}  );		
+		}
+
+		function update_wid(data)
+		{
+            $.cookie('wid', data.wid, { expires: 60 });							
+            $.cookie('nick', data.nick, { expires: 60 });
+			login();
+			if(wid != data.wid || nick != data.nick)
+			{
+				wid = data.wid; nick = data.nick;
+				var text = "Gosh. Your browser doesn't seem to allow cookies. Or this could also be a bug." + REPORT
+				if(wid) text += "<br>Your autoconfirmation key is: " + data.wid + " Please save it for future use." 
+				$('<div></div>').html(text).dialog({title: "Your browser's cookie functionality is turned off."})
+			}
 		}
 	}	
 
 
+  // ==================================================================================
+  // Misc
+  // ==================================================================================	
+
+	function ellipsis(text, n) {
+    if(text.length>n)
+        return text.substring(0,n)+"...";
+    else
+        return text;	
+	}
+
+
+
+  // ==================================================================================
+  // Initialization  &  $(document).ready 
+  // ==================================================================================	
   $(document).ready(function() {  		
 	// Generic Setup
 	$.ajaxSetup('timeout', 1000)
@@ -161,14 +224,8 @@
 	});
 	
 
-    // User Activity
+    // User Activity / Refresh rate
     $.idleTimer(2000);
-
-    // update nick
-    $('#nick').bind("active.idleTimer", function() {$("#nick").addClass('ui-state-highlight')})
-    $('#nick').bind("idle.idleTimer", function() {update_nick($("#nick").removeClass('ui-state-highlight').val());})
-    $('#nick').idleTimer(2000);
-
 
 	// Main Window datatable 	
   	t = $('#table').dataTable({
@@ -262,7 +319,7 @@
         3000);
 
     // Mics
-    $("#autoconfirm").click(try_autoconfirm)
+    $("#autoconfirmation").click(try_autoconfirmation)
     $(window).unload(logout);
 
   } );
@@ -274,7 +331,7 @@
         <div id="status" class="ui-widget-header ui-widget-toolbar ui-corner-all">
             Nick:         
             <input id="nick" type="text" class="ui-widget ui-state-active"/>
-            <button id="autoconfirm" class="ui-widget ui-state-default sm-button ui-button ui-button-text-icon ui-corner-all">
+            <button id="autoconfirmation" class="ui-widget ui-state-default sm-button ui-button ui-button-text-icon ui-corner-all">
                 <span class="ui-button-icon-primary ui-icon ui-icon-locked"></span>
                 <span class="ui-button-text">Autoconfirmation...</span>
             </button>
