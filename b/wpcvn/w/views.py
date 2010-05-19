@@ -59,7 +59,7 @@ def wid(request):
 
 
 def users(request):
-    data = [ [p['nick'], p['utc']] 
+    data = [ [p['nick'], p['utc'], p['confirmed']] 
             for p in __users.values()]
     
     json = simplejson.dumps({
