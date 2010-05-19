@@ -16,7 +16,7 @@
     .refresh {float:left; margin-right:3px;}
   
     #status {padding: 2px;}
-    .sm-button {font-size:80%; margin-left:1px;}
+    .sm-button {font-size:75%; margin-left:1px;}
 
 	/* Layout Theme */
 	.ui-layout-pane { 
@@ -42,11 +42,12 @@
 
 <script type="text/javascript" language="javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
 <script type="text/javascript" language="javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.1/jquery-ui.min.js"></script>
+<script type="text/javascript" language="javascript" src="m/js/jquery.layout-latest.js"></script>
 <script type="text/javascript" language="javascript" src="m/datatables/media/js/jquery.dataTables.js"></script>
 <script type="text/javascript" language="javascript" src="m/js/jquery.timeFormat.js"></script>
 <script type="text/javascript" language="javascript" src="m/js/jquery.cookie.js"></script>
 <script type="text/javascript" language="javascript" src="m/js/jquery.Guid.js"></script>
-<script type="text/javascript" language="javascript" src="m/js/jquery.layout-latest.js"></script>
+<script type="text/javascript" language="javascript" src="m/js/jquery.idle-timer.js"></script>
 
 
 <script type="text/javascript" charset="utf-8">
@@ -64,27 +65,25 @@
 
     function login()
     {
-		// $.get("s/ip", function(data){ip = data.ip})
-		
+		// $.get("s/ip", function(data){ip = data.ip})        
+		nick = $.cookie('nick');    // Try nick from cookie
+        if(nick) $('#nick').val(nick)
+        else nick = $('#nick').val()        // Failover to browser cash
+        wid = $.cookie('wid')
+	}
 
-		
-        //tid = $.cookie('tid_cookie')
-        //if(tid)
-        // {
-        //     $.get("s/tid", function(data){
-        //         alert( "Your ip: " + data.ip);
-        //     });
-        // }
+    function update_nick(updatedNick)
+    {
+        if(nick != updatedNick)
+            nick = updatedNick
+            $.cookie('nick', nick, { expires: 60 });
+    }
 
-        // $.cookie('tid_cookie', 'the_value'); // set cookie
-        // $.cookie('tid_cookie', 'the_value', { expires: 7 }); // set cookie with an expiration date seven days in the future
-        // $.cookie('the_cookie', '', { expires: -1 }); // delete cookie
 
-        
-        // $.get("s/ip", function(data){
-        //    alert("Your ip: " + data.ip);
-		//		});
-
+    function logout()
+	{
+        $.cookie('nick', nick, { expires: 60 });
+        $.cookie('wid', wid, { expires: 60 });
     }
 
 	function successful_autoconfirm()
@@ -135,7 +134,8 @@
 						if(nick || wid)
 						{ 
 							$dialog.dialog('close');
-							successful_autoconfirm();							
+							successful_autoconfirm();
+                            $.cookie('wid', wid, { expires: 60 });							
 						}
 					}
 					);									
@@ -160,6 +160,15 @@
 	,	useStateCookie:		true		// enable state autoSave
 	});
 	
+
+    // User Activity
+    $.idleTimer(2000);
+
+    // update nick
+    $('#nick').bind("active.idleTimer", function() {$("#nick").addClass('ui-state-highlight')})
+    $('#nick').bind("idle.idleTimer", function() {update_nick($("#nick").removeClass('ui-state-highlight').val());})
+    $('#nick').idleTimer(2000);
+
 
 	// Main Window datatable 	
   	t = $('#table').dataTable({
@@ -203,7 +212,7 @@
 		"sDom": '<"H" <"toolbar"> lfr >t<"F"ip>',
         "oLanguage" : {"sSearch": "Filter by User or Page:"},
         "fnServerData": function (sSource, aoData, fnCallback) {
-			aoData.push( { "name": "nick", "value": $("#nick").val() } );
+			aoData.push( { "name": "nick", "value": nick } );
 			aoData.push( { "name": "wid", "value": wid } );
 			$.ajax ( {"dataType": 'json', "type": "POST", "url": sSource, "data": aoData, "success": fnCallback} );		
          }
@@ -237,29 +246,37 @@
 		"bAutoWidth": false,
         "sAjaxSource": "s/users",
         "fnServerData": function (sSource, aoData, fnCallback) {
-			aoData.push( { "name": "nick", "value": $("#nick").val() } );
+			aoData.push( { "name": "nick", "value": nick } );
 			aoData.push( { "name": "wid", "value": wid } );
             $.ajax ( {"dataType": 'json', "type": "GET", "url": sSource, "data": aoData, "success": fnCallback} );
          }
      } );
 
+
+
 	// Start Refreshing
-	window.setInterval(function() {t.fnDraw(false); users.fnDraw(false);}, 4000);
+	window.setInterval(function() 
+        {
+            t.fnDraw(false); 
+            users.fnDraw(false);}, 
+        3000);
 
     // Mics
     $("#autoconfirm").click(try_autoconfirm)
+    $(window).unload(logout);
+
   } );
 </script>
 
 
 <body>  
 	<div class="ui-layout-north">
-        <div id="status" class="ui-widget-header ui-corner-all">
+        <div id="status" class="ui-widget-header ui-widget-toolbar ui-corner-all">
             Nick:         
-            <input id="nick" type="text" class="ui-widget"/>
-            <button id="autoconfirm" class="sm-button ui-button ui-button-text-icon ui-widget ui-state-default ui-corner-all">
+            <input id="nick" type="text" class="ui-widget ui-state-active"/>
+            <button id="autoconfirm" class="ui-widget ui-state-default sm-button ui-button ui-button-text-icon ui-corner-all">
                 <span class="ui-button-icon-primary ui-icon ui-icon-locked"></span>
-                <span class="ui-button-text">Autoconfirm...</span>
+                <span class="ui-button-text">Autoconfirmation...</span>
             </button>
         </div>
 	</div>
