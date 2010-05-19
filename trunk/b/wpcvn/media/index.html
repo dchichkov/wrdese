@@ -68,13 +68,21 @@
 		// $.get("s/ip", function(data){ip = data.ip})        
 		nick = $.cookie('nick');    // Try nick from cookie
         if(nick) $('#nick').val(nick)
-        else nick = $('#nick').val()        // Failover to browser cash
+        else nick = $('#nick').val()        // Fail over to browser cash
         wid = $.cookie('wid')
 		
-		// nick updater (smart)
-		$('#nick').bind("active.idleTimer", function() {$("#nick").addClass('ui-state-highlight')})
-    	$('#nick').bind("idle.idleTimer", function() {update_nick($("#nick").removeClass('ui-state-highlight').val());})
-    	$('#nick').idleTimer(2000);
+		if(wid)
+		{
+			// disabling nick editing (too much confusion)	
+			$('#nick').attr("disabled",true).addClass('ui-state-disabled');
+		}
+		else
+		{					
+			// nick updater (smart)
+			$('#nick').bind("active.idleTimer", function() {$("#nick").addClass('ui-state-highlight')})
+	    	$('#nick').bind("idle.idleTimer", function() {update_nick($("#nick").removeClass('ui-state-highlight').val());})
+	    	$('#nick').idleTimer(2000);
+		}
 	}
 
     function update_nick(updatedNick)
@@ -89,10 +97,19 @@
 
     function logout()
 	{
-        $.cookie('nick', nick, { expires: 60 });
-        $.cookie('wid', wid, { expires: 60 });
+        // $.cookie('nick', nick, { expires: 60 });
+        // $.cookie('wid', wid, { expires: 60 });
     }
 
+	function reset()
+	{
+		$('<div></div>').html("Delete cookies and reload? Sure?").dialog(
+			{title: "Sure?",
+			buttons : { "Yes": function() {$.cookie("wid", null); $.cookie("nick", null); location.reload();}, 
+						"No and Cancel": function() { $(this).dialog("close"); }				}						 										 
+			})
+	}
+	
 	function try_autoconfirmation()
 	{	
         var $dialog = $('<div></div>')
@@ -187,6 +204,7 @@
 				$('<div></div>').html(text).dialog({title: "Your browser's cookie functionality is turned off."})
 			}
 		}
+		
 	}	
 
 
@@ -267,7 +285,7 @@
 		"bAutoWidth": false,
         "sAjaxSource": "s/w",
 		"sDom": '<"H" <"toolbar"> lfr >t<"F"ip>',
-        "oLanguage" : {"sSearch": "Filter by User or Page:"},
+        "oLanguage" : {"sSearch": "Filter by User or Page Title (case sensitive):"},
         "fnServerData": function (sSource, aoData, fnCallback) {
 			aoData.push( { "name": "nick", "value": nick } );
 			aoData.push( { "name": "wid", "value": wid } );
@@ -289,10 +307,15 @@
 		
 		"fnRowCallback": function( nRow, aData, iDisplayIndex ) {
                             var $cell=$('td:eq(1)', nRow);
-                            $cell.text( $.timeFormat($cell.text()) );
+                            $cell.text($.timeFormat(aData[1]) );
+							
+                            var $cell=$('td:eq(0)', nRow);
+                            $cell.text(aData[0]);
+							if(aData[2] == true) $cell.css({fontWeight:"bold"});
+							// $cell.html("<span rec='"+$cell.text()+"'class='ui-icon ui-icon-circle-close'>" + $cell.text() + "</span>");
                             return nRow;
                     },
-		"aoColumns": [{ "bSortable": false }, { "bSortable": false }],
+		"aoColumns": [{ "bSortable": false }, { "bSortable": false },  { "bVisible": false }],
         "bJQueryUI": true,
         "bProcessing": false,
         "bFilter": false,
@@ -320,6 +343,7 @@
 
     // Mics
     $("#autoconfirmation").click(try_autoconfirmation)
+    $("#reset").click(reset)
     $(window).unload(logout);
 
   } );
@@ -334,6 +358,10 @@
             <button id="autoconfirmation" class="ui-widget ui-state-default sm-button ui-button ui-button-text-icon ui-corner-all">
                 <span class="ui-button-icon-primary ui-icon ui-icon-locked"></span>
                 <span class="ui-button-text">Autoconfirmation...</span>
+            </button>
+            <button id="reset" class="ui-widget ui-state-default sm-button ui-button ui-button-text-icon ui-corner-all">
+                <span class="ui-button-icon-primary ui-icon ui-icon-unlocked"></span>
+                <span class="ui-button-text">Reset Cookies...</span>
             </button>
         </div>
 	</div>
@@ -365,6 +393,7 @@
 		                <tr>
 		                        <th width="60%">Nick</th>
 		                        <th width="40%">Last Seen</th>
+		                        <th width="0%">Confirmed</th>
 		                </tr>
 		        </thead>
 		        <tbody>
