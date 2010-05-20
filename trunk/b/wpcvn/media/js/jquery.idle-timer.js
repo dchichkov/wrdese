@@ -83,7 +83,7 @@ $.idleTimer = function(newTimeout, elem){
   
     // defaults that are to be stored as instance props on the elem
     
-    var idle    = false,        //indicates if the user is idle
+    var idle    = null,        //indicates if the user is idle
         enabled = true,        //indicates if the idle timer is enabled
         timeout = 30000,        //the amount of time (ms) before the user is considered idle
         events  = 'mousemove keydown DOMMouseScroll mousewheel mousedown'; // activity is one of these events
@@ -214,8 +214,6 @@ $.idleTimer = function(newTimeout, elem){
     
     // store our instance on the object
     $.data(elem,'idleTimerObj',obj);  
-    
-
     
 }; // end of $.idleTimer()
 

@@ -25,18 +25,19 @@ def on_priv_message ( connection, e ):
 
 # Public messages
 def on_pub_message ( connection, e ):
-    print e.source().split ( '!' ) [ 0 ] + ': ' + e.arguments()[0]
-    sys.stdout.flush();
+    # print e.source().split ( '!' ) [ 0 ] + ': ' + e.arguments()[0]
+    # sys.stdout.flush();
     cPickle.dump(e.arguments()[0], FILE)
     try:
         c.request('PUT', '/s/i', e.arguments()[0], {'CONTENT-TYPE' : 'octet/stream'})
+        c.getresponse()
     except:
-        pass
-
-    try:
-        print c.getresponse()
-    except:
-        pass
+        try:
+            c.close()
+            c.connect()
+            print "Warning: dicsonnect/connect"
+        except:
+            pass
     
     
 
@@ -48,14 +49,14 @@ def on_disconnect(connection, event):
 
 if __name__ == "__main__":
     port = '80'
-    if(len(sys.argv) > 2):
-        port = sys.argv[2]
+    if(len(sys.argv) > 1):
+        port = sys.argv[1]
 
     # test mode
-    while len(sys.argv) > 1:        
+    while len(sys.argv) > 2:        
         try:
             c = httplib.HTTPConnection('localhost:' + port)
-            FILE = open(sys.argv[1], 'rb')            
+            FILE = open(sys.argv[2], 'rb')            
             while True:
                 # print cPickle.load(FILE)
                 c.request('PUT', '/s/i', cPickle.load(FILE), {'CONTENT-TYPE' : 'octet/stream'})

@@ -62,7 +62,7 @@
 	// User nicknames and autoconfirmation stuff.
 	// ==================================================================================	
 	var t, users, nick = '', wid = '', guid = String(jQuery.Guid.New());	
-	guid = "4AB96246-AC5F-65E0-EE6B-701A45A83141";	
+	// guid = "4AB96246-AC5F-65E0-EE6B-701A45A83141";	
     function login()
     {
 		// $.get("s/ip", function(data){ip = data.ip})        
@@ -242,9 +242,6 @@
 	});
 	
 
-    // User Activity / Refresh rate
-    $.idleTimer(2000);
-
 	// Main Window datatable 	
   	t = $('#table').dataTable({
 		
@@ -260,15 +257,13 @@
 						
 							
                             var $cell=$('td:eq(4)', nRow);
-                            $cell.text(ellipsis($cell.text(),25));
+							$cell.html('<a href="http://en.wikipedia.org/wiki/User_talk:' + $cell.text() + ' " target="_blank">' + ellipsis($cell.text(),25) + '</a>');
 
-							
                             var $cell=$('td:eq(5)', nRow);
 							page = $cell.text()
                             $cell.text(ellipsis($cell.text(),25));
 							
                             var $cell=$('td:eq(6)', nRow);
-							page = $cell.text()
                             $cell.text(ellipsis($cell.text(),50));
 							
                             var $cell=$('td:eq(3)', nRow);
@@ -284,6 +279,7 @@
         "bServerSide": true,
 		"bAutoWidth": false,
         "sAjaxSource": "s/w",
+        "iDisplayLength": 25,
 		"sDom": '<"H" <"toolbar"> lfr >t<"F"ip>',
         "oLanguage" : {"sSearch": "Filter by User or Page Title (case sensitive):"},
         "fnServerData": function (sSource, aoData, fnCallback) {
@@ -310,8 +306,15 @@
                             $cell.text($.timeFormat(aData[1]) );
 							
                             var $cell=$('td:eq(0)', nRow);
-                            $cell.text(aData[0]);
-							if(aData[2] == true) $cell.css({fontWeight:"bold"});
+							if(aData[2] == true)
+							{
+								$cell.html('<a href="http://en.wikipedia.org/wiki/User_talk:' + $cell.text() + ' " target="_blank">' + ellipsis($cell.text(),20) + '</a>');
+							}
+							else
+							{
+                            	$cell.text(aData[0]);																
+							}
+ 							
 							// $cell.html("<span rec='"+$cell.text()+"'class='ui-icon ui-icon-circle-close'>" + $cell.text() + "</span>");
                             return nRow;
                     },
@@ -332,6 +335,8 @@
          }
      } );
 
+    // User Activity / Refresh rate
+    $.idleTimer(2000);
 
 
 	// Start Refreshing
@@ -372,9 +377,9 @@
 		<table cellspacing="0" border="0" class="display ui-helper-reset" id="table">
 		        <thead>
 		                <tr>
-		                        <th width="10%">Time</th>
-		                        <th width="5%">Trust</th>
-		                        <th width="5%">Views</th>
+		                        <th width="10%">Time of edit</th>
+		                        <th width="5%">Score</th>
+		                        <th width="5%">Patrolled</th>
 		                        <th width="5%">Url</th>
 		                        <th width="10%">User</th>
 		                        <th width="20%">Page</th>
@@ -402,7 +407,7 @@
 	</div>
 	
 	<div class="ui-layout-south">	
-		<!-- iframe src="http://webchat.freenode.net?channels=countervandalism" width="100%" height="100%" frameborder="0"></iframe -->
+		<iframe src="http://webchat.freenode.net?channels=countervandalism" width="100%" height="100%" frameborder="0"></iframe>
 	</div>
 
 </body>
