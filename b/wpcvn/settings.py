@@ -6,7 +6,7 @@ if 'APACHE_PID_FILE' in os.environ:
 else:
     DEBUG = True
 
-DEBUG = True    
+DEBUG = False
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
@@ -14,11 +14,7 @@ ADMINS = (
 )
 
 MANAGERS = ADMINS
-
-# pyton-memcached should be present
 CACHE_BACKEND = 'memcached://127.0.0.1:11211/'
-
-
 DATABASE_ENGINE = 'sqlite3'           # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
 DATABASE_NAME = 'sqlite3.db'          # Or path to database file if using sqlite3.
 DATABASE_USER = ''             # Not used with sqlite3.
