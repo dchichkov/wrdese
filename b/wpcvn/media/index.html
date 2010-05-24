@@ -14,9 +14,13 @@
     table td {white-space: nowrap;}
     .toolbar {float:left; margin-top:3px; margin-right:3px;}
     .refresh {float:left; margin-right:3px;}
+
+	.a-user {color: black;}
+
   
     #status {padding: 2px;}
     .sm-button {font-size:75%; margin-left:1px;}
+	
 
 	/* Layout Theme */
 	.ui-layout-pane { 
@@ -32,6 +36,7 @@
 		display:	none;
 		overflow:	hidden;
 	}
+	
 	iframe {
 		padding:	0 !important; /* iframes should not have padding */
 		overflow:	auto !important;		
@@ -256,17 +261,17 @@
 							else if($cell.text() > 100) $cell.css("color", "#348017");
 						
 							
-                            var $cell=$('td:eq(4)', nRow);
-							$cell.html('<a href="http://en.wikipedia.org/wiki/User_talk:' + $cell.text() + ' " target="_blank">' + ellipsis($cell.text(),25) + '</a>');
-
                             var $cell=$('td:eq(5)', nRow);
+							$cell.html('<a class="a-user" href="http://en.wikipedia.org/wiki/User_talk:' + $cell.text() + ' " target="_blank">' + ellipsis($cell.text(),25) + '</a>');
+
+                            var $cell=$('td:eq(6)', nRow);
 							page = $cell.text()
                             $cell.text(ellipsis($cell.text(),25));
 							
-                            var $cell=$('td:eq(6)', nRow);
+                            var $cell=$('td:eq(7)', nRow);
                             $cell.text(ellipsis($cell.text(),50));
 							
-                            var $cell=$('td:eq(3)', nRow);
+                            var $cell=$('td:eq(4)', nRow);
                             $cell.html('<a href="' + $cell.text() + ' " target="_blank">diff...</a>');
 							$cell.attr("alt", page)
 							$cell.click(function() {$.post("s/c", $(this).attr("alt"));});
@@ -377,9 +382,10 @@
 		<table cellspacing="0" border="0" class="display ui-helper-reset" id="table">
 		        <thead>
 		                <tr>
-		                        <th width="10%">Time of edit</th>
-		                        <th width="5%">Score</th>
-		                        <th width="5%">Patrolled</th>
+		                        <th width="5%">Edit time</th>
+		                        <th width="4%">Karma</th>
+		                        <th width="6%">Patrolled</th>
+		                        <th width="5%">Labels</th>
 		                        <th width="5%">Url</th>
 		                        <th width="10%">User</th>
 		                        <th width="20%">Page</th>

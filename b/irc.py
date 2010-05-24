@@ -27,12 +27,18 @@ class TestBot(SingleServerIRCBot):
         self.user_reputations = user_reputations
         # self.re_edit = re.compile(r'^C14\[\[^C07(?P<page>.+?)^C14\]\]^C4 (?P<flags>.*?)^C10 ^C02(?P<url>.+?)^C ^C5\*^C ^C03(?P<user>.+?)^C ^C5\*^C \(?^B?(?P<bytes>[+-]?\d+?)^B?\) ^C10(?P<summary>.*)^C'.replace('^B', '\002').replace('^C', '\003').replace('^U', '\037'))
 
+        r_bits = r'(^C(^B)?(?P<flags>\S+)(^C|^B)? )'
+        r_user = r'(\[\[User:(?P<user>.+?)\]\],? )'
+        r_label = r'((^C|^B)(?P<label>.+?)(^C|^B) )'
+        r_page = r'(\[\[(?P<page>.+?)\]\] )'
+        r_bytes = r'((^B^C)?\((?P<bytes>[+-]?\d+?)\)(^B)?(^C)? )'
+        r_diff = r'(^CDiff:^C (?P<url>\S+) )'
+        r_summary = r'("(?P<summary>.*)"?)'       
+        rs = r_bits + '?' + r_user + r_label + r_page + r_bytes + '?' + r_diff + '?' + '(reason )?' + '(^C)?' + r_summary
+        self.re_edit = re.compile(rs.replace('^B', '\002').replace('^C', '\003\d\d').replace('^U', '\037'))
+        # cPickle.dump(rs, open('test.pkl', 'wb'))
 
-        rs = r'^C(?P<bits>\S+)^C \[\[(?P<user>.+?)\]\],? ^C(?P<label>.+?)^C \[\[(?P<page>.+?)\]\] ^B^C\((?P<bytes>[+-]?\d+?)\)^B^C ^CDiff:^C (?P<url>\S+)( reason)? "(?P<summary>.*)"'.replace('^B', '\002').replace('^C', '\003\d\d').replace('^U', '\037')
-
-        # rs = r'.*^C14 \[\[(?P<page>.+?)\]\] ^B.*'.replace('^B', '\002').replace('^C', '\003').replace('^U', '\037')
-        self.re_edit = re.compile(rs)
-        cPickle.dump(rs, open('test.pkl', 'wb'))
+        self.re_list = re.compile(r'Added (?P<user>.+?) to (?P<list>\S+), ("(?P<summary>.*)")\. Expires (?P<utc>.* UTC)')
 
         # use file as a source and fake IRC
         self.FILE = None
@@ -42,7 +48,7 @@ class TestBot(SingleServerIRCBot):
                 while True:
                     (t, e) = cPickle.load(FILE)
                     self.on_pubmsg(None, e)
-                    sleep(0.1)
+                    # sleep(0.1)
             except EOFError, e:
                 FILE.close()
                 return
@@ -77,28 +83,35 @@ class TestBot(SingleServerIRCBot):
         c.join(self.channel)
 
     def on_pubmsg(self, c, e):
-        print '\n\n\n\n\n\n'
-        if(self.FILE): cPickle.dump((time(), e), self.FILE)
-        print
+        if(self.FILE): cPickle.dump((time(), e), self.FILE)        
+        
         match = self.re_edit.match(e.arguments()[0])
+        if(e.source().split ('!') [0] != 'MiszaBot'):
+            return
 
         if not match:
-                print "Warning: Regexp does not match (raw): "
+                for re in [self.re_list, ]:
+                    if re.match(e.arguments()[0]): return                
+                print "\n\n\nWarning: Regexp does not match (raw): "
+                print e.source().split ( '!' ) [ 0 ], 'len = ', len(e.arguments()[0]) 
                 cPickle.dump(e.arguments()[0], sys.stdout)
                 return
         try:
             msg = unicode(e.arguments()[0],'utf-8')
         except UnicodeDecodeError:
-            print "Exception: UnicodeDecodeError"
+            print "\n\n\nException: UnicodeDecodeError"
+            print e.source().split ( '!' ) [ 0 ], 'len = ', len(e.arguments()[0])
             return
 
         match = self.re_edit.match(msg)
         if not match:
-            print "Warning: Regexp does not match (unicode)"
+            print "\n\n\nWarning: Regexp does not match (unicode)"
+            print e.source().split ( '!' ) [ 0 ], 'len = ', len(e.arguments()[0])
             return
         
-        print "************* Regexp match."
-        cPickle.dump(e.arguments()[0], sys.stdout)
+        # print "\n\n\n************* Regexp match."
+        # print e.source().split ( '!' ) [ 0 ], 'len = ', len(e.arguments()[0])
+        # cPickle.dump(e.arguments()[0], sys.stdout)
         d = match.groupdict()
         
         if self.user_reputations:
