@@ -119,10 +119,10 @@ def w(request):
     
     # Fill data, apply search and sorting parameters
     if sSearch:
-        data = [ [p['utc'], p['reputation'], p['views'], p['url'], p['user'], p['page'], p['summary'] ] 
+        data = [ [p['utc'], p['reputation'], p['views'], p['labels'], p['url'], p['user'], p['page'], p['summary'] ] 
                 for p in S.recent.values() if p['user'].startswith(sSearch) or p['page'].startswith(sSearch)]
     else:
-        data = [ [p['utc'], p['reputation'], p['views'], p['url'], p['user'], p['page'], p['summary'] ] 
+        data = [ [p['utc'], p['reputation'], p['views'], p['labels'], p['url'], p['user'], p['page'], p['summary'] ] 
                 for p in reversed(S.recent.values())]
         
     if iSortingCols == '1':
@@ -177,6 +177,7 @@ def irc(request):
         d['utc'] = utc
         d['expire'] = utc + 60 * 60   # 1 hour
         d['views'] = 0
+        d['labels'] = ""        
         S.recent[page] = d
     elif(page in S.recent):
         d['reputation'] = reputation
@@ -185,6 +186,9 @@ def irc(request):
         d['views'] = 0
         S.recent[page] = d
     
+    return HttpResponse()
+
+def bots(request):
     return HttpResponse()
 
 

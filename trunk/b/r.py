@@ -16,6 +16,8 @@
 
 # User reputations - tuples (+, -) - how often '+' do '-'
 
+# Try to produce 'string' reputations "er eeer es es", "eee ceeee e e e e "
+
 
 # Users with bad reputation can do good edits:
 # * self reverts
