@@ -1113,6 +1113,76 @@ def analyse_decisiontree(revisions, user_reputations):
     # dump_cstats(stats, ids)
 
 
+def compute_letter_features():
+    user_lfeatures = defaultdict(str)
+
+    total_time = total_size = 0
+    prev = None;
+
+    for e in revisions:
+        # known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
+        f = ''
+
+        # e - regular edit
+        # r - revert
+        # s - self revert
+        # w - revert war
+        # q - questionable
+        # v - reverted (most likely v.)
+        # u - undid
+        # x - replaced content
+        # b - blanked
+        # w - unrecognized WP:
+
+        # n - no comment
+        # s - no comment / section
+        # c - comment stats are looking bad
+        # h - HI in the comment
+        # g - comment is looking good
+
+        # i - an IP edit
+        # u - not an IP edit
+
+        # d - content deletion
+        # l - large scale content detetion
+
+        if(e.comment):
+            if(e.comment[:5] == '[[WP:'):
+                if(e.comment[:17] == u'[[WP:AES|A¢Undid'): f += 'u'
+                elif(e.comment[:19] == u'[[WP:AES|A¢Blanked'): f += 'b'
+                elif(e.comment[:20] == u'[[WP:AES|A¢Replaced'): f += 'x'
+                elif(e.comment[:20] == u'[[WP:AES|A¢ Blanked'): f += 'b'
+                elif(e.comment[:21] == u'[[WP:AES|A¢ Replaced'): f += 'x'
+                elif(e.comment[:41] == u'[[WP:Automatic edit summaries|A¢Replaced'): f += 'x'
+                else: f += 'w'
+            elif(e.comment[-2:] == '*/'):
+                f += 's'
+            else:
+                uN = len(reU.findall(text))
+                lN = len(reL.findall(text))
+                esN = len(reES.findall(text))
+                if((uN > 5 and lN < uN) or esN > 2): f += 'c'      # uppercase stats is looking bad
+                elif(reHI.search(text) != None): f += 'h'
+                else: f += 'g'
+        else:
+            score += 'n'
+        
+        # reverts info
+        if(ri > -1): f += 'r'
+        return ('s', 'w', 'q', 'v', 'e')[ri]
+
+        # IP edit
+        f += ('u', 'i')[e.ipedit]
+
+        # change
+        if(e.ilR > e.ilA and e.iwR > 1): f += 'd'            # and new page is smaller than the previous
+        if(e.iwR == 50): f += 'l'                            # large scale removal
+
+
+
+
+
+
 def compute_reputations_dictionary():
     user_reputations = defaultdict(int)
 
