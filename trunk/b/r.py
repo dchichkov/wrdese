@@ -159,7 +159,8 @@ import crm114
 # known good, known bad revisions
 #import wicow08r_chin_microsoft_annotation as k
 #import wicow08r_chin_lincoln_annotation as k
-import pan_wvc_10_gold as k
+#import pan_wvc_10_gold as k
+import pan10_vandalism_test_collection as k
 #import k
 
 NNN = 313797035 # total revisions in the dump
@@ -497,7 +498,7 @@ def filter_pyc():
     for e, v in k.g.iteritems():
         if v != 'known': l.append(e)
     
-    print "Known list:", k.g
+    # print "Known list:", k.g
     print "Missing list", sorted(l)
     print "Known revisions: ", len(k.g)
     print "Missing revisions total: ", len(l)
