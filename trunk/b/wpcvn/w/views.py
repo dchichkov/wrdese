@@ -119,10 +119,10 @@ def w(request):
     
     # Fill data, apply search and sorting parameters
     if sSearch:
-        data = [ [p['utc'], p['reputation'], p['views'], p['labels'], p['url'], p['user'], p['page'], p['summary'] ] 
+        data = [ [p['utc'], p['views'], p['labels'], p['url'], p['user'], p['reputation'], p['page'], p['summary'] ] 
                 for p in S.recent.values() if p['user'].startswith(sSearch) or p['page'].startswith(sSearch)]
     else:
-        data = [ [p['utc'], p['reputation'], p['views'], p['labels'], p['url'], p['user'], p['page'], p['summary'] ] 
+        data = [ [p['utc'], p['views'], p['labels'], p['url'], p['user'], p['reputation'], p['page'], p['summary'] ] 
                 for p in reversed(S.recent.values())]
         
     if iSortingCols == '1':
@@ -184,6 +184,7 @@ def irc(request):
         d['utc'] = utc
         d['expire'] = utc + 15 * 60   # 15 minutes
         d['views'] = 0
+        d['labels'] = ""        
         S.recent[page] = d
     
     return HttpResponse()

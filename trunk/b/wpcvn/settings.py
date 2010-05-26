@@ -6,7 +6,7 @@ if 'APACHE_PID_FILE' in os.environ:
 else:
     DEBUG = True
 
-DEBUG = False
+# DEBUG = False
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
