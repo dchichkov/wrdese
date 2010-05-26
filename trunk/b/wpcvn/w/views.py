@@ -29,6 +29,7 @@ class SharedState:
     """Beware of threads"""
     expiration_check = 0
     users = OrderedDict()
+    filtered = OrderedDict()
     recent = OrderedDict()
     guids = {}
     re_edit = re.compile(r'^C14\[\[^C07(?P<page>.+?)^C14\]\]^C4 (?P<flags>.*?)^C10 ^C02(?P<url>.+?)^C ^C5\*^C ^C03(?P<user>.+?)^C ^C5\*^C \(?^B?(?P<bytes>[+-]?\d+?)^B?\) ^C10(?P<summary>.*)^C'.replace('^B', '\002').replace('^C', '\003').replace('^U', '\037'))
@@ -46,10 +47,10 @@ S = SharedState()
 def click(request):
     page = request.raw_post_data
     print "Clicked Page: %s" % page
-    if page in S.recent:
-        S.recent[page]['views'] += 1
-        if(S.recent[page]['views'] > 1): S.recent[page]['expire'] = time() + 60 * 20       # 20 minutes
-        if(S.recent[page]['views'] > 2): S.recent[page]['expire'] = time() + 60 * 10       # 10 minutes       
+    if page in S.filtered:
+        S.filtered[page]['views'] += 1
+        if(S.filtered[page]['views'] > 1): S.filtered[page]['expire'] = time() + 60 * 20       # 20 minutes
+        if(S.filtered[page]['views'] > 2): S.filtered[page]['expire'] = time() + 60 * 10       # 10 minutes       
     return HttpResponse()
 
 
@@ -120,17 +121,17 @@ def w(request):
     # Fill data, apply search and sorting parameters
     if sSearch:
         data = [ [p['utc'], p['views'], p['labels'], p['url'], p['user'], p['reputation'], p['page'], p['summary'] ] 
-                for p in S.recent.values() if p['user'].startswith(sSearch) or p['page'].startswith(sSearch)]
+                for p in S.filtered.values() if p['user'].startswith(sSearch) or p['page'].startswith(sSearch)]
     else:
         data = [ [p['utc'], p['views'], p['labels'], p['url'], p['user'], p['reputation'], p['page'], p['summary'] ] 
-                for p in reversed(S.recent.values())]
+                for p in reversed(S.filtered.values())]
         
     if iSortingCols == '1':
         data.sort(key = itemgetter(iSortCol), reverse = bSortDir)
 
     json = simplejson.dumps({
         'sEcho': request.POST.get('sEcho','1'),
-        'iTotalRecords': len(S.recent),
+        'iTotalRecords': len(S.filtered),
         'iTotalDisplayRecords': len(data),
         'aaData': data[start:start+length]})
     return HttpResponse(json, mimetype='application/json')
@@ -172,24 +173,35 @@ def irc(request):
     
     page = d['page']
     utc = time()
+    d['reputation'] = reputation
+    d['utc'] = utc
+    d['expire'] = utc + 15 * 60   # 15 minutes
+    d['views'] = 0
+    d['labels'] = ""
+    S.recent[page] = d
+
     if(reputation < 0):
-        d['reputation'] = reputation
-        d['utc'] = utc
         d['expire'] = utc + 60 * 60   # 1 hour
-        d['views'] = 0
-        d['labels'] = ""        
-        S.recent[page] = d
-    elif(page in S.recent):
-        d['reputation'] = reputation
-        d['utc'] = utc
-        d['expire'] = utc + 15 * 60   # 15 minutes
-        d['views'] = 0
-        d['labels'] = ""        
-        S.recent[page] = d
+        S.filtered[page] = d
+    elif(page in S.filtered):
+        d['labels'] = "likely patrolled"        
     
     return HttpResponse()
 
 def bots(request):
+    if settings.DEBUG:
+        print 'page: %s' % request.POST.get('page','')
+        print 'user: %s' % request.POST.get('user','')
+        print 'label: %s' % request.POST.get('label','')
+
+    page = request.POST.get('page','')
+    if page in S.recent  and  S.recent[page] == request.POST.get('user',''):
+        d = S.recent[page]
+        d['expire'] = utc + 60 * 60   # 1 hour
+        if(d['labels']): d['labels'] += "; "
+        d['labels'] += request.POST.get('label','')
+        S.filtered[page] = d                    
+    
     return HttpResponse()
 
 
@@ -199,7 +211,7 @@ def expiration_check():
     S.expiration_check = time() + 60
      
     utc = time()   
-    for t in [S.users, S.recent, S.guids]:
+    for t in [S.users, S.filtered, S.recent, S.guids]:
        for p, r in t.iteritems(): 
            if(r['expire'] < utc): del t[p]
 

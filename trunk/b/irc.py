@@ -17,14 +17,13 @@ from ircbot import SingleServerIRCBot
 from irclib import nm_to_n, nm_to_h, irc_lower, ip_numstr_to_quad, ip_quad_to_numstr
 from time import time, sleep
 import re
-from reputations import read_reputations
 
 
-class TestBot(SingleServerIRCBot):
-    def __init__(self, channel, nickname, server, user_reputations, port=6667):
+class Irc2Http(SingleServerIRCBot):
+    def __init__(self, channel, nickname, server, port=6667, http):
         SingleServerIRCBot.__init__(self, [(server, port)], nickname, nickname)
         self.channel = channel
-        self.user_reputations = user_reputations
+        self.http = http
         # self.re_edit = re.compile(r'^C14\[\[^C07(?P<page>.+?)^C14\]\]^C4 (?P<flags>.*?)^C10 ^C02(?P<url>.+?)^C ^C5\*^C ^C03(?P<user>.+?)^C ^C5\*^C \(?^B?(?P<bytes>[+-]?\d+?)^B?\) ^C10(?P<summary>.*)^C'.replace('^B', '\002').replace('^C', '\003').replace('^U', '\037'))
 
         r_bits = r'(^C(^B)?(?P<flags>\S+)(^C|^B)? )'
@@ -113,28 +112,31 @@ class TestBot(SingleServerIRCBot):
         # print e.source().split ( '!' ) [ 0 ], 'len = ', len(e.arguments()[0])
         # cPickle.dump(e.arguments()[0], sys.stdout)
         d = match.groupdict()
-        
-        if self.user_reputations:
-            reputation = self.user_reputations.get(d['user'])
-            if(reputation != None and reputation < 0):
-                print d['user'], '(', reputation , ')', d['page'], d['url']
+
+        if not len(d):
+            print "\n\n\nWarning: Empty match"
+            print e.source().split ( '!' ) [ 0 ], 'len = ', len(e.arguments()[0])
+            return
+
+
+        # forward it to HTTP
+        try:
+            self.httpConnection.request('PUT', '/s/b', d, {'CONTENT-TYPE' : 'octet/stream'})
+            self.httpConnection.getresponse()
+        except Exception, e:
+            try:
+                print e
+                print "Warning: httpConnection disconnect/connect."
+                httpConnection.close()
+                httpConnection.connect()
+            except:
+                print "Warning: Exception during httpConnection disconnect/connect."
+                pass
         return
 
-def main():
-    if len(sys.argv) == 3:
-        channel = ""  
-        nickname = ""
-    elif len(sys.argv) == 5 and sys.argv[2][0] == '#':
-        channel = sys.argv[2]
-        nickname = sys.argv[3]
-    else:
-        print r"Usage: irc.py <server[:port]> <channel> <nickname> <reputations>"
-        print r"Usage: irc.py <dump> <reputations>"
-        print r"Example: ./irc.py irc.freenode.net \#cvn-wp-en Dc987test p/ratings-pan-wvc-10.merged"
-        print r"Example: ./irc.py irc.freenode.net.1274487004.74.pkl p/ratings-pan-wvc-10.merged"
-        return
+def serverport(s, default):
+    """ extract and initialize IRC server/port """
 
-    # extract and initialize port
     s = sys.argv[1].split(":", 1)
     server = s[0]
     if len(s) == 2:
@@ -144,10 +146,35 @@ def main():
             print "Error: Erroneous port."
             sys.exit(1)
     else:
-        port = 6667
+        port = default
 
-    user_reputations = read_reputations(sys.argv[-1])
-    bot = TestBot(channel, nickname, server, user_reputations, port)
+    return (server, port)
+
+
+def main():
+    if len(sys.argv) == 3:
+        channel = nickname = ""
+        ircServer = ircPort = ""
+    elif len(sys.argv) == 4 and sys.argv[2][0] == '#':
+        channel = sys.argv[2]
+        nickname = sys.argv[3]
+        (ircServer, ircPort) = serverport(sys.argv[1], 6667)
+    else:
+        print r"Usage: irc.py <IRC server[:port] <channel> <nickname> <HTTP server[:port]>"
+        print r"Usage: irc.py <dump> <HTTP server[:port]>"
+        print r"Example: ./irc.py irc.freenode.net \#cvn-wp-en Dc987test localhost:80"
+        print r"Example: ./irc.py irc.freenode.net.1274487004.74.pkl localhost:8080"
+        return
+
+    httpConnection = None;
+    try:
+        httpConnection = httplib.HTTPConnection(sys.argv[-1])
+    except Exception, e:
+        print e
+        print "Will try to reconnect to " + sys.argv[-1] + " later."
+        sleep(1)        
+
+    bot = Irc2Http(channel, nickname, ircServer, ircPort, httpConnection)
 
 if __name__ == "__main__":
     main()
