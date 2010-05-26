@@ -12,18 +12,17 @@ ircbot.py.
 
 """
 
-import sys, cPickle
+import sys, re, httplib, cPickle
 from ircbot import SingleServerIRCBot
 from irclib import nm_to_n, nm_to_h, irc_lower, ip_numstr_to_quad, ip_quad_to_numstr
 from time import time, sleep
-import re
 
 
 class Irc2Http(SingleServerIRCBot):
-    def __init__(self, channel, nickname, server, port=6667, http):
-        SingleServerIRCBot.__init__(self, [(server, port)], nickname, nickname)
+    def __init__(self, channel, nickname, ircServer, ircPort=6667, httpConnection=None):
+        SingleServerIRCBot.__init__(self, [(ircServer, ircPort)], nickname, nickname)
         self.channel = channel
-        self.http = http
+        self.httpConnection = httpConnection
         # self.re_edit = re.compile(r'^C14\[\[^C07(?P<page>.+?)^C14\]\]^C4 (?P<flags>.*?)^C10 ^C02(?P<url>.+?)^C ^C5\*^C ^C03(?P<user>.+?)^C ^C5\*^C \(?^B?(?P<bytes>[+-]?\d+?)^B?\) ^C10(?P<summary>.*)^C'.replace('^B', '\002').replace('^C', '\003').replace('^U', '\037'))
 
         r_bits = r'(^C(^B)?(?P<flags>\S+)(^C|^B)? )'
@@ -43,22 +42,22 @@ class Irc2Http(SingleServerIRCBot):
         self.FILE = None
         while channel == '':
             try:
-                FILE = open(server, 'rb')
+                FAKE = open(ircServer, 'rb')
                 while True:
-                    (t, e) = cPickle.load(FILE)
+                    (t, e) = cPickle.load(FAKE)
                     self.on_pubmsg(None, e)
-                    # sleep(0.1)
+                    sleep(0.2)
             except EOFError, e:
-                FILE.close()
+                FAKE.close()
                 return
             except Exception, e:
                 print("Exception at %s: %s" % (e.__class__.__name__, e.args))
-                FILE.close()
+                FAKE.close()
                 return
 
 
         # real irc
-        self.FILE = open('%s.%s.pkl' % (server, time()), 'wb')    
+        self.FILE = open('%s.%s.pkl' % (ircServer, time()), 'wb')    
 
         try:
             self.start()
@@ -120,51 +119,49 @@ class Irc2Http(SingleServerIRCBot):
 
 
         # forward it to HTTP
-        try:
-            self.httpConnection.request('PUT', '/s/b', d, {'CONTENT-TYPE' : 'octet/stream'})
-            self.httpConnection.getresponse()
-        except Exception, e:
+        if(self.httpConnection):
             try:
-                print e
-                print "Warning: httpConnection disconnect/connect."
-                httpConnection.close()
-                httpConnection.connect()
-            except:
-                print "Warning: Exception during httpConnection disconnect/connect."
-                pass
+                self.httpConnection.request('PUT', '/s/b', d, {'CONTENT-TYPE' : 'octet/stream'})
+                self.httpConnection.getresponse()
+            except Exception, e:
+                try:
+                    print e
+                    print "Warning: httpConnection disconnect/connect."
+                    self.httpConnection.close()
+                    self.httpConnection.connect()
+                except KeyboardInterrupt:
+                    raise
+                except:
+                    print "Warning: Exception during httpConnection disconnect/connect."
+                    pass
         return
-
-def serverport(s, default):
-    """ extract and initialize IRC server/port """
-
-    s = sys.argv[1].split(":", 1)
-    server = s[0]
-    if len(s) == 2:
-        try:
-            port = int(s[1])
-        except ValueError:
-            print "Error: Erroneous port."
-            sys.exit(1)
-    else:
-        port = default
-
-    return (server, port)
 
 
 def main():
     if len(sys.argv) == 3:
         channel = nickname = ""
-        ircServer = ircPort = ""
     elif len(sys.argv) == 4 and sys.argv[2][0] == '#':
         channel = sys.argv[2]
         nickname = sys.argv[3]
-        (ircServer, ircPort) = serverport(sys.argv[1], 6667)
     else:
-        print r"Usage: irc.py <IRC server[:port] <channel> <nickname> <HTTP server[:port]>"
-        print r"Usage: irc.py <dump> <HTTP server[:port]>"
+        print r"Usage: irc.py <IRC ircServer[:ircPort] <channel> <nickname> <httpServer[:httpPort]>"
+        print r"Usage: irc.py <dump> <httpServer[:httpPort]>"
         print r"Example: ./irc.py irc.freenode.net \#cvn-wp-en Dc987test localhost:80"
         print r"Example: ./irc.py irc.freenode.net.1274487004.74.pkl localhost:8080"
         return
+
+    # extract and initialize IRC ircServer/ircPort (or .pkl)
+    s = sys.argv[1].split(":", 1)
+    ircServer = s[0]
+    if len(s) == 2:
+        try:
+            ircPort = int(s[1])
+        except ValueError:
+            print "Error: Erroneous ircPort."
+            sys.exit(1)
+    else:
+        ircPort = 6667
+
 
     httpConnection = None;
     try:
