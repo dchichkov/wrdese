@@ -159,8 +159,8 @@ import crm114
 # known good, known bad revisions
 #import wicow08r_chin_microsoft_annotation as k
 #import wicow08r_chin_lincoln_annotation as k
-#import pan_wvc_10_gold as k
-import pan10_vandalism_test_collection as k
+import pan_wvc_10_gold as k
+#import pan10_vandalism_test_collection as k
 #import k
 
 NNN = 313797035 # total revisions in the dump
@@ -705,7 +705,7 @@ def show_diff(e):
 
 
 
-def collect_stats(stats, ids, user_reputations, e, prev, score, uncertain, extra):
+def collect_stats(stats, ids, user_reputations, e, score, uncertain, extra):
     global _retrain_arg, _train_arg, _human_responses
     score_numeric = e.rev_score_info                   
     revid = e.revid
@@ -786,7 +786,7 @@ def check_reputations(revisions, user_reputations):
                 score = ('good', 'bad')[reputation < 0]
         
             # Collecting stats and Human verification
-            (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, False, None)
+            (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, False, None)
         prev = e;
 
 
@@ -943,7 +943,7 @@ def analyse_maxent(revisions, user_reputations):
         uncertain = known != score
         score_numeric = e.rev_score_info
         extra = lambda: classifier.explain(features);
-        #(verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, uncertain, extra)
+        #(verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, uncertain, extra)
         stats['Revision analysis score ' + score + ' on known'][known] += 1
     dump_cstats(stats, ids)
 
@@ -1016,7 +1016,7 @@ def analyse_crm114(revisions, user_reputations):
             
             # Collecting stats and Human verification
             extra = lambda:wikipedia.output(" \03{lightblue}%s\03{default}" % edit_text)
-            (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, uncertain, extra)
+            (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, uncertain, extra)
 
             if(i > 500):
                 stats['CRM114 answered ' + crm114_answer + ' on known'][known] += 1
@@ -1104,84 +1104,100 @@ def analyse_decisiontree(revisions, user_reputations):
 
         # if(not known): continue
         # uncertain = (user_reputations[e.username] > 0 and score == 'bad') or (user_reputations[e.username] < 0 and score == 'good')
-        # (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, uncertain, None)
+        # (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, uncertain, None)
 
     #for e in revisions:
     #    if(user_reputations[e.username] > 0): score = 'good'
     #    elif(user_reputations[e.username] < 0): score = 'bad'
     #    else: continue
-    #    (verified, known, score) = collect_stats(stats, ids, user_reputations, e, prev, score, False, None)
+    #    (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, False, None)
     # dump_cstats(stats, ids)
 
 
-def compute_letter_features():
-    user_lfeatures = defaultdict(str)
+def compute_letter_features(user_reputations):
+    user_features = defaultdict(str)
 
     total_time = total_size = 0
     prev = None;
+    train = []
 
-    for e in revisions:
-        # known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
-        f = ''
+    labels = \
+        """
+            a - regular edit
+            r - revert
+            s - self revert
+            w - revert war
+            q - questionable
+            v - reverted (most likely v.)
+            u - undid
+            x - replaced content
+            b - blanked
+            w - unrecognized WP:
+    
+            n - no comment
+            m - no comment / section
+            c - comment stats are looking bad
+            h - HI in the comment
+            g - comment is looking good
+    
+            i - an IP edit
+            u - not an IP edit
+    
+            d - content deletion
+            l - large scale content detetion
+        """
 
-        # e - regular edit
-        # r - revert
-        # s - self revert
-        # w - revert war
-        # q - questionable
-        # v - reverted (most likely v.)
-        # u - undid
-        # x - replaced content
-        # b - blanked
-        # w - unrecognized WP:
+    for revisions in read_pyc():
+        analyse_reverts(revisions)
 
-        # n - no comment
-        # s - no comment / section
-        # c - comment stats are looking bad
-        # h - HI in the comment
-        # g - comment is looking good
+        for e in revisions:
+            known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
+            if not known: continue
+            f = ''
 
-        # i - an IP edit
-        # u - not an IP edit
-
-        # d - content deletion
-        # l - large scale content detetion
-
-        if(e.comment):
-            if(e.comment[:5] == '[[WP:'):
-                if(e.comment[:17] == u'[[WP:AES|A¢Undid'): f += 'u'
-                elif(e.comment[:19] == u'[[WP:AES|A¢Blanked'): f += 'b'
-                elif(e.comment[:20] == u'[[WP:AES|A¢Replaced'): f += 'x'
-                elif(e.comment[:20] == u'[[WP:AES|A¢ Blanked'): f += 'b'
-                elif(e.comment[:21] == u'[[WP:AES|A¢ Replaced'): f += 'x'
-                elif(e.comment[:41] == u'[[WP:Automatic edit summaries|A¢Replaced'): f += 'x'
-                else: f += 'w'
-            elif(e.comment[-2:] == '*/'):
-                f += 's'
+            if(e.comment):
+                if(e.comment[:5] == '[[WP:'):
+                    if(e.comment[:17] == u'[[WP:AES|A¢Undid'): f += 'u'
+                    elif(e.comment[:19] == u'[[WP:AES|A¢Blanked'): f += 'b'
+                    elif(e.comment[:20] == u'[[WP:AES|A¢Replaced'): f += 'x'
+                    elif(e.comment[:20] == u'[[WP:AES|A¢ Blanked'): f += 'b'
+                    elif(e.comment[:21] == u'[[WP:AES|A¢ Replaced'): f += 'x'
+                    elif(e.comment[:41] == u'[[WP:Automatic edit summaries|A¢Replaced'): f += 'x'
+                    else: f += 'w'
+                elif(e.comment[-2:] == '*/'):
+                    f += 'm'
+                else:
+                    uN = len(reU.findall(e.comment))
+                    lN = len(reL.findall(e.comment))
+                    esN = len(reES.findall(e.comment))
+                    if((uN > 5 and lN < uN) or esN > 2): f += 'c'      # uppercase stats is looking bad
+                    elif(reHI.search(e.comment) != None): f += 'h'
+                    else: f += 'g'
             else:
-                uN = len(reU.findall(text))
-                lN = len(reL.findall(text))
-                esN = len(reES.findall(text))
-                if((uN > 5 and lN < uN) or esN > 2): f += 'c'      # uppercase stats is looking bad
-                elif(reHI.search(text) != None): f += 'h'
-                else: f += 'g'
-        else:
-            score += 'n'
-        
-        # reverts info
-        if(ri > -1): f += 'r'
-        return ('s', 'w', 'q', 'v', 'e')[ri]
+                f += 'n'
+            
+            # reverts info
+            if(e.reverts_info > -1): f += 'r'
+            else: f += ('s', 'w', 'q', 'v', 'a')[e.reverts_info]
 
-        # IP edit
-        f += ('u', 'i')[e.ipedit]
+            # IP edit
+            f += ('u', 'i')[e.ipedit]
 
-        # change
-        if(e.ilR > e.ilA and e.iwR > 1): f += 'd'            # and new page is smaller than the previous
-        if(e.iwR == 50): f += 'l'                            # large scale removal
+            # change
+            if(e.ilR > e.ilA and e.iwR > 1): f += 'd'            # and new page is smaller than the previous
+            if(e.iwR == 50): f += 'l'                            # large scale removal
 
+            # train.append( (dict([(feature, True) for feature in list(f)]), known) )
+            train.append( ( {f : True}, known) )
 
-
-
+        # Collecting stats and Human verification
+        # extra = lambda:wikipedia.output("Features \03{lightblue}%s\03{default}" % f)
+        # (verified, known, score) = collect_stats(stats, ids, user_reputations, e, 'unknown', True, extra)
+    
+    import nltk
+    classifier = nltk.MaxentClassifier.train(train)
+    classifier.show_most_informative_features(n=20)
+    print labels
 
 
 def compute_reputations_dictionary():
@@ -1304,15 +1320,15 @@ def main():
     ids = defaultdict(list)
     stats = defaultdict(lambda:defaultdict(int))
 
-    N = 0; start = time.time();
+    start = time.time();
     if(_analyze_arg):
-        for revisions in read_pyc():
-            analyse_reverts(revisions)
-            #user_reputations = analyse_reputations(revisions)
-            if(not N%100): wikipedia.output("Reputation analysis time: %f, N = %d" % (time.time() - start, N))
-            N += 1
+        compute_letter_features(user_reputations)
 
-            analyse_decisiontree(revisions, user_reputations)
+        #for revisions in read_pyc():
+        #    analyse_reverts(revisions)
+            #user_reputations = analyse_reputations(revisions)
+        #    compute_letter_features(revisions, user_reputations)            
+            #analyse_decisiontree(revisions, user_reputations)
             #check_reputations(revisions, user_reputations)
             #analyse_maxent(revisions, user_reputations)
             #analyse_crm114(revisions, user_reputations)
