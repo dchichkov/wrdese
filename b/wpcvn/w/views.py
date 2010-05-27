@@ -188,20 +188,27 @@ def irc(request):
     
     return HttpResponse()
 
-def bots(request):
+def labels(request):
     if settings.DEBUG:
         print 'page: %s' % request.POST.get('page','')
         print 'user: %s' % request.POST.get('user','')
         print 'label: %s' % request.POST.get('label','')
 
     page = request.POST.get('page','')
-    if page in S.recent  and  S.recent[page] == request.POST.get('user',''):
+    if page in S.recent:
         d = S.recent[page]
-        d['expire'] = utc + 60 * 60   # 1 hour
-        if(d['labels']): d['labels'] += "; "
-        d['labels'] += request.POST.get('label','')
-        S.filtered[page] = d                    
+        if d['user'] == request.POST.get('user',''):
+            d['expire'] = time() + 60 * 60   # 1 hour
+            d['labels'] = request.POST.get('label','')
+            S.filtered[page] = d
+            print "Success: ", "Page = ", page, "User = ", d['user'], "Labels: ", d['labels']  
+        else:
+            print "Warning mismatching user name: ", "Page = ", page, "User = ", d['user']
+    else:
+        print "Warning page is not recent: ", "Page = ", page
+                               
     
+    sys.stdout.flush()
     return HttpResponse()
 
 
