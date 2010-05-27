@@ -19,7 +19,7 @@ urlpatterns = patterns('',
     # Web/Apache:
     (URL_PREFIX + r'w$', 'w.views.w'),
     (URL_PREFIX + r'users$', 'w.views.users'),
-    (URL_PREFIX + r'b$', 'w.views.bots'),
+    (URL_PREFIX + r'l$', 'w.views.labels'),
     (URL_PREFIX + r'c$', 'w.views.click'),
     (URL_PREFIX + r'ip$', 'w.views.ip'),
     (URL_PREFIX + r'wid$', 'w.views.wid'),

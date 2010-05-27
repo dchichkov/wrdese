@@ -12,7 +12,8 @@ ircbot.py.
 
 """
 
-import sys, re, httplib, cPickle
+import sys, re, httplib, urllib, cPickle, simplejson
+from django.core import serializers
 from ircbot import SingleServerIRCBot
 from irclib import nm_to_n, nm_to_h, irc_lower, ip_numstr_to_quad, ip_quad_to_numstr
 from time import time, sleep
@@ -121,7 +122,13 @@ class Irc2Http(SingleServerIRCBot):
         # forward it to HTTP
         if(self.httpConnection):
             try:
-                self.httpConnection.request('PUT', '/s/b', d, {'CONTENT-TYPE' : 'octet/stream'})
+                # params = simplejson.dumps(d)
+                # headers = {"Content-type": "application/json", "Content-length":str(len(jsonString)) }
+                params = urllib.urlencode( dict([(k, v.encode('utf-8')) for k, v in d.iteritems() if v]) )                
+                headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"} #  charset=UTF-8                
+                # params = serializers.serialize("xml", d)
+                # headers = {"Content-type": "application/x-www-form-urlencoded", "Accept": "text/plain"}
+                self.httpConnection.request('POST', '/s/l', params, headers)
                 self.httpConnection.getresponse()
             except Exception, e:
                 try:
@@ -140,7 +147,7 @@ class Irc2Http(SingleServerIRCBot):
 def main():
     if len(sys.argv) == 3:
         channel = nickname = ""
-    elif len(sys.argv) == 4 and sys.argv[2][0] == '#':
+    elif len(sys.argv) == 5 and sys.argv[2][0] == '#':
         channel = sys.argv[2]
         nickname = sys.argv[3]
     else:
