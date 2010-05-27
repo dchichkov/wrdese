@@ -272,7 +272,11 @@
 							
                             var $cell=$('td:eq(3)', nRow);
                             $cell.html('<a href="' + $cell.text() + ' " target="_blank">diff...</a>');
-							$cell.attr("alt", page)
+                            alt = [ { "name": "nick", "value": nick },
+                                    { "name": "wid", "value": wid },
+                                    { "name": "page", "value": page } ]
+                            
+							$cell.attr("alt", alt)
 							$cell.click(function() {$.post("s/c", $(this).attr("alt"));});
                             return nRow;
                     },

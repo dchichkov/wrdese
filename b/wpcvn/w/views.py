@@ -45,7 +45,9 @@ S = SharedState()
 # AJAX WEB requests
 
 def click(request):
-    page = request.raw_post_data
+    wid = request.POST.get('wid','')[:MAX_WID_LENGTH]
+    nick = request.POST.get('nick','')[:MAX_NICK_LENGTH]
+    page = request.POST.get('page','')
     print "Clicked Page: %s" % page
     if page in S.filtered:
         S.filtered[page]['views'] += 1
