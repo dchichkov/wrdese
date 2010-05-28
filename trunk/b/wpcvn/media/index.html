@@ -17,6 +17,7 @@
 
 	.a-user {color: black;}
     #status {padding: 2px;}
+    #status span {margin-right:5ex;}
     .sm-button {margin-left:1px;}
     .smaller-text {font-size:75%;}
 
@@ -237,6 +238,7 @@
 	// Enable jQuery Layout 
 	myLayout = $("body").layout({
 		initClosed:		false
+    ,   south__initClosed: true
 	,	north__size:	40
 	,	south__size:	222
 	,	west__size:		200
@@ -276,11 +278,7 @@
 							
                             var $cell=$('td:eq(3)', nRow);
                             $cell.html('<a href="' + $cell.text() + ' " target="_blank">diff...</a>');
-                            // alt =  { "name": "nick", "value": nick },
-                            //        { "name": "wid", "value": wid },
-                            //        { "name": "page", "value": page } ]
-                            
-							$cell.attr("alt", page)
+							$cell.attr("alt", page)     // saving page name
 							$cell.click(function() {$.post("s/c", { "nick" : nick, 
                                                                     "wid" : wid, 
                                                                     "page" :  $(this).attr("alt")}  );  });
@@ -364,6 +362,16 @@
     $("#autoconfirmation").click(try_autoconfirmation)
     $("#reset").click(reset)
     $(window).unload(logout);
+
+
+    // karma updater (smart)
+    function update_karma(data) {$("#karma").val(data.username + ' (' + (data.karma != null ? data.karma : "unknown") + ')')}
+    function get_karma(username) {if(username.search(/^\s*$|Type in username| \(/) < 0) $.get("s/karma", {'username' : username}, update_karma) }
+    $('#karma').bind("active.idleTimer", function() {$("#karma").addClass('ui-state-highlight')})
+    $('#karma').bind("idle.idleTimer", function() {get_karma($("#karma").removeClass('ui-state-highlight').val());})
+    $('#karma').idleTimer(2000);
+
+
   } );
 </script>
 
@@ -382,9 +390,13 @@
                     <span class="ui-button-text">Reset Cookies...</span>
                 </button>
             </span>
+
+            <span>Check Karma:
+                <input id="karma" type="text" class="ui-widget ui-state-default" value="Type in username"/>
+            </span>
 			
             <span class="smaller-text">
-                &nbsp; &nbsp; &nbsp; WPCVN Version 0.03 Alpha.
+                WPCVN Version 0.03 Alpha. 
 			    Bugs? <a href="http://en.wikipedia.org/wiki/User_talk:Dc987" target="_blank">Report -></a>
             </span> 			
         </div>

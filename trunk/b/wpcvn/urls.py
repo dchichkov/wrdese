@@ -22,6 +22,7 @@ urlpatterns = patterns('',
     (URL_PREFIX + r'l$', 'w.views.labels'),
     (URL_PREFIX + r'c$', 'w.views.click'),
     (URL_PREFIX + r'ip$', 'w.views.ip'),
+    (URL_PREFIX + r'karma$', 'w.views.karma'),
     (URL_PREFIX + r'wid$', 'w.views.wid'),
     
     

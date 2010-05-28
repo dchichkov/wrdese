@@ -17,6 +17,7 @@ import sys
 
 
 # Settings
+MAX_LABEL_LENGTH = 14
 MAX_NICK_LENGTH = 16
 MAX_WID_LENGTH = 256
 MAX_GUID_LENGTH = 48
@@ -83,6 +84,12 @@ def click(request):
 
 def ip(request):
     return HttpResponse(simplejson.dumps({'ip' : request.META['REMOTE_ADDR']}), 
+                        mimetype='application/json')
+
+def karma(request):
+    username = request.GET.get('username','')
+    reputation = S.user_reputations.get(username)
+    return HttpResponse(simplejson.dumps({'username' : username, 'karma' : reputation}),
                         mimetype='application/json')
 
 
@@ -201,7 +208,7 @@ def irc(request):
         S.filtered[page] = d
     elif(page in S.filtered):
         if(d['reputation'] > S.filtered[page]['reputation']):
-            d['labels'] = "W: likely patrolled<br>"
+            d['labels'] = "WPCVN: likely patrolled<br>"
         S.filtered[page] = d
     
     return HttpResponse()
@@ -217,7 +224,7 @@ def labels(request):
         d = S.recent[page]
         if d['user'] == request.POST.get('user',''):
             d['expire'] = time() + 60 * 60   # 1 hour
-            d['labels'] += 'M: ' + request.POST.get('label','') + '<br>'
+            d['labels'] += 'MiszaBot: ' + request.POST.get('label','')[:MAX_LABEL_LENGTH] + '<br>'
             S.filtered[page] = d
             print "Success: ", "Page = ", page, "User = ", d['user'], "Labels: ", d['labels']  
         else:
