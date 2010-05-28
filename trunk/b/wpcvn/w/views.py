@@ -41,18 +41,43 @@ class SharedState:
 S = SharedState()
 
 
+# AJAX WEB sub-requests
+
+def user_from_wid_nick(request):
+    """Extract wid and nick from the request"""
+
+    print 'nick: %s' % request.POST.get('nick','')
+    print 'wid: %s' % request.POST.get('wid','')
+    sys.stdout.flush()
+
+    user = None
+    wid = request.POST.get('wid','')[:MAX_WID_LENGTH]
+    nick = request.POST.get('nick','')[:MAX_NICK_LENGTH]
+
+    if wid and wid in S.users:
+        user = S.users[wid]
+    elif wid and DecodeAES(secret.cipher, wid):
+        user = S.users.setdefault(wid, {'nick' : DecodeAES(secret.cipher, wid), 'confirmed' : True})
+    elif nick:
+        user = S.users.setdefault(nick, {'nick' : nick, 'confirmed' : False})
+
+    if(user): user['utc'] = time(); user['expire'] = time() + 60 * 5
+
+    return user
+
 
 # AJAX WEB requests
 
 def click(request):
-    wid = request.POST.get('wid','')[:MAX_WID_LENGTH]
-    nick = request.POST.get('nick','')[:MAX_NICK_LENGTH]
+    """Nick viewing the page (patrolling)"""    
+    user = user_from_wid_nick(request)
     page = request.POST.get('page','')
     print "Clicked Page: %s" % page
     if page in S.filtered:
-        S.filtered[page]['views'] += 1
-        if(S.filtered[page]['views'] > 1): S.filtered[page]['expire'] = time() + 60 * 20       # 20 minutes
-        if(S.filtered[page]['views'] > 2): S.filtered[page]['expire'] = time() + 60 * 10       # 10 minutes       
+        if(user and user['confirmed']): S.filtered[page]['patrolled'] += "<u>" + user['nick'] + "</u>" + "<br>"
+        elif(user and not user['confirmed']): S.filtered[page]['patrolled'] += user['nick'] + "<br>"
+        else: S.filtered[page]['patrolled'] += "Anonymous<br>"
+        S.filtered[page]['expire'] = time() + 60 * 15       # 15 minutes       
     return HttpResponse()
 
 
@@ -94,14 +119,9 @@ def w(request):
         print 'iSortCol_0: %s' % request.POST.get('iSortCol_0','')
         print 'sSortDir_0: %s' % request.POST.get('sSortDir_0','')
         print 'sEcho: %s' % request.POST.get('sEcho','')
-        print 'nick: %s' % request.POST.get('nick','')
-        print 'wid: %s' % request.POST.get('wid','')
         sys.stdout.flush()
 
     # Authentication: use wid if available, use nick if available
-    user = None
-    wid = request.POST.get('wid','')[:MAX_WID_LENGTH]
-    nick = request.POST.get('nick','')[:MAX_NICK_LENGTH]
     sSearch = request.POST.get('sSearch','')
     iSortingCols = request.POST.get('iSortingCols', '')
     iSortCol = int(request.POST.get('iSortCol_0', '0'))
@@ -109,23 +129,14 @@ def w(request):
     start = int(request.POST.get('iDisplayStart',''))
     length = int(request.POST.get('iDisplayLength',''))
     
-    
-    if wid and wid in S.users:
-        user = S.users[wid]
-    elif wid and DecodeAES(secret.cipher, wid):
-        user = S.users.setdefault(wid, {'nick' : DecodeAES(secret.cipher, wid), 'confirmed' : True})
-    elif nick:
-        user = S.users.setdefault(nick, {'nick' : nick, 'confirmed' : False})
-        
-    if(user): user['utc'] = time(); user['expire'] = time() + 60 * 5
-
+    user = user_from_wid_nick(request)
     
     # Fill data, apply search and sorting parameters
     if sSearch:
-        data = [ [p['utc'], p['views'], p['labels'], p['url'], p['user'], p['reputation'], p['page'], p['summary'] ] 
+        data = [ [p['utc'], p['patrolled'], p['labels'], p['url'], p['user'], p['reputation'], p['page'], p['summary'] ] 
                 for p in S.filtered.values() if p['user'].startswith(sSearch) or p['page'].startswith(sSearch)]
     else:
-        data = [ [p['utc'], p['views'], p['labels'], p['url'], p['user'], p['reputation'], p['page'], p['summary'] ] 
+        data = [ [p['utc'], p['patrolled'], p['labels'], p['url'], p['user'], p['reputation'], p['page'], p['summary'] ] 
                 for p in reversed(S.filtered.values())]
         
     if iSortingCols == '1':
@@ -178,7 +189,7 @@ def irc(request):
     d['reputation'] = reputation
     d['utc'] = utc
     d['expire'] = utc + 15 * 60   # 15 minutes
-    d['views'] = 0
+    d['patrolled'] = ""
     d['labels'] = ""
     S.recent[page] = d
 
@@ -186,7 +197,7 @@ def irc(request):
         d['expire'] = utc + 60 * 60   # 1 hour
         S.filtered[page] = d
     elif(page in S.filtered):
-        d['labels'] = "likely patrolled"        
+        d['labels'] = "W: likely patrolled<br>"
     
     return HttpResponse()
 
@@ -201,7 +212,7 @@ def labels(request):
         d = S.recent[page]
         if d['user'] == request.POST.get('user',''):
             d['expire'] = time() + 60 * 60   # 1 hour
-            d['labels'] = request.POST.get('label','')
+            d['labels'] += 'M: ' + request.POST.get('label','') + '<br>'
             S.filtered[page] = d
             print "Success: ", "Page = ", page, "User = ", d['user'], "Labels: ", d['labels']  
         else:

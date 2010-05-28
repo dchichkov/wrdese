@@ -16,11 +16,9 @@
     .refresh {float:left; margin-right:3px;}
 
 	.a-user {color: black;}
-
-  	#report {float:right;}
     #status {padding: 2px;}
-    .sm-button {font-size:75%; margin-left:1px;}
-	
+    .sm-button {margin-left:1px;}
+    .smaller-text {font-size:75%;}
 
 	/* Layout Theme */
 	.ui-layout-pane { 
@@ -244,8 +242,14 @@
 	,	west__size:		200
 	,	autoStateManagement:	true	// enable state management	
 	,	useStateCookie:		true		// enable state autoSave
+    ,   onopen: function (pane) {if(pane == "south")  toggle_iframe_south(); return true;}
 	});
-	
+
+    function toggle_iframe_south() { $("#iframe-south").attr("src",
+        myLayout.state.south.isVisible ? "http://webchat.freenode.net?channels=countervandalism&prompt=1&nick=" + nick : "");
+    }
+    toggle_iframe_south();
+
 
 	// Main Window datatable 	
   	t = $('#table').dataTable({
@@ -272,12 +276,14 @@
 							
                             var $cell=$('td:eq(3)', nRow);
                             $cell.html('<a href="' + $cell.text() + ' " target="_blank">diff...</a>');
-                            alt = [ { "name": "nick", "value": nick },
-                                    { "name": "wid", "value": wid },
-                                    { "name": "page", "value": page } ]
+                            // alt =  { "name": "nick", "value": nick },
+                            //        { "name": "wid", "value": wid },
+                            //        { "name": "page", "value": page } ]
                             
-							$cell.attr("alt", alt)
-							$cell.click(function() {$.post("s/c", $(this).attr("alt"));});
+							$cell.attr("alt", page)
+							$cell.click(function() {$.post("s/c", { "nick" : nick, 
+                                                                    "wid" : wid, 
+                                                                    "page" :  $(this).attr("alt")}  );  });
                             return nRow;
                     },
         "bJQueryUI": true,
@@ -358,7 +364,6 @@
     $("#autoconfirmation").click(try_autoconfirmation)
     $("#reset").click(reset)
     $(window).unload(logout);
-
   } );
 </script>
 
@@ -368,18 +373,20 @@
         <div id="status" class="ui-widget-header ui-widget-toolbar ui-corner-all">
             <span>Nick:         
                 <input id="nick" type="text" class="ui-widget ui-state-active"/>
-                <button id="autoconfirmation" class="ui-widget ui-state-default sm-button ui-button ui-button-text-icon ui-corner-all">
+                <button id="autoconfirmation" class="smaller-text ui-widget ui-state-default sm-button ui-button ui-button-text-icon ui-corner-all">
                     <span class="ui-button-icon-primary ui-icon ui-icon-locked"></span>
                     <span class="ui-button-text">Autoconfirmation...</span>
                 </button>
-                <button id="reset" class="ui-widget ui-state-default sm-button ui-button ui-button-text-icon ui-corner-all">
+                <button id="reset" class="smaller-text ui-widget ui-state-default sm-button ui-button ui-button-text-icon ui-corner-all">
                     <span class="ui-button-icon-primary ui-icon ui-icon-unlocked"></span>
                     <span class="ui-button-text">Reset Cookies...</span>
                 </button>
             </span>
 			
-			<span>Bugs? <a href="http://en.wikipedia.org/wiki/User_talk:Dc987" target="_blank">Report -></a></span> 			
-
+            <span class="smaller-text">
+                &nbsp; &nbsp; &nbsp; WPCVN Version 0.03 Alpha.
+			    Bugs? <a href="http://en.wikipedia.org/wiki/User_talk:Dc987" target="_blank">Report -></a>
+            </span> 			
         </div>
 	</div>
 
@@ -390,7 +397,7 @@
 		        <thead>
 		                <tr>
 		                        <th width="5%">Edit time</th>
-		                        <th width="6%">Patrolled</th>
+		                        <th width="6%">Patrolled by</th>
 		                        <th width="5%">Labels</th>
 		                        <th width="5%">Url</th>
 		                        <th width="10%">User</th>
@@ -420,7 +427,7 @@
 	</div>
 	
 	<div class="ui-layout-south">	
-		<iframe src="http://webchat.freenode.net?channels=countervandalism" width="100%" height="100%" frameborder="0"></iframe>
+		<iframe id="iframe-south" width="100%" height="100%" frameborder="0"></iframe>
 	</div>
 
 </body>
