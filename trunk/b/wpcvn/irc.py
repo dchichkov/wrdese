@@ -153,7 +153,8 @@ def main():
     else:
         print r"Usage: irc.py <IRC ircServer[:ircPort] <channel> <nickname> <httpServer[:httpPort]>"
         print r"Usage: irc.py <dump> <httpServer[:httpPort]>"
-        print r"Example: ./irc.py irc.freenode.net \#cvn-wp-en Dc987test localhost:80"
+        print r"Example: ./irc.py irc.freenode.net \#cvn-wp-en wpcvn.com__bot localhost:80"
+        print r"Example: ./irc.py irc.wikimedia.org \#en.wikipedia wpcvn.com__bot localhost:80"
         print r"Example: ./irc.py irc.freenode.net.1274487004.74.pkl localhost:8080"
         return
 
