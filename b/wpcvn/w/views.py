@@ -178,12 +178,15 @@ def irc(request):
         print "Wow. We have a match. User:", d['user'], "Reputation:", reputation
         S.guids[guid]['reputation'] = reputation
         S.guids[guid]['nick'] = d['user']
-        if(reputation and reputation > 2):
+        if(reputation and reputation > 50):
             S.guids[guid]['wid'] = EncodeAES(secret.cipher, d['user'])
  
-    if(reputation == None or d['user'] in ['SineBot', ]):
+    if(d['user'] in ['SineBot', ]):
         return HttpResponse()       # TODO
     
+    if(reputation == None):         # HACK
+        reputation = 0.0
+
     page = d['page']
     utc = time()
     d['reputation'] = reputation
@@ -197,7 +200,9 @@ def irc(request):
         d['expire'] = utc + 60 * 60   # 1 hour
         S.filtered[page] = d
     elif(page in S.filtered):
-        d['labels'] = "W: likely patrolled<br>"
+        if(d['reputation'] > S.filtered[page]['reputation']):
+            d['labels'] = "W: likely patrolled<br>"
+        S.filtered[page] = d
     
     return HttpResponse()
 
