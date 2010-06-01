@@ -26,7 +26,7 @@ class Irc2Http(SingleServerIRCBot):
         self.httpConnection = httpConnection
         # self.re_edit = re.compile(r'^C14\[\[^C07(?P<page>.+?)^C14\]\]^C4 (?P<flags>.*?)^C10 ^C02(?P<url>.+?)^C ^C5\*^C ^C03(?P<user>.+?)^C ^C5\*^C \(?^B?(?P<bytes>[+-]?\d+?)^B?\) ^C10(?P<summary>.*)^C'.replace('^B', '\002').replace('^C', '\003').replace('^U', '\037'))
 
-        r_bits = r'(^C(^B)?(?P<flags>\S+)(^C|^B)? )'
+        r_bits = r'(^C(^B)?(?P<flags>\S+?)(^C|^B)? )'
         r_user = r'(\[\[User:(?P<user>.+?)\]\],? )'
         r_label = r'((^C|^B)(?P<label>.+?)(^C|^B) )'
         r_page = r'(\[\[(?P<page>.+?)\]\] )'
