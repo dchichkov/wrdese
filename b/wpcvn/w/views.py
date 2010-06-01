@@ -17,7 +17,7 @@ import sys
 
 
 # Settings
-MAX_LABEL_LENGTH = 14
+MAX_LABEL_LENGTH = 16
 MAX_NICK_LENGTH = 16
 MAX_WID_LENGTH = 256
 MAX_GUID_LENGTH = 48
@@ -224,7 +224,8 @@ def labels(request):
         d = S.recent[page]
         if d['user'] == request.POST.get('user',''):
             d['expire'] = time() + 60 * 60   # 1 hour
-            d['labels'] += 'MiszaBot: ' + request.POST.get('label','')[:MAX_LABEL_LENGTH] + '<br>'
+            miszaBotLabel = request.POST.get('flags','') +  '/' + request.POST.get('label','')
+            d['labels'] += 'MiszaBot: ' + miszaBotLabel[:MAX_LABEL_LENGTH] + '<br>'
             S.filtered[page] = d
             print "Success: ", "Page = ", page, "User = ", d['user'], "Labels: ", d['labels']  
         else:
