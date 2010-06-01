@@ -159,9 +159,9 @@ import crm114
 # known good, known bad revisions
 #import wicow08r_chin_microsoft_annotation as k
 #import wicow08r_chin_lincoln_annotation as k
-import pan_wvc_10_gold as k
+#import pan_wvc_10_gold as k
 #import pan10_vandalism_test_collection as k
-#import k
+import k
 
 NNN = 313797035 # total revisions in the dump
 
@@ -791,20 +791,8 @@ def check_reputations(revisions, user_reputations):
 
 
 
-def analyse_maxent(revisions, user_reputations):
-    # apt-get apt-get install python-numpy python-scipy
-    import numpy as np
-    from scipy import stats
 
-    # NLTK, the Natural Language Toolkit
-    # Note: requires http://code.google.com/p/nltk/issues/detail?id=535 patch
-    import nltk, maxent, megam
-    # from nltk.classify import maxent, megam
-
-
-    # download and extract megam_i686.opt from http://www.cs.utah.edu/~hal/megam/
-    megam.config_megam('./megam_i686.opt')
-
+def compute_word_features(revisions):
     # Tracking blankings and near-blankings
     # Establishing user ratings for the user whitelists
     user_features = defaultdict(lambda: defaultdict(int))           # TODO: optimize!
@@ -912,8 +900,104 @@ def analyse_maxent(revisions, user_reputations):
     #    for f, v in edit_features[i+1].iteritems():
     #        edit_features[i]['NEXT' + f] = v
 
-   
+
+
+
+def compute_letter_trainset(user_reputations):
+    user_features = defaultdict(str)
+
+    total_time = total_size = 0
+    prev = None;
+    train = []
+
+    labels = \
+        """
+            a - regular edit
+            r - revert
+            s - self revert
+            w - revert war
+            q - questionable
+            v - reverted (most likely v.)
+            u - undid
+            x - replaced content
+            b - blanked
+            w - unrecognized WP:
+    
+            n - no comment
+            m - no comment / section
+            c - comment stats are looking bad
+            h - HI in the comment
+            g - comment is looking good
+    
+            i - an IP edit
+            u - not an IP edit
+    
+            d - content deletion
+            l - large scale content detetion
+        """
+
+    for revisions in read_pyc():
+        analyse_reverts(revisions)
+
+        for e in revisions:
+            known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
+            f = ''
+
+            if(e.comment):
+                if(e.comment[:5] == '[[WP:'):
+                    if(e.comment[:17] == u'[[WP:AES|A¢Undid'): f += 'u'
+                    elif(e.comment[:19] == u'[[WP:AES|A¢Blanked'): f += 'b'
+                    elif(e.comment[:20] == u'[[WP:AES|A¢Replaced'): f += 'x'
+                    elif(e.comment[:20] == u'[[WP:AES|A¢ Blanked'): f += 'b'
+                    elif(e.comment[:21] == u'[[WP:AES|A¢ Replaced'): f += 'x'
+                    elif(e.comment[:41] == u'[[WP:Automatic edit summaries|A¢Replaced'): f += 'x'
+                    else: f += 'w'
+                elif(e.comment[-2:] == '*/'):
+                    f += 'm'
+                else:
+                    uN = len(reU.findall(e.comment))
+                    lN = len(reL.findall(e.comment))
+                    esN = len(reES.findall(e.comment))
+                    if((uN > 5 and lN < uN) or esN > 2): f += 'c'      # uppercase stats is looking bad
+                    elif(reHI.search(e.comment) != None): f += 'h'
+                    else: f += 'g'
+            else:
+                f += 'n'
+            
+            # reverts info
+            if(e.reverts_info > -1): f += 'r'
+            else: f += ('s', 'w', 'q', 'v', 'a')[e.reverts_info]
+
+            # IP edit
+            f += ('u', 'i')[e.ipedit]
+
+            # change
+            if(e.ilR > e.ilA and e.iwR > 1): f += 'd'            # and new page is smaller than the previous
+            if(e.iwR == 50): f += 'l'                            # large scale removal
+
+            # train.append( (dict([(feature, True) for feature in list(f)]), known) )
+            train.append( ( {f : True}, known) )
+
+    return train
+
+
+
+
+def analyse_maxent(revisions, user_reputations):
+    # apt-get apt-get install python-numpy python-scipy
+    import numpy as np
+    from scipy import stats
+
+    # NLTK, the Natural Language Toolkit
+    # Note: requires http://code.google.com/p/nltk/issues/detail?id=535 patch
+    import nltk, maxent, megam
+    # from nltk.classify import maxent, megam
+
+    # download and extract megam_i686.opt from http://www.cs.utah.edu/~hal/megam/
     megam.config_megam('./megam_i686.opt')
+
+    
+    train = compute_letter_trainset(revisions)
     enc = maxent.TypedMaxentFeatureEncoding.train(train, alwayson_features=True)
     
     #for fs in train:
@@ -937,13 +1021,12 @@ def analyse_maxent(revisions, user_reputations):
             features[f] = v
         pdist = classifier.prob_classify(features)
         score = ('bad', 'good')[pdist.prob('good') > pdist.prob('bad')]
-        
-        
+                
         # Collecting stats and Human verification
         uncertain = known != score
         score_numeric = e.rev_score_info
         extra = lambda: classifier.explain(features);
-        #(verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, uncertain, extra)
+        (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, uncertain, extra)
         stats['Revision analysis score ' + score + ' on known'][known] += 1
     dump_cstats(stats, ids)
 
@@ -1114,90 +1197,6 @@ def analyse_decisiontree(revisions, user_reputations):
     # dump_cstats(stats, ids)
 
 
-def compute_letter_features(user_reputations):
-    user_features = defaultdict(str)
-
-    total_time = total_size = 0
-    prev = None;
-    train = []
-
-    labels = \
-        """
-            a - regular edit
-            r - revert
-            s - self revert
-            w - revert war
-            q - questionable
-            v - reverted (most likely v.)
-            u - undid
-            x - replaced content
-            b - blanked
-            w - unrecognized WP:
-    
-            n - no comment
-            m - no comment / section
-            c - comment stats are looking bad
-            h - HI in the comment
-            g - comment is looking good
-    
-            i - an IP edit
-            u - not an IP edit
-    
-            d - content deletion
-            l - large scale content detetion
-        """
-
-    for revisions in read_pyc():
-        analyse_reverts(revisions)
-
-        for e in revisions:
-            known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
-            if not known: continue
-            f = ''
-
-            if(e.comment):
-                if(e.comment[:5] == '[[WP:'):
-                    if(e.comment[:17] == u'[[WP:AES|A¢Undid'): f += 'u'
-                    elif(e.comment[:19] == u'[[WP:AES|A¢Blanked'): f += 'b'
-                    elif(e.comment[:20] == u'[[WP:AES|A¢Replaced'): f += 'x'
-                    elif(e.comment[:20] == u'[[WP:AES|A¢ Blanked'): f += 'b'
-                    elif(e.comment[:21] == u'[[WP:AES|A¢ Replaced'): f += 'x'
-                    elif(e.comment[:41] == u'[[WP:Automatic edit summaries|A¢Replaced'): f += 'x'
-                    else: f += 'w'
-                elif(e.comment[-2:] == '*/'):
-                    f += 'm'
-                else:
-                    uN = len(reU.findall(e.comment))
-                    lN = len(reL.findall(e.comment))
-                    esN = len(reES.findall(e.comment))
-                    if((uN > 5 and lN < uN) or esN > 2): f += 'c'      # uppercase stats is looking bad
-                    elif(reHI.search(e.comment) != None): f += 'h'
-                    else: f += 'g'
-            else:
-                f += 'n'
-            
-            # reverts info
-            if(e.reverts_info > -1): f += 'r'
-            else: f += ('s', 'w', 'q', 'v', 'a')[e.reverts_info]
-
-            # IP edit
-            f += ('u', 'i')[e.ipedit]
-
-            # change
-            if(e.ilR > e.ilA and e.iwR > 1): f += 'd'            # and new page is smaller than the previous
-            if(e.iwR == 50): f += 'l'                            # large scale removal
-
-            # train.append( (dict([(feature, True) for feature in list(f)]), known) )
-            train.append( ( {f : True}, known) )
-
-        # Collecting stats and Human verification
-        # extra = lambda:wikipedia.output("Features \03{lightblue}%s\03{default}" % f)
-        # (verified, known, score) = collect_stats(stats, ids, user_reputations, e, 'unknown', True, extra)
-    
-    import nltk
-    classifier = nltk.MaxentClassifier.train(train)
-    classifier.show_most_informative_features(n=20)
-    print labels
 
 
 def compute_reputations_dictionary():
@@ -1225,6 +1224,8 @@ def compute_reputations_dictionary():
     if(_output_arg):
         for u, r in user_reputations.iteritems():
             marshal.dump((u, r), FILE)
+
+
 
 def compute_reputations_shelve():
     user_reputations = defaultdict(int)
@@ -1321,8 +1322,17 @@ def main():
     stats = defaultdict(lambda:defaultdict(int))
 
     start = time.time();
-    if(_analyze_arg):
-        compute_letter_features(user_reputations)
+    if(_analyze_arg):        
+        # read and filter known revisions
+        known_revisions = []                 
+        for revisions in read_pyc():
+            analyse_reverts(revisions)
+            for e in revisions:
+                known = k.is_verified_or_known_as_good_or_bad(e.revid)                                
+                if known: known_revisions.append(e)
+        for i, e in enumerate(known_revisions): e.i = i
+        
+        analyse_maxent(known_revisions, user_reputations)
 
         #for revisions in read_pyc():
         #    analyse_reverts(revisions)
@@ -1330,7 +1340,6 @@ def main():
         #    compute_letter_features(revisions, user_reputations)            
             #analyse_decisiontree(revisions, user_reputations)
             #check_reputations(revisions, user_reputations)
-            #analyse_maxent(revisions, user_reputations)
             #analyse_crm114(revisions, user_reputations)
         dump_cstats(stats, ids)
 
