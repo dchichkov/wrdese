@@ -4,6 +4,11 @@
 # How comes rep["217.42.224.103"] = -1???
 
 
+# Use article total revisions number as a feature (popular/unpopular)
+# Use article protected status
+
+
+
 #retrain BAD: 167750423, 285306288
 
 # 167750423
@@ -144,7 +149,7 @@ and the bot will only work on that single page.
 
 __version__='$Id: r.py 7909 2010-02-05 06:42:52Z Dc987 $'
 
-import re, sys, time, calendar, difflib, string, math, hashlib, os, fnmatch, marshal
+import re, sys, time, calendar, difflib, string, math, hashlib, os, fnmatch, marshal, cPickle
 import pprint, ddiff
 from collections import defaultdict, namedtuple
 from ordereddict import OrderedDict
@@ -159,9 +164,9 @@ import crm114
 # known good, known bad revisions
 #import wicow08r_chin_microsoft_annotation as k
 #import wicow08r_chin_lincoln_annotation as k
-#import pan_wvc_10_gold as k
+import pan_wvc_10_gold as k
 #import pan10_vandalism_test_collection as k
-import k
+#import k
 
 NNN = 313797035 # total revisions in the dump
 
@@ -366,7 +371,7 @@ def dump_cstats(stats, ids):
 
     wikipedia.output("===================================================================================")
     pp = pprint.PrettyPrinter(width=140)
-    wikipedia.output("ids = \\\n%s" % pp.pformat(ids))
+    if(_verbose_arg): wikipedia.output("ids = \\\n%s" % pp.pformat(ids))
     wikipedia.output("stats = \\\n%s" % pp.pformat(stats))
     wikipedia.output("===================================================================================")
 
@@ -439,7 +444,7 @@ def read_pyc_count_empty():
 def read_pyc():
     wikipedia.output("Reading %s..." % _pyc_arg)
     FILE = open(_pyc_arg, 'rb')
-    start = time.time()    
+    start = time.time(); size = os.path.getsize(_pyc_arg); show_progress = time.time() + 15
     try:
         info = FullInfo(marshal.load(FILE))     # load first in order to  
         revisions = []; id = info.id;           # initialize id from info.id
@@ -450,6 +455,11 @@ def read_pyc():
                 yield revisions
                 revisions = []
                 id = info.id
+
+                if(time.time() > show_progress):
+                    DT = (time.time() - start) / 3600; BPH = FILE.tell() / DT; show_progress = time.time() + 15
+                    wikipedia.output("DT %f Hours, ETA %f Hours." % (DT, (size/BPH - DT)) )
+
             revisions.append(info)
     except IOError, e:
         raise
@@ -714,7 +724,7 @@ def collect_stats(stats, ids, user_reputations, e, score, uncertain, extra):
     # if the retrain arg is set to true, username or the revision id
     retrain = (_retrain_arg == True) or (_retrain_arg and ((_retrain_arg.find(e.username) > -1) or (_retrain_arg.find(str(revid)) > -1)))
 
-    if(score != known or (not verified and uncertain) or retrain):
+    if(_verbose_arg and (score != known or (not verified and uncertain) or retrain)):
         wikipedia.output("\n\n\n\n\n\n\n >> R%d (%s, %s) by %s(%s): \03{lightblue}%s\03{default}   <<< " %   \
              (e.i, mark(e.reverts_info, lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.username, \
                 mark(user_reputations[e.username], lambda x:x>-1), e.comment))
@@ -724,7 +734,7 @@ def collect_stats(stats, ids, user_reputations, e, score, uncertain, extra):
         if(uncertain): wikipedia.output("Uncertain: %s" % uncertain)
         wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=%d" % revid)
         if(k.info(revid)): wikipedia.output("Annotation: %s" % str(k.info(revid)))
-        if(_verbose_arg): show_diff(e)
+        show_diff(e)
         if(extra): extra()
 
         # uncertain = score_numeric < 1 or reverts_info[i] != -1 or uncertain
@@ -765,31 +775,30 @@ def collect_stats(stats, ids, user_reputations, e, score, uncertain, extra):
 def check_reputations(revisions, user_reputations):
 
     if(not user_reputations):
-        user_reputations = defaultdict(int)
+        user_reputations = defaultdict(int); user_features = defaultdict(str);
         for e in revisions:
             known = k.is_verified_or_known_as_good_or_bad(e.revid)    # previous score (some human verified)
-            if(known == 'good'): user_reputations[e.username] += 1
-            if(known == 'bad'): user_reputations[e.username] -= 1
+            if(known == 'good'): user_reputations[e.username] += 1; user_features[e.username] += 'g';
+            if(known == 'bad'): user_reputations[e.username] -= 1; user_features[e.username] += 'b';
     
-    prev = None;
     for e in revisions:
-        if prev:
-            revid = e.revid
-            known = k.is_verified_or_known_as_good_or_bad(revid)    # previous score (some human verified)
-            verified = k.is_known_as_verified(revid)                # if not Empty: human verified
-            reputation = user_reputations[e.username]
-            if not known: continue
-            
-            if(e.reverts_info == -5):                               # inverse for self-reverts
-                score = ('bad', 'good')[reputation < 0]
-            else:
-                score = ('good', 'bad')[reputation < 0]
+        revid = e.revid
+        known = k.is_verified_or_known_as_good_or_bad(revid)    # previous score (some human verified)
+        verified = k.is_known_as_verified(revid)                # if not Empty: human verified
+        reputation = user_reputations[e.username]
+        if not known: continue
         
-            # Collecting stats and Human verification
-            (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, False, None)
-        prev = e;
+        # if(e.reverts_info == -5):                               # inverse for self-reverts
+        #    score = ('bad', 'good')[reputation < 0]
+        #else:
+        score = ('bad', 'good')[reputation > 0]
+        stats['Reputation score ' + score + ' on known'][known] += 1
+    
+        # Collecting stats and Human verification
+        extra = lambda:wikipedia.output(" User Features: \03{lightblue}%s\03{default}" % user_features[e.username])
+        (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, False, extra)
 
-
+    return user_reputations
 
 
 def compute_word_features(revisions):
@@ -903,7 +912,7 @@ def compute_word_features(revisions):
 
 
 
-def compute_letter_trainset(user_reputations):
+def compute_letter_trainset(revisions):
     user_features = defaultdict(str)
 
     total_time = total_size = 0
@@ -936,47 +945,44 @@ def compute_letter_trainset(user_reputations):
             l - large scale content detetion
         """
 
-    for revisions in read_pyc():
-        analyse_reverts(revisions)
+    for e in revisions:
+        known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
+        f = ''
 
-        for e in revisions:
-            known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
-            f = ''
-
-            if(e.comment):
-                if(e.comment[:5] == '[[WP:'):
-                    if(e.comment[:17] == u'[[WP:AES|A¢Undid'): f += 'u'
-                    elif(e.comment[:19] == u'[[WP:AES|A¢Blanked'): f += 'b'
-                    elif(e.comment[:20] == u'[[WP:AES|A¢Replaced'): f += 'x'
-                    elif(e.comment[:20] == u'[[WP:AES|A¢ Blanked'): f += 'b'
-                    elif(e.comment[:21] == u'[[WP:AES|A¢ Replaced'): f += 'x'
-                    elif(e.comment[:41] == u'[[WP:Automatic edit summaries|A¢Replaced'): f += 'x'
-                    else: f += 'w'
-                elif(e.comment[-2:] == '*/'):
-                    f += 'm'
-                else:
-                    uN = len(reU.findall(e.comment))
-                    lN = len(reL.findall(e.comment))
-                    esN = len(reES.findall(e.comment))
-                    if((uN > 5 and lN < uN) or esN > 2): f += 'c'      # uppercase stats is looking bad
-                    elif(reHI.search(e.comment) != None): f += 'h'
-                    else: f += 'g'
+        if(e.comment):
+            if(e.comment[:5] == '[[WP:'):
+                if(e.comment[:17] == u'[[WP:AES|A¢Undid'): f += 'u'
+                elif(e.comment[:19] == u'[[WP:AES|A¢Blanked'): f += 'b'
+                elif(e.comment[:20] == u'[[WP:AES|A¢Replaced'): f += 'x'
+                elif(e.comment[:20] == u'[[WP:AES|A¢ Blanked'): f += 'b'
+                elif(e.comment[:21] == u'[[WP:AES|A¢ Replaced'): f += 'x'
+                elif(e.comment[:41] == u'[[WP:Automatic edit summaries|A¢Replaced'): f += 'x'
+                else: f += 'w'
+            elif(e.comment[-2:] == '*/'):
+                f += 'm'
             else:
-                f += 'n'
-            
-            # reverts info
-            if(e.reverts_info > -1): f += 'r'
-            else: f += ('s', 'w', 'q', 'v', 'a')[e.reverts_info]
+                uN = len(reU.findall(e.comment))
+                lN = len(reL.findall(e.comment))
+                esN = len(reES.findall(e.comment))
+                if((uN > 5 and lN < uN) or esN > 2): f += 'c'      # uppercase stats is looking bad
+                elif(reHI.search(e.comment) != None): f += 'h'
+                else: f += 'g'
+        else:
+            f += 'n'
+        
+        # reverts info
+        if(e.reverts_info > -1): f += '0'
+        else: f += ('5', '4', '3', '2', '1')[e.reverts_info]
 
-            # IP edit
-            f += ('u', 'i')[e.ipedit]
+        # IP edit
+        f += ('z', 'i')[e.ipedit]
 
-            # change
-            if(e.ilR > e.ilA and e.iwR > 1): f += 'd'            # and new page is smaller than the previous
-            if(e.iwR == 50): f += 'l'                            # large scale removal
+        # change
+        if(e.ilR > e.ilA and e.iwR > 1): f += 'd'            # and new page is smaller than the previous
+        if(e.iwR == 50): f += 'l'                            # large scale removal
 
-            # train.append( (dict([(feature, True) for feature in list(f)]), known) )
-            train.append( ( {f : True}, known) )
+        train.append( (dict([(feature, True) for feature in list(f)]), known) )
+        # train.append( ( {f : True}, known) )
 
     return train
 
@@ -990,44 +996,45 @@ def analyse_maxent(revisions, user_reputations):
 
     # NLTK, the Natural Language Toolkit
     # Note: requires http://code.google.com/p/nltk/issues/detail?id=535 patch
-    import nltk, maxent, megam
+    # download and extract megam_i686.opt from http://www.cs.utah.edu/~hal/megam/
+    import nltk, maxent, megam, platform
+    megam.config_megam( ('./megam_i686.opt', './megam_x64')[platform.architecture() == ('64bit', 'ELF')] )
     # from nltk.classify import maxent, megam
 
-    # download and extract megam_i686.opt from http://www.cs.utah.edu/~hal/megam/
-    megam.config_megam('./megam_i686.opt')
 
-    
     train = compute_letter_trainset(revisions)
-    enc = maxent.TypedMaxentFeatureEncoding.train(train, alwayson_features=True)
-    
+
+    # Typed:
+    # enc = maxent.TypedMaxentFeatureEncoding.train(train, alwayson_features=True)
     #for fs in train:
     #    s = "";
     #    for f, v in fs[0].iteritems(): s += " : %s = %4s " % (f, v)
     #    print("Featureset", s, " Class: ", fs[1] , "Encoding is: ", enc.encode(fs[0], fs[1]))
+    #classifier = maxent.MaxentClassifier.train(train, algorithm='megam', encoding=enc, \
+    #                bernoulli=False, trace=2, tolerance=2e-5, max_iter=1000, min_lldelta=1e-7)
+    
+    # Bool:
+    classifier = maxent.MaxentClassifier.train(train, algorithm='megam', tolerance=2e-5, max_iter=1000, min_lldelta=1e-7)
+    # classifier = nltk.MaxentClassifier.train(train)    
+    # classifier = nltk.NaiveBayesClassifier.train(train)
 
-
-    classifier = maxent.MaxentClassifier.train(train, algorithm='megam', encoding=enc, \
-                    bernoulli=False, trace=2, tolerance=2e-5, max_iter=1000, min_lldelta=1e-7)
     classifier.show_most_informative_features(n=50)
+
 
     ids = defaultdict(list)
     stats = defaultdict(lambda:defaultdict(int))
     for i, e in enumerate(revisions):
         known = k.is_verified_or_known_as_good_or_bad(e.revid)              # previous score (some human verified)
-        verified = k.is_known_as_verified(e.revid)                          # if not Empty: human verified        
-        features = edit_features[i]
-        
-        for f, v in user_features[e.username].iteritems():
-            features[f] = v
-        pdist = classifier.prob_classify(features)
+        verified = k.is_known_as_verified(e.revid)                         # if not Empty: human verified        
+        pdist = classifier.prob_classify(train[i][0])
         score = ('bad', 'good')[pdist.prob('good') > pdist.prob('bad')]
+        stats['Maxent score ' + score + ' on known'][known] += 1
                 
         # Collecting stats and Human verification
-        uncertain = known != score
+        uncertain = False #known != score
         score_numeric = e.rev_score_info
-        extra = lambda: classifier.explain(features);
+        extra = None # lambda: classifier.explain(train[i][0]);
         (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, uncertain, extra)
-        stats['Revision analysis score ' + score + ' on known'][known] += 1
     dump_cstats(stats, ids)
 
 
@@ -1144,10 +1151,8 @@ def comment_score(text):
 
 def analyse_decisiontree(revisions, user_reputations):
     total_time = total_size = 0
-    prev = None;
-    
     for e in revisions:
-        # known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
+        known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
         score = 0
 
         if(e.comment):
@@ -1178,16 +1183,16 @@ def analyse_decisiontree(revisions, user_reputations):
         if(e.iwR == 50):                                    # large scale removal
             score -= 1            
 
-        if score > 1:       user_reputations[e.username] += 1;  #score = 'good'
-        elif score < -10:   user_reputations[e.username] -= 1;  #score = 'bad'
+        if score > 1:       user_reputations[e.username] += 1;  score = 'good'
+        elif score < -10:   user_reputations[e.username] -= 1;  score = 'bad'
         elif(e.reverts_info == -2):
-            if(score < 0):  user_reputations[e.username] -= 1;  #score = 'bad'
-            else: continue
-        else: continue
+            if(score < 0):  user_reputations[e.username] -= 1;  score = 'bad'
+            else: score = 'unknown'
+        else: score = 'unknown'
 
         # if(not known): continue
-        # uncertain = (user_reputations[e.username] > 0 and score == 'bad') or (user_reputations[e.username] < 0 and score == 'good')
-        # (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, uncertain, None)
+        uncertain = (user_reputations[e.username] > 0 and score == 'bad') or (user_reputations[e.username] < 0 and score == 'good')
+        (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, uncertain, None)
 
     #for e in revisions:
     #    if(user_reputations[e.username] > 0): score = 'good'
@@ -1267,9 +1272,11 @@ def main():
     pattern_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None;
     _display_pyc_arg = None; _compute_reputations_arg = None;_output_arg = None; _analyze_arg = None
     _reputations_arg = None; _username_arg = None; _filter_pyc_arg = None; _count_empty_arg = None
+    _revisions_arg = None; _filter_known_revisions_arg = None
     for arg in wikipedia.handleArgs():
         if arg.startswith('-xml') and len(arg) > 5: pattern_arg = arg[5:]
         if arg.startswith('-pyc') and len(arg) > 5: _pyc_arg = arg[5:]
+        if arg.startswith('-revisions') and len(arg) > 11: _revisions_arg = arg[11:]
         if arg.startswith('-reputations') and len(arg) > 13: _reputations_arg = arg[13:]
         if arg.startswith('-username') and len(arg) > 10: _username_arg = arg[10:]
         if arg.startswith('-retrain'): _retrain_arg = True
@@ -1280,13 +1287,14 @@ def main():
         if arg.startswith('-output') and len(arg) > 8: _output_arg = arg[8:]
         if arg.startswith('-display-last-timestamp'): _display_last_timestamp_arg = True
         if arg.startswith('-compute-reputations'): _compute_reputations_arg = True
+        if arg.startswith('-filter-known-revisions'): _filter_known_revisions_arg = True
         if arg.startswith('-compute-pyc'): _compute_pyc_arg = True
         if arg.startswith('-display-pyc'): _display_pyc_arg = True
         if arg.startswith('-count-empty'): _count_empty_arg = True
         if arg.startswith('-analyze'): _analyze_arg = True
  
 
-    if(not pattern_arg and not _pyc_arg and not _reputations_arg):            # work: lightblue lightgreen lightpurple lightred
+    if(not pattern_arg and not _pyc_arg and not _reputations_arg and not _revisions_arg):
         wikipedia.output('Usage: ./r.py \03{lightblue}-xml:\03{default}path/Wikipedia-Dump-*.xml.7z -output:Wikipedia-Dump.full -compute-pyc')
         wikipedia.output('     : ./r.py \03{lightblue}-pyc:\03{default}path/Wikipedia-Dump.full -analyze')
         return
@@ -1315,32 +1323,36 @@ def main():
                 (_username_arg, user_reputations.has_key(_username_arg), user_reputations[_username_arg]))
 
 
-    #analyse_tokens_lifetime(xmlFilenames)
+    # filter and save known revisions
+    if(_filter_known_revisions_arg):
+        known_revisions = []
+        for revisions in read_pyc():
+            analyse_reverts(revisions)
+            for e in revisions:
+                known = k.is_verified_or_known_as_good_or_bad(e.revid)
+                if known: known_revisions.append(e)
+        for i, e in enumerate(known_revisions): e.i = i
+        if(_output_arg): cPickle.dump(known_revisions, open(_output_arg, 'wb'), -1)
 
+    # load known revisions
+    if(_revisions_arg):
+        wikipedia.output("Reading %s..." % _revisions_arg)
+        revisions = cPickle.load(open(_revisions_arg, 'rb'))
+
+
+    #analyse_tokens_lifetime(xmlFilenames)
     global ids, stats
     ids = defaultdict(list)
     stats = defaultdict(lambda:defaultdict(int))
 
     start = time.time();
     if(_analyze_arg):        
-        # read and filter known revisions
-        known_revisions = []                 
-        for revisions in read_pyc():
-            analyse_reverts(revisions)
-            for e in revisions:
-                known = k.is_verified_or_known_as_good_or_bad(e.revid)                                
-                if known: known_revisions.append(e)
-        for i, e in enumerate(known_revisions): e.i = i
-        
-        analyse_maxent(known_revisions, user_reputations)
+        user_reputations = check_reputations(revisions, None)        
+        analyse_maxent(revisions, user_reputations)
+        # analyse_decisiontree(revisions, defaultdict(int))
 
-        #for revisions in read_pyc():
-        #    analyse_reverts(revisions)
-            #user_reputations = analyse_reputations(revisions)
-        #    compute_letter_features(revisions, user_reputations)            
-            #analyse_decisiontree(revisions, user_reputations)
-            #check_reputations(revisions, user_reputations)
-            #analyse_crm114(revisions, user_reputations)
+        # user_reputations = analyse_reputations(revisions)
+        # analyse_crm114(revisions, user_reputations)
         dump_cstats(stats, ids)
 
 
