@@ -37,8 +37,6 @@
 #     use 'rv', 'revert', 'vandal', 'rvv' as revert/vandalism idintifiers
 #  
 
-
-
 # Edit labels:
 #    * 'bad' - automatically identified edits that generally require a revert (some human verified)
 #    * 'good' - automatically identified good faith edits (some human verified)
@@ -50,28 +48,20 @@
 #    * 'bad (verified by user)' - bad edits (automatically identified, verified by a human)
 #    * 'good (verified by user)' - good edits (automatically identified, verified by a human)
 
-
-# Edit by:
-# vandal, regular
-
-# Whose edit was it:
-# self, other user
+# Edit by:  vandal, regular
+# Whose edit was it:  self, other user
 
 # Possible extra labels:
 # 'rv'   - reverting no consensus
 # 'rwar' - reverting edit warring
 # 'rvv'  - reverting vandalism  
 # 'rself' - self reverting
-
 # 'rpart' - partial revert 
-
-
 # 'vins' - vandal inserted nonsence or graffiti
 # 'vdel' - vandal deleted content or blanked a page
 # 'vr' - vandal reverted a page
 # 'vrself' - vandal did a self revert
 # 'vgood' - vandal did a constructive edit
-
 
 # Taxonomy: from "Detecting Wikipedia Vandalism with Active Learning and Statistical Language Models"
 # Possible labels: misinformation, mass delete, partial delete, offensive, spam, nonsense
@@ -207,6 +197,7 @@ _verbose_arg = None
 
 # Human iteractions
 _human_responses = 0
+
 
 def locate(pattern):
     '''Locate all files matching supplied filename pattern in and below
@@ -445,9 +436,10 @@ def read_pyc():
     wikipedia.output("Reading %s..." % _pyc_arg)
     FILE = open(_pyc_arg, 'rb')
     start = time.time(); size = os.path.getsize(_pyc_arg); show_progress = time.time() + 15
+    revisions = [];
     try:
         info = FullInfo(marshal.load(FILE))     # load first in order to  
-        revisions = []; id = info.id;           # initialize id from info.id
+        id = info.id;                           # initialize id from info.id
         revisions.append(info)
         while True:
             info = FullInfo(marshal.load(FILE))
@@ -919,31 +911,37 @@ def compute_letter_trainset(revisions):
     prev = None;
     train = []
 
-    labels = \
-        """
-            a - regular edit
-            r - revert
-            s - self revert
-            w - revert war
-            q - questionable
-            v - reverted (most likely v.)
-            u - undid
-            x - replaced content
-            b - blanked
-            w - unrecognized WP:
+
+# -1  : regular revision
+# -2 : between duplicates, by single user (reverted, most likely bad)
+# -3 : between duplicates, by other users (reverted, questionable)
+# -4 : between duplicates, (revert that was reverted. revert war.)
+# -5 : self-revert
+
+
+    labels = {
+            '0' : 'duplicate',
+            '1' : 'regular edit',
+            '2' : 'reverted',
+            '3' : 'questionable',
+            '4' : 'revert war',
+            '5' : 'self revert',
+            'u' : 'comment undid',
+            'x' : 'comment replaced content',
+            'b' : 'comment blanked',
+            'w' : 'comment unrecognized WP',            
+            'n' : 'no comment',
+            'm' : 'no comment / section',
+            'c' : 'comment stats are looking bad',
+            'h' : 'HI in the comment',
+            'g' : 'comment is looking good',
+
+            'i' : 'an IP edit',
+            'z' : 'not an IP edit',
     
-            n - no comment
-            m - no comment / section
-            c - comment stats are looking bad
-            h - HI in the comment
-            g - comment is looking good
-    
-            i - an IP edit
-            u - not an IP edit
-    
-            d - content deletion
-            l - large scale content detetion
-        """
+            'd' : 'content deletion',
+            'l' : 'large scale content detetion',
+            }
 
     for e in revisions:
         known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
@@ -981,8 +979,8 @@ def compute_letter_trainset(revisions):
         if(e.ilR > e.ilA and e.iwR > 1): f += 'd'            # and new page is smaller than the previous
         if(e.iwR == 50): f += 'l'                            # large scale removal
 
-        train.append( (dict([(feature, True) for feature in list(f)]), known) )
-        # train.append( ( {f : True}, known) )
+        train.append( (dict([(labels[feature], True) for feature in list(f)]), known) )
+        #train.append( ( {f : True}, known) )
 
     return train
 
@@ -991,8 +989,7 @@ def compute_letter_trainset(revisions):
 
 def analyse_maxent(revisions, user_reputations):
     # apt-get apt-get install python-numpy python-scipy
-    import numpy as np
-    from scipy import stats
+    # import numpy as np
 
     # NLTK, the Natural Language Toolkit
     # Note: requires http://code.google.com/p/nltk/issues/detail?id=535 patch
@@ -1001,28 +998,30 @@ def analyse_maxent(revisions, user_reputations):
     megam.config_megam( ('./megam_i686.opt', './megam_x64')[platform.architecture() == ('64bit', 'ELF')] )
     # from nltk.classify import maxent, megam
 
-
     train = compute_letter_trainset(revisions)
-
-    # Typed:
-    # enc = maxent.TypedMaxentFeatureEncoding.train(train, alwayson_features=True)
-    #for fs in train:
-    #    s = "";
-    #    for f, v in fs[0].iteritems(): s += " : %s = %4s " % (f, v)
-    #    print("Featureset", s, " Class: ", fs[1] , "Encoding is: ", enc.encode(fs[0], fs[1]))
-    #classifier = maxent.MaxentClassifier.train(train, algorithm='megam', encoding=enc, \
-    #                bernoulli=False, trace=2, tolerance=2e-5, max_iter=1000, min_lldelta=1e-7)
     
-    # Bool:
-    classifier = maxent.MaxentClassifier.train(train, algorithm='megam', tolerance=2e-5, max_iter=1000, min_lldelta=1e-7)
-    # classifier = nltk.MaxentClassifier.train(train)    
-    # classifier = nltk.NaiveBayesClassifier.train(train)
+    if(not _classifier_arg):        
+        # Typed:
+        # enc = maxent.TypedMaxentFeatureEncoding.train(train, alwayson_features=True)
+        #for fs in train:
+        #    s = "";
+        #    for f, v in fs[0].iteritems(): s += " : %s = %4s " % (f, v)
+        #    print("Featureset", s, " Class: ", fs[1] , "Encoding is: ", enc.encode(fs[0], fs[1]))
+        #classifier = maxent.MaxentClassifier.train(train, algorithm='megam', encoding=enc, \
+        #                bernoulli=False, trace=2, tolerance=2e-5, max_iter=1000, min_lldelta=1e-7)
+        
+        # Bool:
+        classifier = maxent.MaxentClassifier.train(train, algorithm='megam', trace=2, tolerance=2e-5, max_iter=1000, min_lldelta=1e-7)
+    else:
+        wikipedia.output("Reading %s..." % _classifier_arg)
+        classifier = cPickle.load(open(_classifier_arg, 'rb'))
+
 
     classifier.show_most_informative_features(n=50)
 
+    if(_output_arg): cPickle.dump(classifier, open(_output_arg, 'wb'), 1)
 
-    ids = defaultdict(list)
-    stats = defaultdict(lambda:defaultdict(int))
+
     for i, e in enumerate(revisions):
         known = k.is_verified_or_known_as_good_or_bad(e.revid)              # previous score (some human verified)
         verified = k.is_known_as_verified(e.revid)                         # if not Empty: human verified        
@@ -1031,11 +1030,10 @@ def analyse_maxent(revisions, user_reputations):
         stats['Maxent score ' + score + ' on known'][known] += 1
                 
         # Collecting stats and Human verification
-        uncertain = False #known != score
+        uncertain = known != score
         score_numeric = e.rev_score_info
-        extra = None # lambda: classifier.explain(train[i][0]);
+        extra = lambda: classifier.explain(train[i][0]);
         (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, uncertain, extra)
-    dump_cstats(stats, ids)
 
 
 
@@ -1268,16 +1266,17 @@ def compute_reputations_shelve():
 
 
 def main():
-    global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _reputations_arg
+    global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _reputations_arg, _classifier_arg;
     pattern_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None;
     _display_pyc_arg = None; _compute_reputations_arg = None;_output_arg = None; _analyze_arg = None
     _reputations_arg = None; _username_arg = None; _filter_pyc_arg = None; _count_empty_arg = None
-    _revisions_arg = None; _filter_known_revisions_arg = None
+    _revisions_arg = None; _filter_known_revisions_arg = None; _classifier_arg = None;
     for arg in wikipedia.handleArgs():
         if arg.startswith('-xml') and len(arg) > 5: pattern_arg = arg[5:]
         if arg.startswith('-pyc') and len(arg) > 5: _pyc_arg = arg[5:]
         if arg.startswith('-revisions') and len(arg) > 11: _revisions_arg = arg[11:]
         if arg.startswith('-reputations') and len(arg) > 13: _reputations_arg = arg[13:]
+        if arg.startswith('-classifier') and len(arg) > 12: _classifier_arg = arg[12:]
         if arg.startswith('-username') and len(arg) > 10: _username_arg = arg[10:]
         if arg.startswith('-retrain'): _retrain_arg = True
         if arg.startswith('-filter-pyc'): _filter_pyc_arg = True
@@ -1347,9 +1346,9 @@ def main():
 
     start = time.time();
     if(_analyze_arg):        
-        user_reputations = check_reputations(revisions, None)        
-        analyse_maxent(revisions, user_reputations)
-        # analyse_decisiontree(revisions, defaultdict(int))
+        # user_reputations = check_reputations(revisions, None)        
+        analyse_maxent(revisions, defaultdict(int))
+        #analyse_decisiontree(revisions, defaultdict(int))
 
         # user_reputations = analyse_reputations(revisions)
         # analyse_crm114(revisions, user_reputations)
