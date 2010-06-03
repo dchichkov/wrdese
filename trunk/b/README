@@ -10,9 +10,16 @@ Computing user reputations:
 Filtering corpus:
 ./r.py -pyc:/data/enwiki-20100130.none.full -filter-pyc -output:p/pan-wvc-10.none.full > progress-wvc-filter.none.full.txt 2>&1 &
 
+Filtering known revisions:
+./r.py -pyc:p/pan-wvc-10.none.full -filter-known-revisions -output:p/pan-wvc-10.none.known
+
 Merging reputations:
 ./r.py -pyc:p/pan-wvc-10.none.full -reputations:p/reputations-enwiki-20100130.none.full.split -output:reputations-enwiki-20100130.none.full.merged
 
+Using classifiers:
+./r.py -revisions:p/Rocket.known -analyze -output:trained.classifier.Rocket
+./r.py -revisions:p/pan-wvc-10.none.known -analyze -classifier:trained.classifier.Rocket
+  
 
 IRC Bot:
 ./ircbot.py Dc987test p/ratings-enwiki-20100130.merged > ircbot-test-20100510.txt 2>&1 &
