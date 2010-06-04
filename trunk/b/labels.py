@@ -115,7 +115,8 @@ labels_list = [(l, ''.join(re.findall("[A-Z]", l)), d) for (l, d) in [
 
 internal_labels = ['Yes', 'No', 'Skip']
 good_labels = ['Regular', 'Constructive']
-bad_labels = [label for (label, shortcut, description) in labels_list if label not in (good_labels or internal_labels)]
+bad_labels = [label for (label, shortcut, description) in labels_list 
+                    if label not in good_labels and label not in internal_labels]
 
 def labels_shortcuts():
     return [shortcut for (label, shortcut, description) in labels_list]
@@ -199,6 +200,12 @@ if __name__ == "__main__":
             t.check()
             print
             t.append(known = k)
+        
+        def test_groups(self):
+            print internal_labels
+            print good_labels
+            print bad_labels
+
 
         def test_labeler(self):
             self.assertTrue( labeler('y', 'good', 'Regular') == ('good', 'Regular') )
