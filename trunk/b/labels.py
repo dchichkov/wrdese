@@ -112,6 +112,8 @@ labels_list = [(l, ''.join(re.findall("[A-Z]", l)), d) for (l, d) in [
     ("Gaming The System" , """Deliberate attempts to circumvent enforcement of Wikipedia policies, guidelines, and procedures by making bad faith edits go unnoticed. Includes marking bad faith edits as minor to get less scrutiny, making a minor edit following a bad faith edit so it won't appear on all watchlists, recreating previously deleted bad faith creations under a new title, use of the {{tl|construction}} tag to prevent deletion of a page that would otherwise be a clear candidate for deletion, or use of sock puppets."""),
 ]]
 
+good_labels = ['Regular', 'Constructive']
+bad_labels = [label for (label, shortcut, description) in labels_list if label not in good_labels]
 
 def labels_shortcuts():
     return [shortcut for (label, shortcut, description) in labels_list]
@@ -123,6 +125,28 @@ def labels_legend():
     legend = [re.sub(r"([A-Z]+)", r"[\1]", label) for (label, shortcut, description) in labels_list]
     return ",   ".join(sorted(legend))
 
+def labeler(answer, known, verified):
+    if answer == 'n':
+        if known == 'good':  known = 'bad'
+        elif known == 'bad': known = 'good'
+        else: print "Warning. Answer is (N) and known =", known
+    elif answer == 'y':
+        if known not in ['good', 'bad']: print "Warning. Answer is (Y) and known =", known
+    elif answer == 's':
+        return (known, verified)
+    else:
+        try:
+            verified = labels()[labels_shortcuts().index(answer.upper())]
+            known = ('bad', 'good')[verified in good_labels]
+            return (known, verified)
+        except:
+            print "Warning. Answer was:", answer
+            return (known, verified)
+
+    if(known == 'good' and verified not in good_labels): verified = 'Regular'
+    elif(known == 'bad' and verified not in bad_labels): verified = 'Vandalism'
+    else: "Warning. known =", known
+    return (known, verified)
 
 
 if __name__ == "__main__":
@@ -173,7 +197,81 @@ if __name__ == "__main__":
             t.check()
             print
             t.append(known = k)
-            
+
+        def test_labeler(self):
+            self.assertTrue( labeler('y', 'good', 'Regular') == ('good', 'Regular') )
+            self.assertTrue( labeler('n', 'good', 'Regular') == ('bad', 'Vandalism') )
+            self.assertTrue( labeler('s', 'good', 'Regular') == ('good', 'Regular') )
+            self.assertTrue( labeler('b', 'good', 'Regular') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('g', 'good', 'Regular') == ('bad', 'Graffiti') )
+
+            self.assertTrue( labeler('y', 'good', 'Constructive') == ('good', 'Constructive') )
+            self.assertTrue( labeler('n', 'good', 'Constructive') == ('bad', 'Vandalism') )
+            self.assertTrue( labeler('s', 'good', 'Constructive') == ('good', 'Constructive') )
+            self.assertTrue( labeler('b', 'good', 'Constructive') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('g', 'good', 'Constructive') == ('bad', 'Graffiti') )
+
+            self.assertTrue( labeler('y', 'good', 'Vandalism') == ('good', 'Regular') )
+            self.assertTrue( labeler('n', 'good', 'Vandalism') == ('bad', 'Vandalism') )
+            self.assertTrue( labeler('s', 'good', 'Vandalism') == ('good', 'Vandalism') )   # Drat
+            self.assertTrue( labeler('b', 'good', 'Vandalism') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('g', 'good', 'Vandalism') == ('bad', 'Graffiti') )
+
+            self.assertTrue( labeler('y', 'good', 'Blanking') == ('good', 'Regular') )
+            self.assertTrue( labeler('n', 'good', 'Blanking') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('s', 'good', 'Blanking') == ('good', 'Blanking') )   # Drat
+            self.assertTrue( labeler('b', 'good', 'Blanking') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('g', 'good', 'Blanking') == ('bad', 'Graffiti') )
+
+            self.assertTrue( labeler('y', 'good', 'Graffiti') == ('good', 'Regular') )
+            self.assertTrue( labeler('n', 'good', 'Graffiti') == ('bad', 'Graffiti') )
+            self.assertTrue( labeler('s', 'good', 'Graffiti') == ('good', 'Graffiti') )   # Drat
+            self.assertTrue( labeler('b', 'good', 'Graffiti') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('g', 'good', 'Graffiti') == ('bad', 'Graffiti') )
+
+            self.assertTrue( labeler('y', 'good', '') == ('good', 'Regular') )
+            self.assertTrue( labeler('n', 'good', '') == ('bad', 'Vandalism') )
+            self.assertTrue( labeler('s', 'good', '') == ('good', '') )
+            self.assertTrue( labeler('b', 'good', '') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('g', 'good', '') == ('bad', 'Graffiti') )
+
+            self.assertTrue( labeler('y', 'bad', 'Regular') == ('bad', 'Vandalism') )
+            self.assertTrue( labeler('n', 'bad', 'Regular') == ('good', 'Regular') )
+            self.assertTrue( labeler('s', 'bad', 'Regular') == ('bad', 'Regular') )     # Drat
+            self.assertTrue( labeler('b', 'bad', 'Regular') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('g', 'bad', 'Regular') == ('bad', 'Graffiti') )
+
+            self.assertTrue( labeler('y', 'bad', 'Constructive') == ('bad', 'Vandalism') )
+            self.assertTrue( labeler('n', 'bad', 'Constructive') == ('good', 'Constructive') )
+            self.assertTrue( labeler('s', 'bad', 'Constructive') == ('bad', 'Constructive') )       # Drat
+            self.assertTrue( labeler('b', 'bad', 'Constructive') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('g', 'bad', 'Constructive') == ('bad', 'Graffiti') )
+
+            self.assertTrue( labeler('y', 'bad', 'Vandalism') == ('bad', 'Vandalism') )
+            self.assertTrue( labeler('n', 'bad', 'Vandalism') == ('good', 'Regular') )
+            self.assertTrue( labeler('s', 'bad', 'Vandalism') == ('bad', 'Vandalism') )
+            self.assertTrue( labeler('b', 'bad', 'Vandalism') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('g', 'bad', 'Vandalism') == ('bad', 'Graffiti') )
+
+            self.assertTrue( labeler('y', 'bad', 'Blanking') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('n', 'bad', 'Blanking') == ('good', 'Regular') )
+            self.assertTrue( labeler('s', 'bad', 'Blanking') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('b', 'bad', 'Blanking') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('g', 'bad', 'Blanking') == ('bad', 'Graffiti') )
+
+            self.assertTrue( labeler('y', 'bad', 'Graffiti') == ('bad', 'Graffiti') )
+            self.assertTrue( labeler('n', 'bad', 'Graffiti') == ('good', 'Regular') )
+            self.assertTrue( labeler('s', 'bad', 'Graffiti') == ('bad', 'Graffiti') )
+            self.assertTrue( labeler('b', 'bad', 'Graffiti') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('g', 'bad', 'Graffiti') == ('bad', 'Graffiti') )
+
+            self.assertTrue( labeler('y', 'bad', '') == ('bad', 'Vandalism') )
+            self.assertTrue( labeler('n', 'bad', '') == ('good', 'Regular') )
+            self.assertTrue( labeler('s', 'bad', '') == ('bad', '') )
+            self.assertTrue( labeler('b', 'bad', '') == ('bad', 'Blanking') )
+            self.assertTrue( labeler('g', 'bad', '') == ('bad', 'Graffiti') )
+
+
     suite = unittest.TestLoader().loadTestsFromTestCase(DefaultTests)
     unittest.TextTestRunner(verbosity=2).run(suite)
 
