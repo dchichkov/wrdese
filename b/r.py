@@ -349,17 +349,7 @@ def compute_pyc(xmlFilenames):
     wikipedia.output("%f seconds" % (time.time() - start))
 
 
-
-
-
-def dump_dictionary(name, d):
-    sorted_d = sorted(results.items(), key=lambda t: t[1])
-
-
 def dump_cstats(stats, ids):
-    for v in ids.values():
-        v.sort()
-
     wikipedia.output("===================================================================================")
     pp = pprint.PrettyPrinter(width=140)
     if(_verbose_arg): wikipedia.output("ids = \\\n%s" % pp.pformat(ids))
@@ -477,13 +467,13 @@ def filter_pyc():
                  (NNN - total_revisions) / total_revisions * (time.time() - start) / 3600 ))
         
         for e in revisions:
-            known = k.is_verified_or_known_as_good_or_bad(e.revid)
+            known = k.is_known(e.revid)
             if known: break
         if not known: continue
 
         # mark 'known'
         for e in revisions:
-            known = k.is_verified_or_known_as_good_or_bad(e.revid)
+            known = k.is_known(e.revid)
             if known: k.g[e.revid] = 'known'
 
         for e in revisions:
@@ -711,8 +701,8 @@ def collect_stats(stats, ids, user_reputations, e, score, uncertain, extra):
     global _retrain_arg, _train_arg, _human_responses
     score_numeric = e.rev_score_info                   
     revid = e.revid
-    known = k.is_verified_or_known_as_good_or_bad(revid)    # previous score (some human verified)
-    verified = k.is_known_as_verified(revid)                # if not Empty: human verified
+    known = k.is_known(revid)                       # previous score (some human verified)
+    verified = k.is_verified(revid)                 # if not Empty: human verified
     # if the retrain arg is set to true, username or the revision id
     retrain = (_retrain_arg == True) or (_retrain_arg and ((_retrain_arg.find(e.username) > -1) or (_retrain_arg.find(str(revid)) > -1)))
 
@@ -750,10 +740,10 @@ def collect_stats(stats, ids, user_reputations, e, score, uncertain, extra):
             if(not verified): known = score
 
     # Collecting stats
-    ids[known].append(revid)
+    ids.k[revid] = known
     stats['Revision analysis score ' + score + ' on known'][known] += 1
     if(verified):
-        ids[verified].append(revid)
+        ids.v[revid] = verified
         stats['Revision analysis score ' + score + ' on verified'][verified] += 1
 
     if(_human_responses > 5):
@@ -769,14 +759,14 @@ def check_reputations(revisions, user_reputations):
     if(not user_reputations):
         user_reputations = defaultdict(int); user_features = defaultdict(str);
         for e in revisions:
-            known = k.is_verified_or_known_as_good_or_bad(e.revid)    # previous score (some human verified)
+            known = k.is_known(e.revid)    # previous score (some human verified)
             if(known == 'good'): user_reputations[e.username] += 1; user_features[e.username] += 'g';
             if(known == 'bad'): user_reputations[e.username] -= 1; user_features[e.username] += 'b';
     
     for e in revisions:
         revid = e.revid
-        known = k.is_verified_or_known_as_good_or_bad(revid)    # previous score (some human verified)
-        verified = k.is_known_as_verified(revid)                # if not Empty: human verified
+        known = k.is_known(revid)                      # previous score (some human verified)
+        verified = k.is_verified(revid)                # if not Empty: human verified
         reputation = user_reputations[e.username]
         if not known: continue
         
@@ -887,7 +877,7 @@ def compute_word_features(revisions):
     train = [None] * len(edit_features)
     for i, features in enumerate(edit_features):
         e = revisions[i]
-        known = k.is_verified_or_known_as_good_or_bad(e.revid)              # previous score (some human verified)
+        known = k.is_known(e.revid)              # previous score (some human verified)
         if known == None: wikipedia.output("Unknown revision %d" % e.revid); known = 'good'
         for f, v in user_features[e.username].iteritems():
             features[f] = v        
@@ -944,7 +934,7 @@ def compute_letter_trainset(revisions):
             }
 
     for e in revisions:
-        known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
+        known = k.is_known(e.revid)  # previous score (some human verified)
         f = ''
 
         if(e.comment):
@@ -1023,8 +1013,8 @@ def analyse_maxent(revisions, user_reputations):
 
 
     for i, e in enumerate(revisions):
-        known = k.is_verified_or_known_as_good_or_bad(e.revid)              # previous score (some human verified)
-        verified = k.is_known_as_verified(e.revid)                         # if not Empty: human verified        
+        known = k.is_known(e.revid)                                 # previous score (some human verified)
+        verified = k.is_verified(e.revid)                           # if not Empty: human verified        
         pdist = classifier.prob_classify(train[i][0])
         score = ('bad', 'good')[pdist.prob('good') > pdist.prob('bad')]
         stats['Maxent score ' + score + ' on known'][known] += 1
@@ -1039,7 +1029,7 @@ def analyse_maxent(revisions, user_reputations):
 
 def analyse_crm114(revisions, user_reputations):
     # stats
-    ids = defaultdict(list)
+    ids = object()defaultdict(list)
     stats = defaultdict(lambda:defaultdict(int))
  
     p = re.compile(r'\W+')
@@ -1053,8 +1043,8 @@ def analyse_crm114(revisions, user_reputations):
         score_numeric = e.rev_score_info                   
         score = ('good', 'bad')[score_numeric < 0]              # current analyse_reverts score
         revid = e.revid
-        known = k.is_verified_or_known_as_good_or_bad(revid)    # previous score (some human verified)
-        verified = k.is_known_as_verified(revid)                # if not Empty: human verified
+        known = k.is_known(revid)                               # previous score (some human verified)
+        verified = k.is_verified(revid)                         # if not Empty: human verified
 
         #wikipedia.output("Revision %d (%d): %s by %s Comment: %s" % (i, score, e.timestamp, e.username, e.comment))
         if prev:
@@ -1150,7 +1140,7 @@ def comment_score(text):
 def analyse_decisiontree(revisions, user_reputations):
     total_time = total_size = 0
     for e in revisions:
-        known = k.is_verified_or_known_as_good_or_bad(e.revid)  # previous score (some human verified)
+        known = k.is_known(e.revid)                 # previous score (some human verified)
         score = 0
 
         if(e.comment):
@@ -1262,9 +1252,6 @@ def compute_reputations_shelve():
         rdb.close()
 
 
-
-
-
 def main():
     global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _reputations_arg, _classifier_arg;
     pattern_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None;
@@ -1328,7 +1315,7 @@ def main():
         for revisions in read_pyc():
             analyse_reverts(revisions)
             for e in revisions:
-                known = k.is_verified_or_known_as_good_or_bad(e.revid)
+                known = k.is_known(e.revid)
                 if known: known_revisions.append(e)
         for i, e in enumerate(known_revisions): e.i = i
         if(_output_arg): cPickle.dump(known_revisions, open(_output_arg, 'wb'), -1)
@@ -1341,7 +1328,7 @@ def main():
 
     #analyse_tokens_lifetime(xmlFilenames)
     global ids, stats
-    ids = defaultdict(list)
+    ids = expando()
     stats = defaultdict(lambda:defaultdict(int))
 
     start = time.time();

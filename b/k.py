@@ -12,6 +12,12 @@ for v in ids.values():
     v.sort()
 
 
+# k, known - latest best evaluation
+# g, gold - imported dataset
+# v, verified - human labels
+# i, info - dict with extra labels
+
+
 # for r in ids['bad']: 
 #    print '<a href="http://en.wikipedia.org/w/index.php?diff=prev&oldid=%d">%d</a>' % (r, r)
 

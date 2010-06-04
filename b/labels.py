@@ -1,3 +1,64 @@
+
+# k, known - latest best evaluation, if verified as X should be known as X
+# g, gold - imported dataset
+# v, verified - human labels, superiour to gold and known
+# i, info - dict with extra labels
+
+# for r in ids['bad']:
+#    print '<a href="http://en.wikipedia.org/w/index.php?diff==%d">%d</a>' % (r, r)
+
+
+class Dataset(object):
+    "Labeled lists of revisions. Two lists: known and verified."
+    def __init__(self):
+        self.known = dict()
+        self.verified = dict()
+        self.gold = dict()
+        self.info = dict()
+
+    def dump_dict(self, d, name):
+        print name, "= [\\\n"
+        labels = [(k, v) for k, v in d.iteritems()]
+        labels.sort(key = itemgetter(0))
+        for l in labels:
+            print "%s : '%s',\n" % l
+        print "]\n"
+
+    def dump(self):
+        dump_dict(self.known, "known")
+        dump_dict(self.verified, "verified")
+        dump_dict(self.gold, "gold")
+        dump_dict(self.info, "info")
+
+    def is_verified(self, rid):
+        label = self.verified.get(rid)
+        if(label == None):           return None
+        if(label == "Regular"):      return 'good'
+        if(label == "Constructive"): return 'good'
+        return 'bad'
+
+    def is_known(self, rid):
+        return self.known.get(rid)
+
+    def info(self, id):
+        return self.info.get(rid)
+
+    def append_dict(self, dst, src):
+        for (k, v) in src.iteritems():
+            if k in dst: print "Duplicate:", k
+            else: dst[k] = v
+
+    def append(self, gold, info, known, verified):
+        append_dict(self.gold, gold)
+        append_dict(self.info, info)
+        append_dict(self.known, known)
+        append_dict(self.verified, verified)
+
+
+ids = Dataset()     # new
+k = Dataset()       # known
+
+
 labels = {
     "Regular"       : """Regular constructive edit done in a good faith. In other words good edit.""",
     "Vandalism"     : """Generick vandalism. Destructive edit done in a bad faith. In other words unclassified bad edit.""",
@@ -35,6 +96,46 @@ labels = {
     "Hidden Vandalism" : """Any form of vandalism that makes use of embedded text, which is not visible to the final rendering of the article but visible during editing. This includes link vandalism (described above), or placing malicious, offensive, or otherwise disruptive or irrelevant messages or spam in hidden comments for editors to see.""",
     "Gaming The System" : """Deliberate attempts to circumvent enforcement of Wikipedia policies, guidelines, and procedures by making bad faith edits go unnoticed. Includes marking bad faith edits as minor to get less scrutiny, making a minor edit following a bad faith edit so it won't appear on all watchlists, recreating previously deleted bad faith creations under a new title, use of the {{tl|construction}} tag to prevent deletion of a page that would otherwise be a clear candidate for deletion, or use of sock puppets.""",
 }
+
+
+
+if __name__ == "__main__":
+    import unittest, re, pprint
+
+    class DefaultTests(unittest.TestCase):
+        def test_labels(self):
+            keyed_labels = {}
+            for l in labels.keys():
+                key = ''.join(re.findall("[A-Z]", l))
+                if(key in keyed_labels):
+                    print "Duplicate: ", keyed_labels[key], l
+                else:
+                    keyed_labels[key] = l
+
+        def test_pprint(self):
+
+            int_ids = defaultdict(list)
+            for k, l in ids.items():
+                for id in l:
+                    int_ids[k].append(int(id))
+            for v in int_ids.values():
+                v.sort()
+            print("\nids = \n")
+            pprint(int_ids, width=140)
+
+        def test_known_as(self):
+            """verify that is_known_as works"""
+            test_cases = 0
+            for k, l in ids.items():
+                for id in l:
+                    if not is_known_as(id, k):
+                        print "FAILED(a) at k = %s id = %s" % (k, id)
+                        self.fail()
+                    if is_known_as(id, 'good') and is_known_as(id, 'bad'):
+                        print "FAILED(b) at id = %s" % (k, id)
+                        self.fail()
+                    test_cases += 1
+            print "(%d)" % test_cases
 
 
 
