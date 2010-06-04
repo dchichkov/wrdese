@@ -157,7 +157,7 @@ import crm114
 #import pan10_vandalism_test_collection as k
 #import k
 
-from labels import k, ids, labels, labels_shortcuts
+from labels import k, ids, labels, labels_shortcuts, labeler, good_labels, bad_labels
 import pan_wvc_10_gold; k.append(known = pan_wvc_10_gold.g, info = pan_wvc_10_gold.i);
 
 NNN = 313797035 # total revisions in the latest wiki dump
@@ -570,9 +570,9 @@ def analyse_reverts(revisions):
     # ------------------------------------------------------------------
     # Revision 54 (-1)      User0    Regular edit
     # Revision 55 (55)      User1    Regular edit
-    # Revision 56 (-2)      User2    Vandalizm
-    # Revision 57 (-2)      User2    Vandalizm
-    # Revision 58 (-2)      User3    Correcting vandalizm, but not quite
+    # Revision 56 (-2)      User2    Vandalism
+    # Revision 57 (-2)      User2    Vandalism
+    # Revision 58 (-2)      User3    Correcting vandalism, but not quite
     # Revision 59 (55)      User4    Revert to Revision 55
 
     reverted_to = None
@@ -588,9 +588,9 @@ def analyse_reverts(revisions):
     # Marking (-3) : between duplicates, by other users (reverted, questionable)
     # Revision 54 (-1)  ->   (-1)                User0    Regular edit
     # Revision 55 (55)  ->   (55)                User1    Regular edit
-    # Revision 56 (-2)  ->   (-2)                User2    Vandalizm
-    # Revision 57 (-2)  ->   (-2)                User2    Vandalizm
-    # Revision 58 (-2)  ->   (-3)                User3    Correcting vandalizm, but not quite
+    # Revision 56 (-2)  ->   (-2)                User2    Vandalism
+    # Revision 57 (-2)  ->   (-2)                User2    Vandalism
+    # Revision 58 (-2)  ->   (-3)                User3    Correcting vandalism, but not quite
     # Revision 59 (55)  ->   (55)                User4    Revert to Revision 55
     username = None
     for e in revisions:
@@ -671,9 +671,15 @@ def analyse_reputations(revisions):
 
 
 def mark(value, function):
-    if(function(value)): 
-        return "\03{lightgreen}%s\03{default}" % value
-    return "\03{lightred}%s\03{default}" % value
+    if(not function):
+        if value == 'good' or value in good_labels:  return "\03{lightgreen}%s\03{default}" % value
+        if value == 'bad' or value in bad_labels: return "\03{lightred}%s\03{default}" % value
+        return "\03{lightpurple}%s\03{default}" % value
+
+    if(function(value) == True): return "\03{lightgreen}%s\03{default}" % value
+    if(function(value) == False): return "\03{lightred}%s\03{default}" % value
+    return "\03{lightpurple}%s\03{default}" % value
+
 
 def urri(ri):
     if(ri > -1): return 'revert'
@@ -710,31 +716,23 @@ def collect_stats(stats, user_reputations, e, score, uncertain, extra):
         wikipedia.output("\n\n\n\n\n\n\n >> R%d (%s, %s) by %s(%s): \03{lightblue}%s\03{default}   <<< " %   \
              (e.i, mark(e.reverts_info, lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.username, \
                 mark(user_reputations[e.username], lambda x:x>-1), e.comment))
-        wikipedia.output("Score is %s." % mark(score, lambda x:x=='good'))
-        if(known): wikipedia.output("Known as %s." % mark(known, lambda x:x=='good'))
-        if(verified): wikipedia.output("Verified as %s." % mark(verified, lambda x:x[:3]!='bad'))
+        wikipedia.output("Score is %s." % mark(score))
+        if(known): wikipedia.output("Known as %s." % mark(known))
+        if(verified): wikipedia.output("Verified as %s." % mark(verified))
         if(uncertain): wikipedia.output("Uncertain: %s" % uncertain)
         wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=%d" % revid)
         if(k.info_string(revid)): wikipedia.output("Annotation: %s" % k.info_string(revid))
         show_diff(e)
         if(extra): extra()
 
-        # uncertain = score_numeric < 1 or reverts_info[i] != -1 or uncertain
         if((uncertain and not verified) or retrain):
-            if not known or not verified: known = score     # keep verified answer by default
+            if not verified: known = score              # keep verified answer by default, use score overwise
             answer = wikipedia.inputChoice(u'Do you want to mark this revision as %s (Yes)?' % \
-                        mark(known, lambda x:x=='good'), labels(), labels_shortcuts(), 'Y')
+                        mark(known), labels(), labels_shortcuts(), 'Y')
             if answer == 'n':
                 wikipedia.output(" \03{lightpurple}***** Wow! *****\03{default} \03{lightgreen}Thank you for correcting me.\03{default}") 
-                known = ('good', 'bad')[known == 'good']                 # inverting/correcting
-
-            if answer == 'c':
-                known = 'good'
-                verified = 'constructive (corrected by user)'
-            else:
-                verified = known + (' (corrected by user)', ' (verified by user)')[known == score]
-
-            wikipedia.output("Marked as %s" % mark(verified, lambda x:x[:3]!='bad'))
+            (known, verified) = labeler(answer, known, verified)
+            wikipedia.output("Marked as %s, %s" % (mark(known), mark(verified)) )
             _human_responses += 1
         else:
             if(not verified): known = score
@@ -1083,10 +1081,10 @@ def analyse_crm114(revisions, user_reputations):
             # CRM114 different or uncertain
             if(crm114_answer == 'bad' and score == 'good'): 
                 falseString = " >>> \03{lightpurple}FALSE POSITIVE\03{default} <<<"
-                uncertain = "CRM114 thinks it is: %s, prob was:%f %s" % (mark(crm114_answer, lambda x:x=='good'), probability, falseString)
+                uncertain = "CRM114 thinks it is: %s, prob was:%f %s" % (mark(crm114_answer), probability, falseString)
             elif(crm114_answer == 'good' and score == 'bad'): 
                 falseString = "  >>> \03{lightpurple}False Negative\03{default} <<<"
-                uncertain = "CRM114 thinks it is: %s, prob was:%f %s" % (mark(crm114_answer, lambda x:x=='good'), probability, falseString)
+                uncertain = "CRM114 thinks it is: %s, prob was:%f %s" % (mark(crm114_answer), probability, falseString)
             else: uncertain = ""
             
             # Collecting stats and Human verification
