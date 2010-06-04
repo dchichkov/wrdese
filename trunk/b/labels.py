@@ -36,9 +36,10 @@ class Dataset(object):
     def is_verified(self, rid):
         label = self.verified.get(rid)
         if(label == None):           return None
-        if(label == "Regular"):      return 'good'
-        if(label == "Constructive"): return 'good'
-        return 'bad'
+        if(label in good_labels): return 'good'
+        if(label in bad_labels): return 'bad'
+        print "Warning. Unknown label:", label
+        return None
 
     def is_known(self, rid):
         return self.known.get(rid)
@@ -62,7 +63,7 @@ class Dataset(object):
         for rid in self.verified.keys():
             if not rid in self.known: print "Verified:", rid, "is unknown."
             if self.is_known(rid) != self.is_verified(rid): 
-                print "Verified:", rid, "is known as:", self.is_known(rid), " But it is verified as:", self.is_verified(rid), "."                 
+                print "Verified:", rid, "is known as:", self.is_known(rid), "Verified as:", self.is_verified(rid), "."                 
         for rid in self.gold.keys():
             if not rid in self.known: print "Gold:", rid, "is unknown."
         
@@ -112,8 +113,9 @@ labels_list = [(l, ''.join(re.findall("[A-Z]", l)), d) for (l, d) in [
     ("Gaming The System" , """Deliberate attempts to circumvent enforcement of Wikipedia policies, guidelines, and procedures by making bad faith edits go unnoticed. Includes marking bad faith edits as minor to get less scrutiny, making a minor edit following a bad faith edit so it won't appear on all watchlists, recreating previously deleted bad faith creations under a new title, use of the {{tl|construction}} tag to prevent deletion of a page that would otherwise be a clear candidate for deletion, or use of sock puppets."""),
 ]]
 
+internal_labels = ['Yes', 'No', 'Skip']
 good_labels = ['Regular', 'Constructive']
-bad_labels = [label for (label, shortcut, description) in labels_list if label not in good_labels]
+bad_labels = [label for (label, shortcut, description) in labels_list if label not in (good_labels or internal_labels)]
 
 def labels_shortcuts():
     return [shortcut for (label, shortcut, description) in labels_list]
