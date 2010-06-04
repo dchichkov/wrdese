@@ -154,12 +154,13 @@ import crm114
 # known good, known bad revisions
 #import wicow08r_chin_microsoft_annotation as k
 #import wicow08r_chin_lincoln_annotation as k
-import pan_wvc_10_gold as k
 #import pan10_vandalism_test_collection as k
 #import k
 
-NNN = 313797035 # total revisions in the dump
+from labels import k, ids, labels, labels_shortcuts
+import pan_wvc_10_gold; k.append(known = pan_wvc_10_gold.g, info = pan_wvc_10_gold.i);
 
+NNN = 313797035 # total revisions in the latest wiki dump
 
 # This is required for the text that is shown when you run this script
 # with the parameter -help.
@@ -349,11 +350,10 @@ def compute_pyc(xmlFilenames):
     wikipedia.output("%f seconds" % (time.time() - start))
 
 
-def dump_cstats(stats, ids):
+def dump_cstats(stats):
+    if(_verbose_arg): ids.dump() 
     wikipedia.output("===================================================================================")
-    pp = pprint.PrettyPrinter(width=140)
-    if(_verbose_arg): wikipedia.output("ids = \\\n%s" % pp.pformat(ids))
-    wikipedia.output("stats = \\\n%s" % pp.pformat(stats))
+    wikipedia.output("stats = \\\n%s" % pprint.PrettyPrinter(width=140).pformat(stats))
     wikipedia.output("===================================================================================")
 
 
@@ -697,7 +697,7 @@ def show_diff(e):
 
 
 
-def collect_stats(stats, ids, user_reputations, e, score, uncertain, extra):
+def collect_stats(stats, user_reputations, e, score, uncertain, extra):
     global _retrain_arg, _train_arg, _human_responses
     score_numeric = e.rev_score_info                   
     revid = e.revid
@@ -715,7 +715,7 @@ def collect_stats(stats, ids, user_reputations, e, score, uncertain, extra):
         if(verified): wikipedia.output("Verified as %s." % mark(verified, lambda x:x[:3]!='bad'))
         if(uncertain): wikipedia.output("Uncertain: %s" % uncertain)
         wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=%d" % revid)
-        if(k.info(revid)): wikipedia.output("Annotation: %s" % str(k.info(revid)))
+        if(k.info_string(revid)): wikipedia.output("Annotation: %s" % k.info_string(revid))
         show_diff(e)
         if(extra): extra()
 
@@ -723,7 +723,7 @@ def collect_stats(stats, ids, user_reputations, e, score, uncertain, extra):
         if((uncertain and not verified) or retrain):
             if not known or not verified: known = score     # keep verified answer by default
             answer = wikipedia.inputChoice(u'Do you want to mark this revision as %s (Yes)?' % \
-                        mark(known, lambda x:x=='good'), ['Yes', 'No', 'Constructive'], ['Y', 'N', 'C'], 'Y')
+                        mark(known, lambda x:x=='good'), labels(), labels_shortcuts(), 'Y')
             if answer == 'n':
                 wikipedia.output(" \03{lightpurple}***** Wow! *****\03{default} \03{lightgreen}Thank you for correcting me.\03{default}") 
                 known = ('good', 'bad')[known == 'good']                 # inverting/correcting
@@ -740,15 +740,15 @@ def collect_stats(stats, ids, user_reputations, e, score, uncertain, extra):
             if(not verified): known = score
 
     # Collecting stats
-    ids.k[revid] = known
+    ids.known[revid] = known
     stats['Revision analysis score ' + score + ' on known'][known] += 1
     if(verified):
-        ids.v[revid] = verified
+        ids.verified[revid] = verified
         stats['Revision analysis score ' + score + ' on verified'][verified] += 1
 
     if(_human_responses > 5):
         _human_responses = 0
-        dump_cstats(stats, ids)
+        dump_cstats(stats)
 
     return (verified, known, score)
 
@@ -778,7 +778,7 @@ def check_reputations(revisions, user_reputations):
     
         # Collecting stats and Human verification
         extra = lambda:wikipedia.output(" User Features: \03{lightblue}%s\03{default}" % user_features[e.username])
-        (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, False, extra)
+        (verified, known, score) = collect_stats(stats, user_reputations, e, score, False, extra)
 
     return user_reputations
 
@@ -1023,15 +1023,12 @@ def analyse_maxent(revisions, user_reputations):
         uncertain = known != score
         score_numeric = e.rev_score_info
         extra = lambda: classifier.explain(train[i][0]);
-        (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, uncertain, extra)
+        (verified, known, score) = collect_stats(stats, user_reputations, e, score, uncertain, extra)
 
 
 
 def analyse_crm114(revisions, user_reputations):
     # stats
-    ids = object()defaultdict(list)
-    stats = defaultdict(lambda:defaultdict(int))
- 
     p = re.compile(r'\W+')
     # p = re.compile(r'\s+')
 
@@ -1094,7 +1091,7 @@ def analyse_crm114(revisions, user_reputations):
             
             # Collecting stats and Human verification
             extra = lambda:wikipedia.output(" \03{lightblue}%s\03{default}" % edit_text)
-            (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, uncertain, extra)
+            (verified, known, score) = collect_stats(stats, user_reputations, e, score, uncertain, extra)
 
             if(i > 500):
                 stats['CRM114 answered ' + crm114_answer + ' on known'][known] += 1
@@ -1108,7 +1105,6 @@ def analyse_crm114(revisions, user_reputations):
             if(i % 100 == 0): wikipedia.output("Processed %d revisions" % i)
 
         prev = e
-    dump_cstats(stats, ids)    
 
 
 # some low hanging text statistics
@@ -1180,14 +1176,14 @@ def analyse_decisiontree(revisions, user_reputations):
 
         # if(not known): continue
         uncertain = (user_reputations[e.username] > 0 and score == 'bad') or (user_reputations[e.username] < 0 and score == 'good')
-        (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, uncertain, None)
+        (verified, known, score) = collect_stats(stats, user_reputations, e, score, uncertain, None)
 
     #for e in revisions:
     #    if(user_reputations[e.username] > 0): score = 'good'
     #    elif(user_reputations[e.username] < 0): score = 'bad'
     #    else: continue
-    #    (verified, known, score) = collect_stats(stats, ids, user_reputations, e, score, False, None)
-    # dump_cstats(stats, ids)
+    #    (verified, known, score) = collect_stats(stats, user_reputations, e, score, False, None)
+    # dump_cstats(stats)
 
 
 
@@ -1327,10 +1323,8 @@ def main():
 
 
     #analyse_tokens_lifetime(xmlFilenames)
-    global ids, stats
-    ids = expando()
+    global stats
     stats = defaultdict(lambda:defaultdict(int))
-
     start = time.time();
     if(_analyze_arg):        
         # user_reputations = check_reputations(revisions, None)        
@@ -1339,7 +1333,7 @@ def main():
 
         # user_reputations = analyse_reputations(revisions)
         # analyse_crm114(revisions, user_reputations)
-        dump_cstats(stats, ids)
+        dump_cstats(stats)
 
 
 if __name__ == "__main__":
