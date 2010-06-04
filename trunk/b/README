@@ -1,3 +1,17 @@
+Design
+======
+Keys: information, entropy, energy
+* article content information/entropy  
+* energy expenditure reader 
+* energy expenditure editor 
+
+Edits: constructive (good), destructive (bad)
+* energy expenditure editor(s) / corrector(s) / reader(s) 
+
+Content: belief propagation, peer trust, work tokens
+
+Usage
+=====
 Generating corpus (.pyc) from an xml dump(s):
 r.py -xml:../enwiki-20100312-pages-meta-history.xml.7z -output:/data/enwiki-20100312.none.full -compute-pyc > progress-20100312-full.txt  2>&1 &
 
