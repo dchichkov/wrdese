@@ -376,7 +376,7 @@ def display_pyc():
 
 
 class FullInfo(object):
-    __slots__ = ('i', 'reverts_info', 'rev_score_info',
+    __slots__ = ('i', 'reverts_info', 'rev_score_info', 'duplicates_info', 'reverted',
                  'id', 'revid', 'username', 'comment', 'title', 'size', 'utc', 'md5', 'ipedit',
                  'editRestriction', 'moveRestriction', 'isredirect',
                  'al', 'bl', 'lo', 'ahi', 'bhi', 'ilA', 'ilR', 'iwA', 'iwR', 'ilM', 'iwM', 'diff'
@@ -391,6 +391,8 @@ class FullInfo(object):
 
         self.reverts_info = -1
         self.rev_score_info = 0
+        self.duplicates_info = None
+        self.reverted = None
 
 def read_pyc_count_empty():
     wikipedia.output("Reading %s..." % _pyc_arg)
@@ -533,7 +535,6 @@ def display_last_timestamp(xmlFilenames):
     
 
 
-
 # -------------------------------------------------------------------------
 # initializes: revisions[].reverts_info
 
@@ -546,87 +547,6 @@ def display_last_timestamp(xmlFilenames):
 # >=0: this revision is a duplicate of
 # -------------------------------------------------------------------------
 def analyse_reverts(revisions):
-    rev_hashes = defaultdict(list)      # Filling md5 hashes map (md5 -> [list of revision indexes]) for nonempty
-    user_revisions = defaultdict(int)   # Filling nuber of nonempty revisions made by user
-    total_revisions = len(revisions)
-
-    for i, e in enumerate(revisions):
-        # calculate page text hashes and duplicates lists 
-        if(e.md5):
-            rev_hashes[e.md5].append(i)
-            user_revisions[e.username] += 1;
-        e.i = i
-
-    # Marking duplicates_info
-    # (-1): regular revision
-    #  >=0: this revision is a duplicate of
-    for m, indexes in rev_hashes.iteritems():
-        if len(indexes) > 1:
-            for i in indexes:
-                revisions[i].reverts_info = indexes[0]
-
-    # Marking (-2, -4, >=0)
-    # -2 : between duplicates, by single user (reverted, most likely bad)
-    # -4 : between duplicates, (revert that was reverted. revert war.)        
-    # ------------------------------------------------------------------
-    # Revision 54 (-1)      User0    Regular edit
-    # Revision 55 (55)      User1    Regular edit
-    # Revision 56 (-2)      User2    Vandalism
-    # Revision 57 (-2)      User2    Vandalism
-    # Revision 58 (-2)      User3    Correcting vandalism, but not quite
-    # Revision 59 (55)      User4    Revert to Revision 55
-
-    reverted_to = None
-    for e in reversed(revisions):
-        if(reverted_to != None):            
-            if(e.reverts_info == -1): e.reverts_info = -2
-            elif(e.reverts_info != reverted_to):
-                # wikipedia.output("Revert war: revision %d is a duplicate of %d was later reverted to %d" % (i, reverts_info[i], reverted_to)) 
-                e.reverts_info = -4
-        elif(e.reverts_info >= 0): reverted_to = e.reverts_info
-        if(e.i == reverted_to): reverted_to = None
-    
-    # Marking (-3) : between duplicates, by other users (reverted, questionable)
-    # Revision 54 (-1)  ->   (-1)                User0    Regular edit
-    # Revision 55 (55)  ->   (55)                User1    Regular edit
-    # Revision 56 (-2)  ->   (-2)                User2    Vandalism
-    # Revision 57 (-2)  ->   (-2)                User2    Vandalism
-    # Revision 58 (-2)  ->   (-3)                User3    Correcting vandalism, but not quite
-    # Revision 59 (55)  ->   (55)                User4    Revert to Revision 55
-    username = None
-    for e in revisions:
-        if(e.reverts_info == -2): 
-            if(username == None): username = e.username
-            elif (username != e.username): e.reverts_info = -3
-        else: username = None
-
-    # Marking (-5) : self-reverts
-    # Revision 54 (-1)  ->   (-1)                User0    Regular edit
-    # Revision 55 (55)  ->   (55)                User1    Regular edit
-    # Revision 56 (-2)  ->   (-2)                User1    Self-reverted edit
-    # Revision 59 (55)  ->   (55)                User4    Revert to Revision 55
-    username = None
-    for e in reversed(revisions):
-        if(e.reverts_info > -1 and username == None):
-            username = e.username
-        elif(e.reverts_info == -2 and username == e.username):
-            e.reverts_info = -5
-        else: username = None
-
-
-
-# -------------------------------------------------------------------------
-# initializes: revisions[].reverts_info
-
-# reverts_info
-# -1  : regular revision
-# -2 : between duplicates, by single user (reverted, most likely bad)
-# -3 : between duplicates, by other users (reverted, questionable)
-# -4 : between duplicates, (revert that was reverted. revert war.)
-# -5 : self-revert
-# >=0: this revision is a duplicate of
-# -------------------------------------------------------------------------
-def analyse_reverts2(revisions):
     rev_hashes = defaultdict(list)      # Filling md5 hashes map (md5 -> [list of revision indexes]) for nonempty
     user_revisions = defaultdict(int)   # Filling nuber of nonempty revisions made by user
     total_revisions = len(revisions)
@@ -657,14 +577,29 @@ def analyse_reverts2(revisions):
     # Revision 58 (-2)      User3    Correcting vandalism, but not quite
     # Revision 59 (55)      User4    Revert to Revision 55
 
-    reverted_to = None
+    revert = None
     for e in reversed(revisions):
-        if(reverted_to != None):            
-            if(not e.duplicates_info): e.reverts_info = -2      # regular reverted revision
-            elif(e.duplicates_info != reverted_to): e.reverts_info = -4 # revert war, revision has duplicates and was reverted
-            elif(e.i == reverted_to[0]): reverted_to == None    # reached reverted_to[0]
-        else: 
-            reverted_to = e.duplicates_info
+        if revert != None:
+            if not e.duplicates_info:                           # regular reverted revision
+                e.reverts_info = -2      
+                e.reverted = revert
+            elif e.i == revert.duplicates_info[0]:              # reached reverted_to[0]
+                e.reverts_info = e.i                            # LEGACY 
+                revert = None
+            elif e.duplicates_info != revert.duplicates_info:   # revert war, revision has duplicates and was reverted 
+                e.reverts_info = -4 
+                e.reverted = revert
+            else:
+                revert = e
+                e.reverts_info = revert.duplicates_info[0]      # LEGACY 
+        elif e.duplicates_info:
+            if e.i == e.duplicates_info[0]:
+                e.reverts_info = e.i                            # LEGACY 
+                revert = None
+            else:                 
+                revert = e
+                e.reverts_info = revert.duplicates_info[0]      # LEGACY
+                    
 
     # Marking (-3) : between duplicates, by other users (reverted, questionable)
     # Revision 54 (-1)  ->   (-1)                User0    Regular edit
@@ -673,12 +608,6 @@ def analyse_reverts2(revisions):
     # Revision 57 (-2)  ->   (-2)                User2    Vandalism
     # Revision 58 (-2)  ->   (-3)                User3    Correcting vandalism, but not quite
     # Revision 59 (55)  ->   (55)                User4    Revert to Revision 55
-    username = None
-    for e in revisions:
-        if(e.reverts_info == -2):
-            if(username == None): username = e.username
-            elif (username != e.username): e.reverts_info = -3
-        else: username = None
 
     # Marking (-5) : self-reverts
     # Revision 54 (-1)  ->   (-1)                User0    Regular edit
@@ -686,13 +615,12 @@ def analyse_reverts2(revisions):
     # Revision 56 (-2)  ->   (-2)                User1    Self-reverted edit
     # Revision 59 (55)  ->   (55)                User4    Revert to Revision 55
     username = None
-    for e in reversed(revisions):
-        if(e.reverts_info > -1 and username == None):
-            username = e.username
-        elif(e.reverts_info == -2 and username == e.username):
-            e.reverts_info = -5
+    for e in revisions:
+        if(e.reverts_info == -2):
+            if(e.username == e.reverted.username): e.reverts_info = -5
+            if(username == None): username = e.username
+            elif (username != e.username): e.reverts_info = -3
         else: username = None
-
 
 
 
@@ -1386,7 +1314,6 @@ def main():
         if(_username_arg): 
             wikipedia.output("User %s, has_key %s, reputation %s" %
                 (_username_arg, user_reputations.has_key(_username_arg), user_reputations[_username_arg]))
-
 
     # filter and save known revisions
     if(_filter_known_revisions_arg):
