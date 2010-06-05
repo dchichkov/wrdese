@@ -32,8 +32,9 @@ Computing user reputations:
 Filtering corpus:
 ./r.py -pyc:/data/enwiki-20100130.none.full -filter-pyc -output:p/pan-wvc-10.none.full > progress-wvc-filter.none.full.txt 2>&1 &
 
-Filtering known revisions:
+Filtering known revisions/producing .known files:
 ./r.py -pyc:p/pan-wvc-10.none.full -filter-known-revisions -output:p/pan-wvc-10.none.known
+./r.py -pyc:p/Rocket.none.full -filter-known-revisions -output:p/enwiki.Rocket.none.known
 
 Merging reputations:
 ./r.py -pyc:p/pan-wvc-10.none.full -reputations:p/reputations-enwiki-20100130.none.full.split -output:reputations-enwiki-20100130.none.full.merged
