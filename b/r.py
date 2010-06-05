@@ -726,18 +726,21 @@ def collect_stats(stats, user_reputations, e, score, uncertain, extra):
     retrain = (_retrain_arg == True) or (_retrain_arg and ((_retrain_arg.find(e.username) > -1) or (_retrain_arg.find(str(revid)) > -1)))
 
     if(_verbose_arg and (score != known or (not verified and uncertain) or retrain)):
-        wikipedia.output("\n\n\n\n\n\n\n >> R%d (%s, %s) by %s(%s): \03{lightblue}%s\03{default}   <<< " %   \
+        wikipedia.output("\n\n\n\n\n\n\n >> R%d (%s, %s) by %s(%s): \03{lightblue}%s\03{default}  Diff: http://en.wikipedia.org/w/index.php?diff=%d <<< " %   \
              (e.i, mark(e.reverts_info, lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.username, \
-                mark(user_reputations[e.username], lambda x:x>-1), e.comment))
+                mark(user_reputations[e.username], lambda x:x>-1), e.comment, revid))
+        if(e.reverted):
+            wikipedia.output("Reverted: %d (%s, %s) by %s(%s): \03{lightblue}%s\03{default}  Diff: http://en.wikipedia.org/w/index.php?diff=%d <<< " %   \
+             (e.reverted.i, mark(e.reverted.reverts_info, lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.reverted.username, \
+                mark(user_reputations[e.reverted.username], lambda x:x>-1), e.reverted.comment, e.reverted.revid))
         wikipedia.output("Score is %s." % mark(score))
         if(known): wikipedia.output("Known as %s." % mark(known))
         if(verified): wikipedia.output("Verified as %s." % mark(verified))
         if(uncertain): wikipedia.output("Uncertain: %s" % uncertain)
-        wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=%d" % revid)
         if(k.info_string(revid)): wikipedia.output("Annotation: %s" % k.info_string(revid))
         show_diff(e)
         if(extra): extra()
-
+                                 
         if((uncertain and not verified) or retrain):
             if not verified: known = score              # keep verified answer by default, use score overwise
             answer = wikipedia.inputChoice(u'Do you want to mark this revision as %s (Yes)?' % \
