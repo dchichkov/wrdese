@@ -10,6 +10,14 @@ Edits: constructive (good), destructive (bad)
 
 Content: belief propagation, peer trust, work tokens
 
+
+Belief propagation
+==================
+* several revisions up/down
+* user comments
+* user contributions
+
+
 Usage
 =====
 Generating corpus (.pyc) from an xml dump(s):

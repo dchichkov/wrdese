@@ -33,7 +33,8 @@ class Dataset(object):
         self.dump_dict(self.gold, "gold")
         self.dump_dict(self.info, "info")
 
-    def is_verified(self, rid):
+    def is_verified_as_good_or_bad(self, rid):
+        """Returns 'good' for verified good, 'bad' for verified bad, None overwise."""
         label = self.verified.get(rid)
         if(label == None):           return None
         if(label in good_labels): return 'good'
@@ -41,7 +42,12 @@ class Dataset(object):
         print "Warning. Unknown label:", label
         return None
 
+    def is_verified(self, rid):
+        """Returns label for verified, None overwise."""
+        return self.verified.get(rid)
+
     def is_known(self, rid):
+        """Returns 'good' for known good, 'bad' for known bad, None overwise."""
         return self.known.get(rid)
 
     def info_string(self, rid):
@@ -54,6 +60,7 @@ class Dataset(object):
             else: dst[rid] = v
 
     def append(self, gold = {}, info = {}, known = {}, verified = {}):
+        """Append/merge a dataset into self."""
         self.append_dict(self.gold, gold)
         self.append_dict(self.info, info)
         self.append_dict(self.known, known)
@@ -72,6 +79,14 @@ ids = Dataset()     # new
 k = Dataset()       # known
 
 
+# Based on:
+#  Wikipedia article: Wikipedia:Vandalism
+#  http://en.wikipedia.org/wiki/Revert_vandalism#Types_of_vandalism
+#
+#  Article: Si-Chi Chin, W. Nick Street, Padmini Srinivasan, and David Eichmann. Detecting Wikipedia vandalism with active learning and statistical language models. Fourth Workshop on Information Credibility on the Web (WICOW 2010), Raleigh, NC, April 2010.
+#  http://myweb.uiowa.edu/sichin/pdf/wicow08r-chin.pdf
+
+
 labels_list = [(l, ''.join(re.findall("[A-Z]", l)), d) for (l, d) in [
     ("Yes"           , """Internal Use. Not a label. Agree with the proposed label."""),
     ("No"            , """Internal Use. Not a label. Select the opposite of the proposed label."""),
@@ -83,16 +98,20 @@ labels_list = [(l, ''.join(re.findall("[A-Z]", l)), d) for (l, d) in [
     ("Link spam"     , """Adding or continuing to add external links to non-notable or irrelevant sites."""),
     ("Graffiti"      , """Adding profanity, graffiti, random characters (gibberish) to pages."""),
     ("Partial self-revert"   , """Hiding vandalism (by making two bad edits and only reverting one or by reverting edit only partially)."""),
-    ("Formatting"            , """Formatting incorrecty or using incorrect wiki markup and style."""),
+    ("Irregular Formatting"  , """Formatting incorrecty or using incorrect wiki markup and style."""),
     ("Misinformation"        , """Adding plausible misinformation to articles, (e.g. minor alteration of facts or additions of plausible-sounding hoaxes)."""),
     ("Image Attack"          , """Uploading shock images, inappropriately placing explicit images on pages, or simply using any image in a way that is disruptive."""),
     ("Tests"                 , """Adding unhelpful content to a page (e.g., a few random characters) as a test. Not done in bad faith."""),
     ("Unintentional"         , """Inaccurate and destructive addition or removal of content but in the belief that it is accurate. Done in a good faith."""),
     ("Revert Warring"        , """Reverting good faith contributions of other users without any reason. Engaging into a revert war."""),
     ("Edit Warring"          , """Engaging into an edit war."""),
+    ("Large-Scale Editing"   , """Changing a massive portion of the existing content with malicious intent."""),
     ("NONSence"              , """Adding nonsense to pages; creating nonsensical and obviously non-encyclopedic pages."""),
+    ("Overlinking"           , """Using wiki links that have little related content. Unnecessary linking of common words used in the common way, for which the reader can be expected to understand the word's full meaning in context, without any hyperlink help. A link for any single term (other than for date formats) is excessively repeated in the same article."""),
     ("Joke"                  , """Adding obviously non-encyclopedic jokes to pages."""),
-    ("NPOV dispute"          , """Introducing inappropriate material which is not ideal from a NPOV perspective."""),
+    ("Notability Guidelines Violation", """Adding article or text that does not meet the general notability guideline."""),
+    ("Original Research"     , """Adding obviously non-encyclopedic Original Research."""),
+    ("NPOV"                  , """Introducing inappropriate material which is not ideal from a NPOV perspective."""),
     ("SPAM"                  , """Adding text (with or without external links) that promotes one's personal interests."""),
     ("Page Lengthening"      , """Adding very large amounts of bad-faith content to a page."""),
     ("Personal Attacks"      , """Adding insults, profanity, etc which constitutes a personal attack."""),
@@ -119,16 +138,22 @@ bad_labels = [label for (label, shortcut, description) in labels_list
                     if label not in good_labels and label not in internal_labels]
 
 def labels_shortcuts():
+    """Returns shortcuts ['Y', 'N', ...]"""
     return [shortcut for (label, shortcut, description) in labels_list]
 
 def labels():
+    """Returns labels ['Yes', 'No', ...]"""
     return [label for (label, shortcut, description) in labels_list]
 
 def labels_legend():
+    """Returns legend ['[Y]es', '[N]o', ...]"""
     legend = [re.sub(r"([A-Z]+)", r"[\1]", label) for (label, shortcut, description) in labels_list]
     return ",   ".join(sorted(legend))
 
 def labeler(answer, known, verified):
+    """Arguments: (label shortcut, previously known label, previously verified label)
+       Returns: (known, verified)"""
+
     if answer == 'n':
         if known == 'good':  known = 'bad'
         elif known == 'bad': known = 'good'

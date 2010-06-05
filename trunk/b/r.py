@@ -159,6 +159,7 @@ import crm114
 
 from labels import k, ids, labels, labels_shortcuts, labeler, good_labels, bad_labels
 import pan_wvc_10_gold; k.append(known = pan_wvc_10_gold.g, info = pan_wvc_10_gold.i);
+import pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified);
 
 NNN = 313797035 # total revisions in the latest wiki dump
 
@@ -670,7 +671,7 @@ def analyse_reputations(revisions):
 
 
 
-def mark(value, function):
+def mark(value, function = None):
     if(not function):
         if value == 'good' or value in good_labels:  return "\03{lightgreen}%s\03{default}" % value
         if value == 'bad' or value in bad_labels: return "\03{lightred}%s\03{default}" % value
