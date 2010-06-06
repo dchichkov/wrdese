@@ -984,9 +984,9 @@ def compute_letter_trainset(revisions):
             if(e.comment[:5] == '[[WP:'):
                 if(e.comment[:17] == u'[[WP:AES|A¢Undid'): f += 'u'
                 elif(e.comment[:19] == u'[[WP:AES|A¢Blanked'): f += 'b'
-                elif(e.comment[:20] == u'[[WP:AES|A¢Replaced'): f += 'x'
+                elif(e.comment[:20] == u'[[WP:AES|A¢Replaced'): f += 'x'        # TODO [[WP:AES|←]]Replaced
                 elif(e.comment[:20] == u'[[WP:AES|A¢ Blanked'): f += 'b'
-                elif(e.comment[:21] == u'[[WP:AES|A¢ Replaced'): f += 'x'
+                elif(e.comment[:21] == u'[[WP:AES|A¢ Replaced'): f += 'x'                
                 elif(e.comment[:41] == u'[[WP:Automatic edit summaries|A¢Replaced'): f += 'x'
                 else: f += 'w'
             elif(e.comment[-2:] == '*/'):
@@ -1006,7 +1006,7 @@ def compute_letter_trainset(revisions):
         else: f += ('5', '4', '3', '2', '1')[e.reverts_info]
 
         # IP edit
-        f += ('z', 'i')[e.ipedit]
+        # f += ('z', 'i')[e.ipedit]
 
         # change
         if(e.ilR > e.ilA and e.iwR > 1): f += 'd'            # and new page is smaller than the previous
