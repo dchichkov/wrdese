@@ -141,7 +141,23 @@ if __name__ == "__main__":
                     prev = id
                     test_cases += 1
             print "(%d)" % test_cases
+            
+        def test_convert(self):
+            """convert list to labels dicts"""
+            import labels
+            lds = labels.Dataset()
+            for k, l in ids.items():
+                for id in l:
+                    if k == 'good': lds.append(known = {id : k})
+                    elif k == 'bad': lds.append(known = {id : k})
+                    elif k.startswith('constructive'): lds.append(verified = {id : 'Constructive'})
+                    elif k.startswith('bad'): lds.append(verified = {id : 'Vandalism'})
+                    elif k.startswith('good'): lds.append(verified = {id : 'Regular'})
+                    else: print "Error. k = ", k
+                    
+            lds.dump()
  
     suite = unittest.TestLoader().loadTestsFromTestCase(DefaultTests)
     unittest.TextTestRunner(verbosity=2).run(suite)
 
+    

@@ -160,6 +160,7 @@ import crm114
 from labels import k, ids, labels, labels_shortcuts, labeler, good_labels, bad_labels
 import pan_wvc_10_gold; k.append(known = pan_wvc_10_gold.g, info = pan_wvc_10_gold.i);
 import pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified);
+import wrdse10_dchichkov_rocket_annotations as wrdse; k.append(known = wrdse.known, verified = wrdse.verified);
 
 NNN = 313797035 # total revisions in the latest wiki dump
 
@@ -376,7 +377,7 @@ def display_pyc():
 
 
 class FullInfo(object):
-    __slots__ = ('i', 'reverts_info', 'rev_score_info', 'duplicates_info', 'reverted',
+    __slots__ = ('i', 'reverts_info', 'rev_score_info', 'duplicates_info', 'reverted', 'edit_group',
                  'id', 'revid', 'username', 'comment', 'title', 'size', 'utc', 'md5', 'ipedit',
                  'editRestriction', 'moveRestriction', 'isredirect',
                  'al', 'bl', 'lo', 'ahi', 'bhi', 'ilA', 'ilR', 'iwA', 'iwR', 'ilM', 'iwM', 'diff'
@@ -393,6 +394,7 @@ class FullInfo(object):
         self.rev_score_info = 0
         self.duplicates_info = None
         self.reverted = None
+        self.edit_group = None
 
 def read_pyc_count_empty():
     wikipedia.output("Reading %s..." % _pyc_arg)
@@ -623,6 +625,13 @@ def analyse_reverts(revisions):
         else: username = None
 
 
+    p = None
+    for e in revisions:
+        if(e.reverts_info == -2):
+            if(e.username == e.reverted.username): e.reverts_info = -5
+            if(username == None): username = e.username
+            elif (username != e.username): e.reverts_info = -3
+        else: username = None
 
 
 
