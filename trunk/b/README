@@ -1,21 +1,32 @@
 Design
 ======
-Keys: information, entropy, energy
-* article content information/entropy  
-* energy expenditure reader 
-* energy expenditure editor 
 
-Edits: constructive (good), destructive (bad)
-* energy expenditure editor(s) / corrector(s) / reader(s) 
+Information/Entropy/Free energy
+===============================
+Keys: information, entropy, energy/free energy
+* article content information/entropy
 
-Content: belief propagation, peer trust, work tokens
+Two user categories Editors, Users. 
+Editor:
+* free energy required to evaluate an article;
+* free energy required to make an edit;
+* article content quality (information/entropy);  
+User:
+* free energy saved (information readily available);
+  
+Editor can do destructive edits:
+* vandalizing wikipedia content (content - information/entropy);
+* causing time waste (other users - free energy expenditure, total entropy increase);
 
 
-Belief propagation
-==================
-* several revisions up/down
-* user comments
-* user contributions
+Content
+=======
+Keys: belief propagation, peer trust, work tokens
+
+Belief propagation:
+* several revisions up/down;
+* user comments;
+* user contributions.
 
 
 Usage
