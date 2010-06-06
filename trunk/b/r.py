@@ -151,11 +151,9 @@ import wikipedia, pagegenerators, xmlreader, editarticle
 # CRM114, crm.py module by Sam Deane
 import crm114   
 
-# known good, known bad revisions
 #import wicow08r_chin_microsoft_annotation as k
 #import wicow08r_chin_lincoln_annotation as k
 #import pan10_vandalism_test_collection as k
-#import k
 
 from labels import k, ids, labels, labels_shortcuts, labeler, good_labels, bad_labels
 import pan_wvc_10_gold; k.append(known = pan_wvc_10_gold.g, info = pan_wvc_10_gold.i);
@@ -377,7 +375,8 @@ def display_pyc():
 
 
 class FullInfo(object):
-    __slots__ = ('i', 'reverts_info', 'rev_score_info', 'duplicates_info', 'reverted', 'edit_group',
+    __slots__ = ('i', 'reverts_info', 'rev_score_info', 'duplicates_info', 'reverted', 'edit_group', 'oldid',
+                 
                  'id', 'revid', 'username', 'comment', 'title', 'size', 'utc', 'md5', 'ipedit',
                  'editRestriction', 'moveRestriction', 'isredirect',
                  'al', 'bl', 'lo', 'ahi', 'bhi', 'ilA', 'ilR', 'iwA', 'iwR', 'ilM', 'iwM', 'diff'
@@ -394,7 +393,19 @@ class FullInfo(object):
         self.rev_score_info = 0
         self.duplicates_info = None
         self.reverted = None
+        self.edit_group = []
+        self.oldid = None
+
+
+class EmptyFullInfoPlaceholder(object):
+    def __init__(self):
+        self.username = None
         self.edit_group = None
+        self.revid = None
+        
+
+
+
 
 def read_pyc_count_empty():
     wikipedia.output("Reading %s..." % _pyc_arg)
@@ -616,7 +627,8 @@ def analyse_reverts(revisions):
     # Revision 55 (55)  ->   (55)                User1    Regular edit
     # Revision 56 (-2)  ->   (-2)                User1    Self-reverted edit
     # Revision 59 (55)  ->   (55)                User4    Revert to Revision 55
-    username = None
+         
+    username = None; prev = EmptyFullInfoPlaceholder();
     for e in revisions:
         if(e.reverts_info == -2):
             if(e.username == e.reverted.username): e.reverts_info = -5
@@ -624,14 +636,18 @@ def analyse_reverts(revisions):
             elif (username != e.username): e.reverts_info = -3
         else: username = None
 
+        # Filling oldid
+        e.oldid = prev.revid
 
-    p = None
-    for e in revisions:
-        if(e.reverts_info == -2):
-            if(e.username == e.reverted.username): e.reverts_info = -5
-            if(username == None): username = e.username
-            elif (username != e.username): e.reverts_info = -3
-        else: username = None
+        # Marking edit groups: consequent edits by a single user
+        if prev.username == e.username:
+            prev.edit_group.append(prev)  
+            e.edit_group = prev.edit_group
+        elif prev.edit_group:
+            prev.edit_group.append(prev)
+        prev = e        
+
+
 
 
 
@@ -723,6 +739,10 @@ def show_diff(e):
         wikipedia.output("Removed: %d lines, %d words" % (e.ilR, e.iwR))
         wikipedia.output("Diff position: lo = %d, ahi = %d, bhi = %d" % (e.lo, e.ahi, e.bhi))
 
+def show_edit(e, prefix):
+    wikipedia.output("%s %d (%s) by %s: \03{lightblue}%s\03{default}  Diff: http://en.wikipedia.org/w/index.php?diff=%d <<< " %   \
+     (prefix, e.i, mark(e.reverts_info, lambda x:x!=-2), e.username, e.comment, e.revid))
+
 
 
 def collect_stats(stats, user_reputations, e, score, uncertain, extra):
@@ -738,10 +758,10 @@ def collect_stats(stats, user_reputations, e, score, uncertain, extra):
         wikipedia.output("\n\n\n\n\n\n\n >> R%d (%s, %s) by %s(%s): \03{lightblue}%s\03{default}  Diff: http://en.wikipedia.org/w/index.php?diff=%d <<< " %   \
              (e.i, mark(e.reverts_info, lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.username, \
                 mark(user_reputations[e.username], lambda x:x>-1), e.comment, revid))
-        if(e.reverted):
-            wikipedia.output("Reverted: %d (%s, %s) by %s(%s): \03{lightblue}%s\03{default}  Diff: http://en.wikipedia.org/w/index.php?diff=%d <<< " %   \
-             (e.reverted.i, mark(e.reverted.reverts_info, lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.reverted.username, \
-                mark(user_reputations[e.reverted.username], lambda x:x>-1), e.reverted.comment, e.reverted.revid))
+        if(e.reverted): show_edit(e.reverted, "Reverted:")
+        if(e.edit_group):
+            for edit in e.edit_group: show_edit(edit, "Edit Group:")
+            wikipedia.output("Edit Group Diff: http://en.wikipedia.org/w/index.php?diff=%d&oldid=%d" % (e.edit_group[-1].revid, e.edit_group[0].oldid))    
         wikipedia.output("Score is %s." % mark(score))
         if(known): wikipedia.output("Known as %s." % mark(known))
         if(verified): wikipedia.output("Verified as %s." % mark(verified))
@@ -1331,7 +1351,9 @@ def main():
     if(_filter_known_revisions_arg):
         known_revisions = []
         for revisions in read_pyc():
+            # start = time.time()
             analyse_reverts(revisions)
+            # wikipedia.output("Revisions %d. Analysis time: %f" % (len(revisions), time.time() - start))
             for e in revisions:
                 known = k.is_known(e.revid)
                 if known: known_revisions.append(e)
