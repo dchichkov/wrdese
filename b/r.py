@@ -156,8 +156,8 @@ import crm114
 #import pan10_vandalism_test_collection as k
 
 from labels import k, ids, labels, labels_shortcuts, labeler, good_labels, bad_labels
-import pan_wvc_10_gold; k.append(known = pan_wvc_10_gold.g, info = pan_wvc_10_gold.i);
-import pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified);
+import pan_wvc_10_gold; k.append(gold = pan_wvc_10_gold.g, info = pan_wvc_10_gold.i);
+import pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified, known = pan_wvc_10_labels.known);
 import wrdse10_dchichkov_rocket_annotations as wrdse; k.append(known = wrdse.known, verified = wrdse.verified);
 
 NNN = 313797035 # total revisions in the latest wiki dump
@@ -1064,9 +1064,39 @@ def analyse_maxent(revisions, user_reputations):
                 
         # Collecting stats and Human verification
         uncertain = known != score
-        score_numeric = e.rev_score_info
+        #score_numeric = e.rev_score_info
         extra = lambda: classifier.explain(train[i][0]);
         (verified, known, score) = collect_stats(stats, user_reputations, e, score, uncertain, extra)
+
+
+
+
+def analyse_gold(revisions, user_reputations):
+    print "editid,newrevisionid,class,annotators,totalannotators,known,verified,diffurl,editgroupdiffurl,revertdiffurl,revertcomment"
+    for i, e in enumerate(revisions):
+        score = k.is_gold(e.revid)
+        known = k.is_known(e.revid)                                 # previous score (some human verified)
+        info = k.info[e.revid]
+        verified = k.is_verified(e.revid)                           # if not Empty: human verified
+        if not known: continue
+        #if score == known: continue        
+
+        edit_group_diff = ""; revert_diff = "";  revert_comment = ""
+        if(e.edit_group): edit_group_diff = "http://en.wikipedia.org/w/index.php?diff=%d&oldid=%d" % (e.edit_group[-1].revid, e.edit_group[0].oldid)    
+        if(e.reverted): revert_diff = "http://en.wikipedia.org/w/index.php?diff=%d" % e.reverted.revid; 
+        if(e.reverted and e.reverted.comment): revert_comment = e.reverted.comment
+
+
+        print('%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"%s"' %
+                         (info[0]['editid'], e.revid, info[1]['class'], info[1]['annotators'], info[1]['totalannotators'],                        
+                          known, verified,   
+                          info[0]['diffurl'],
+                          edit_group_diff, revert_diff, revert_comment.encode("utf-8")   
+                          ))
+
+
+        uncertain = known != score
+        (verified, known, score) = collect_stats(stats, user_reputations, e, score, uncertain, None)
 
 
 
@@ -1372,8 +1402,10 @@ def main():
     start = time.time();
     if(_analyze_arg):        
         # user_reputations = check_reputations(revisions, None)        
-        analyse_maxent(revisions, defaultdict(int))
+        # analyse_maxent(revisions, defaultdict(int))
         #analyse_decisiontree(revisions, defaultdict(int))
+        analyse_gold(revisions, defaultdict(int))
+        
 
         # user_reputations = analyse_reputations(revisions)
         # analyse_crm114(revisions, user_reputations)

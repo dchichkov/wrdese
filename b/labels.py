@@ -50,6 +50,10 @@ class Dataset(object):
         """Returns 'good' for known good, 'bad' for known bad, None overwise."""
         return self.known.get(rid)
 
+    def is_gold(self, rid):
+        """Returns 'good' for gold good, 'bad' for gold bad, None overwise."""
+        return self.gold.get(rid)
+
     def info_string(self, rid):
         if not self.info.get(rid): return ""
         return str(self.info[rid])
@@ -214,6 +218,11 @@ if __name__ == "__main__":
             print
             t.check()
             print
+    
+        def test_printlabels(self):
+            for (l, s, d) in labels_list:
+                print('bad,%s,%s,"%s"' % (l,s,d))
+  
             
         def test_negative(self):
             """Verify Dataset() error reporting"""
