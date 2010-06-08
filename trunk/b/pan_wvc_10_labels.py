@@ -3344,7 +3344,7 @@ verified = {
 329875668 : 'Graffiti',    
 329926096 : 'Tests',    
 329958793 : 'Irregular Formatting',    
-329972485 : 'Formatting',    
+329972485 : 'Irregular Formatting',    
 329980400 : 'NPOV',    
 329983137 : 'Constructive',    
 329983212 : 'Constructive',    
