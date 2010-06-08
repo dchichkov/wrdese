@@ -157,7 +157,8 @@ import crm114
 
 from labels import k, ids, labels, labels_shortcuts, labeler, good_labels, bad_labels
 import pan_wvc_10_gold; k.append(gold = pan_wvc_10_gold.g, info = pan_wvc_10_gold.i);
-import pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified, known = pan_wvc_10_labels.known);
+#import pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified)#, known = pan_wvc_10_labels.known)
+import pan_wvc_10_labels_15k as pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified, known = pan_wvc_10_labels.known)
 import wrdse10_dchichkov_rocket_annotations as wrdse; k.append(known = wrdse.known, verified = wrdse.verified);
 
 NNN = 313797035 # total revisions in the latest wiki dump
@@ -351,7 +352,8 @@ def compute_pyc(xmlFilenames):
 
 
 def dump_cstats(stats):
-    if(_verbose_arg): ids.dump() 
+    #if(_verbose_arg):
+    ids.dump() 
     wikipedia.output("===================================================================================")
     wikipedia.output("stats = \\\n%s" % pprint.PrettyPrinter(width=140).pformat(stats))
     wikipedia.output("===================================================================================")
@@ -754,7 +756,7 @@ def collect_stats(stats, user_reputations, e, score, uncertain, extra):
     # if the retrain arg is set to true, username or the revision id
     retrain = (_retrain_arg == True) or (_retrain_arg and ((_retrain_arg.find(e.username) > -1) or (_retrain_arg.find(str(revid)) > -1)))
 
-    if(_verbose_arg and (score != known or (not verified and uncertain) or retrain)):
+    if((_verbose_arg and (score != known or (not verified and uncertain))) or retrain):
         wikipedia.output("\n\n\n\n\n\n\n >> R%d (%s, %s) by %s(%s): \03{lightblue}%s\03{default}  Diff: http://en.wikipedia.org/w/index.php?diff=%d <<< " %   \
              (e.i, mark(e.reverts_info, lambda x:x!=-2), mark(score_numeric, lambda x:x>-1), e.username, \
                 mark(user_reputations[e.username], lambda x:x>-1), e.comment, revid))
@@ -1063,15 +1065,17 @@ def analyse_maxent(revisions, user_reputations):
         stats['Maxent score ' + score + ' on known'][known] += 1
                 
         # Collecting stats and Human verification
+        if(verified): score = k.is_verified_as_good_or_bad(e.revid)
+        if(not score): print e.revid
+        k.known[e.revid] = known = score
         uncertain = known != score
-        #score_numeric = e.rev_score_info
         extra = lambda: classifier.explain(train[i][0]);
         (verified, known, score) = collect_stats(stats, user_reputations, e, score, uncertain, extra)
 
 
 
 
-def analyse_gold(revisions, user_reputations):
+def evaluate_gold(revisions, user_reputations):
     print "editid,newrevisionid,class,annotators,totalannotators,known,verified,diffurl,editgroupdiffurl,revertdiffurl,revertcomment"
     for i, e in enumerate(revisions):
         score = k.is_gold(e.revid)
@@ -1079,10 +1083,10 @@ def analyse_gold(revisions, user_reputations):
         info = k.info[e.revid]
         verified = k.is_verified(e.revid)                           # if not Empty: human verified
         if not known: continue
-        #if score == known: continue        
+        if score == known: continue        
 
         edit_group_diff = ""; revert_diff = "";  revert_comment = ""
-        if(e.edit_group): edit_group_diff = "http://en.wikipedia.org/w/index.php?diff=%d&oldid=%d" % (e.edit_group[-1].revid, e.edit_group[0].oldid)    
+        if(e.edit_group and e.edit_group[0].oldid): edit_group_diff = "http://en.wikipedia.org/w/index.php?diff=%d&oldid=%d" % (e.edit_group[-1].revid, e.edit_group[0].oldid) 
         if(e.reverted): revert_diff = "http://en.wikipedia.org/w/index.php?diff=%d" % e.reverted.revid; 
         if(e.reverted and e.reverted.comment): revert_comment = e.reverted.comment
 
@@ -1326,7 +1330,7 @@ def main():
     pattern_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None;
     _display_pyc_arg = None; _compute_reputations_arg = None;_output_arg = None; _analyze_arg = None
     _reputations_arg = None; _username_arg = None; _filter_pyc_arg = None; _count_empty_arg = None
-    _revisions_arg = None; _filter_known_revisions_arg = None; _classifier_arg = None;
+    _revisions_arg = None; _filter_known_revisions_arg = None; _classifier_arg = None; _evaluate_arg = None
     for arg in wikipedia.handleArgs():
         if arg.startswith('-xml') and len(arg) > 5: pattern_arg = arg[5:]
         if arg.startswith('-pyc') and len(arg) > 5: _pyc_arg = arg[5:]
@@ -1347,6 +1351,7 @@ def main():
         if arg.startswith('-display-pyc'): _display_pyc_arg = True
         if arg.startswith('-count-empty'): _count_empty_arg = True
         if arg.startswith('-analyze'): _analyze_arg = True
+        if arg.startswith('-evaluate'): _evaluate_arg = True
  
 
     if(not pattern_arg and not _pyc_arg and not _reputations_arg and not _revisions_arg):
@@ -1400,13 +1405,14 @@ def main():
     global stats
     stats = defaultdict(lambda:defaultdict(int))
     start = time.time();
-    if(_analyze_arg):        
-        # user_reputations = check_reputations(revisions, None)        
-        # analyse_maxent(revisions, defaultdict(int))
-        #analyse_decisiontree(revisions, defaultdict(int))
-        analyse_gold(revisions, defaultdict(int))
-        
 
+    if(_evaluate_arg):
+        evaluate_gold(revisions, defaultdict(int))        
+
+    if(_analyze_arg):        
+        #user_reputations = check_reputations(revisions, None)        
+        analyse_maxent(revisions, defaultdict(int))
+        #analyse_decisiontree(revisions, defaultdict(int))
         # user_reputations = analyse_reputations(revisions)
         # analyse_crm114(revisions, user_reputations)
         dump_cstats(stats)
