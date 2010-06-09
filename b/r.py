@@ -790,7 +790,7 @@ def collect_stats(stats, user_reputations, e, score, uncertain, extra):
     # Collecting stats
     ids.known[revid] = known
     stats['Revision analysis score ' + score + ' on known'][known] += 1
-    if(verified):
+    if(verified and _verbose_arg):
         ids.verified[revid] = verified
         stats['Revision analysis score ' + score + ' on verified'][verified] += 1
 
@@ -995,7 +995,7 @@ def compute_letter_trainset(revisions):
 
 
         if(e.comment):
-            if(e.comment[:5] == '[[WP:'):
+            if(e.comment.startswith('[[WP:')):
                 if e.comment.startswith(u'[[WP:UNDO|Undid'):  f += 'u'
                 elif e.comment.startswith(u'[[WP:A'):
                     if e.comment.startswith(u'[[WP:AES|\u2190]]Replaced'):  f += 'x'
@@ -1262,13 +1262,39 @@ def analyse_decisiontree(revisions, user_reputations):
 
         if(e.comment):
             if(e.comment[:5] == '[[WP:'):
-                if(e.comment[:17] == u'[[WP:AES|←]]Undid'): score += 100
-                elif(e.comment[:19] == u'[[WP:AES|←]]Blanked'): score -= 100
-                elif(e.comment[:20] == u'[[WP:AES|←]]Replaced'): score -= 100
-                elif(e.comment[:20] == u'[[WP:AES|←]] Blanked'): score -= 100
-                elif(e.comment[:21] == u'[[WP:AES|←]] Replaced'): score -= 100
-                elif(e.comment[:41] == u'[[WP:Automatic edit summaries|←]]Replaced'): score -= 100 
-                else: score += 10
+                if e.comment.startswith(u'[[WP:UNDO|Undid'):  score += 100
+                elif e.comment.startswith(u'[[WP:A'):
+                    if e.comment.startswith(u'[[WP:AES|\u2190]]Replaced'): score -= 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]Redirected'):  score += 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]Blanked'):  score -= 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]Undid'):  score += 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]Reverted'):  score += 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Replaced'): score -= 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Redirected'):  score += 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Blanked'):  score -= 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Undid'):  score += 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Reverted'):  score += 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bReplaced'):  score -= 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bRedirected'):  score += 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bBlanked'):  score -= 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bUndid'):  score += 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bReverted'):  score += 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190Replaced'):  score -= 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190Redirected'):  score += 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190Blanked'):  score -= 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190Undid'):  score += 100
+                    elif e.comment.startswith(u'[[WP:AES|\u2190Reverted'):  score += 100
+                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Replaced'):  score -= 100
+                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Redirected'):  score += 100
+                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Blanked'):  score -= 100
+                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Undid'):  score += 100
+                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Reverted'):  score += 100
+                    elif e.comment.startswith(u'[[WP:AWB'): score += 100
+                    elif e.comment.startswith(u'[[WP:AES'): score += 100
+                    else: score += 100
+                elif e.comment.startswith(u'[[WP:UNDO|Revert'): score += 100
+                elif e.comment.startswith(u'[[WP:RBK|Reverted'): score += 100
+                else: score += 100
             elif(e.comment[-2:] == '*/'):
                 score -= 1
             else:
@@ -1288,6 +1314,7 @@ def analyse_decisiontree(revisions, user_reputations):
         if(e.iwR == 50):                                    # large scale removal
             score -= 1            
 
+
         if score > 1:       user_reputations[e.username] += 1;  score = 'good'
         elif score < -10:   user_reputations[e.username] -= 1;  score = 'bad'
         elif(e.reverts_info == -2):
@@ -1295,9 +1322,9 @@ def analyse_decisiontree(revisions, user_reputations):
             else: score = 'unknown'
         else: score = 'unknown'
 
-        # if(not known): continue
-        uncertain = (user_reputations[e.username] > 0 and score == 'bad') or (user_reputations[e.username] < 0 and score == 'good')
-        (verified, known, score) = collect_stats(stats, user_reputations, e, score, uncertain, None)
+        if(score == 'unknown'): continue
+        #uncertain = (user_reputations[e.username] > 0 and score == 'bad') or (user_reputations[e.username] < 0 and score == 'good')
+        (verified, known, score) = collect_stats(stats, user_reputations, e, score, False, None)
 
     #for e in revisions:
     #    if(user_reputations[e.username] > 0): score = 'good'
@@ -1456,10 +1483,11 @@ def main():
 
     if(_analyze_arg):        
         #user_reputations = check_reputations(revisions, None)        
-        analyse_maxent(revisions, defaultdict(int))
-        #analyse_decisiontree(revisions, defaultdict(int))
+        #analyse_maxent(revisions, defaultdict(int))
+        analyse_decisiontree(revisions, defaultdict(int))
         # user_reputations = analyse_reputations(revisions)
         # analyse_crm114(revisions, user_reputations)
+        wikipedia.output("Revisions %d. Analysis time: %f" % (len(revisions), time.time() - start))
         dump_cstats(stats)
 
 
