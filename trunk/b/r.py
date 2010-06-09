@@ -156,9 +156,9 @@ import crm114
 #import pan10_vandalism_test_collection as k
 
 from labels import k, ids, labels, labels_shortcuts, labeler, good_labels, bad_labels
-import pan_wvc_10_gold; k.append(gold = pan_wvc_10_gold.g, info = pan_wvc_10_gold.i);
+import pan_wvc_10_gold; k.append(known = pan_wvc_10_gold.g, info = pan_wvc_10_gold.i);
 #import pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified)#, known = pan_wvc_10_labels.known)
-import pan_wvc_10_labels_15k as pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified, known = pan_wvc_10_labels.known)
+import pan_wvc_10_labels_15k as pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified)#, known = pan_wvc_10_labels.known)
 import wrdse10_dchichkov_rocket_annotations as wrdse; k.append(known = wrdse.known, verified = wrdse.verified);
 
 NNN = 313797035 # total revisions in the latest wiki dump
@@ -352,8 +352,7 @@ def compute_pyc(xmlFilenames):
 
 
 def dump_cstats(stats):
-    #if(_verbose_arg):
-    ids.dump() 
+    if(_verbose_arg): ids.dump() 
     wikipedia.output("===================================================================================")
     wikipedia.output("stats = \\\n%s" % pprint.PrettyPrinter(width=140).pformat(stats))
     wikipedia.output("===================================================================================")
@@ -441,32 +440,36 @@ def read_pyc_count_empty():
 
 
 def read_pyc():
-    wikipedia.output("Reading %s..." % _pyc_arg)
-    FILE = open(_pyc_arg, 'rb')
-    start = time.time(); size = os.path.getsize(_pyc_arg); show_progress = time.time() + 15
-    revisions = [];
-    try:
-        info = FullInfo(marshal.load(FILE))     # load first in order to  
-        id = info.id;                           # initialize id from info.id
-        revisions.append(info)
-        while True:
-            info = FullInfo(marshal.load(FILE))
-            if(id != info.id):
-                yield revisions
-                revisions = []
-                id = info.id
+    pycFilenames = sorted(locate(_pyc_arg))
+    wikipedia.output(u"Files: \n%s\n\n" % pycFilenames)
 
-                if(time.time() > show_progress):
-                    DT = (time.time() - start) / 3600; BPH = FILE.tell() / DT; show_progress = time.time() + 15
-                    wikipedia.output("DT %f Hours, ETA %f Hours." % (DT, (size/BPH - DT)) )
-
+    for pycFilename in pycFilenames:
+        wikipedia.output("Reading %s..." % pycFilename)
+        FILE = open(pycFilename, 'rb')
+        start = time.time(); size = os.path.getsize(pycFilename); show_progress = time.time() + 15
+        revisions = [];
+        try:
+            info = FullInfo(marshal.load(FILE))     # load first in order to  
+            id = info.id;                           # initialize id from info.id
             revisions.append(info)
-    except IOError, e:
-        raise
-    except EOFError, e:
-        wikipedia.output("Done reading %s. Read time: %f." % (_pyc_arg, time.time() - start))
+            while True:
+                info = FullInfo(marshal.load(FILE))
+                if(id != info.id):
+                    yield revisions
+                    revisions = []
+                    id = info.id
 
-    yield revisions
+                    if(time.time() > show_progress):
+                        DT = (time.time() - start) / 3600; BPH = FILE.tell() / DT; show_progress = time.time() + 15
+                        wikipedia.output("DT %f Hours, ETA %f Hours." % (DT, (size/BPH - DT)) )
+
+                revisions.append(info)
+        except IOError, e:
+            raise
+        except EOFError, e:
+            wikipedia.output("Done reading %s. Read time: %f." % (pycFilename, time.time() - start))
+
+        yield revisions
 
 
 def filter_pyc():
@@ -961,38 +964,73 @@ def compute_letter_trainset(revisions):
             '3' : 'questionable',
             '4' : 'revert war',
             '5' : 'self revert',
+
+            'a' : 'comment unrecognized AWB',
+            'b' : 'comment blanked',
+            'c' : 'comment stats are looking bad',            
+            'd' : 'comment redirect',
+            'e' : 'comment unrecognized AES',
+
+            'n' : 'no comment',
+            'g' : 'comment is looking good',
+            'h' : 'HI in the comment',
+            'i' : 'an IP edit',
+ 
+            'j' : 'content deletion',
+            'l' : 'large scale content detetion',
+            'm' : 'multiple edits in a row',
+
+            'r' : 'comment revert',
+            's' : 'no comment / section',            
+
             'u' : 'comment undid',
             'x' : 'comment replaced content',
-            'b' : 'comment blanked',
-            'w' : 'comment unrecognized WP',            
-            'n' : 'no comment',
-            'm' : 'no comment / section',
-            'c' : 'comment stats are looking bad',
-            'h' : 'HI in the comment',
-            'g' : 'comment is looking good',
-
-            'i' : 'an IP edit',
+            'w' : 'comment unrecognized WP',
             'z' : 'not an IP edit',
-    
-            'd' : 'content deletion',
-            'l' : 'large scale content detetion',
             }
 
     for e in revisions:
         known = k.is_known(e.revid)  # previous score (some human verified)
         f = ''
 
+
         if(e.comment):
             if(e.comment[:5] == '[[WP:'):
-                if(e.comment[:17] == u'[[WP:AES|A¢Undid'): f += 'u'
-                elif(e.comment[:19] == u'[[WP:AES|A¢Blanked'): f += 'b'
-                elif(e.comment[:20] == u'[[WP:AES|A¢Replaced'): f += 'x'        # TODO [[WP:AES|←]]Replaced
-                elif(e.comment[:20] == u'[[WP:AES|A¢ Blanked'): f += 'b'
-                elif(e.comment[:21] == u'[[WP:AES|A¢ Replaced'): f += 'x'                
-                elif(e.comment[:41] == u'[[WP:Automatic edit summaries|A¢Replaced'): f += 'x'
-                else: f += 'w'
+                if e.comment.startswith(u'[[WP:UNDO|Undid'):  f += 'u'
+                elif e.comment.startswith(u'[[WP:A'):
+                    if e.comment.startswith(u'[[WP:AES|\u2190]]Replaced'):  f += 'x'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]Redirected'):  f += 'd'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]Blanked'):  f += 'b'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]Undid'):  f += 'u'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]Reverted'):  f += 'r'                
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Replaced'):  f += 'x'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Redirected'):  f += 'd'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Blanked'):  f += 'b'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Undid'):  f += 'u'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Reverted'):  f += 'r'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bReplaced'):  f += 'x'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bRedirected'):  f += 'd'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bBlanked'):  f += 'b'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bUndid'):  f += 'u'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bReverted'):  f += 'r'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190Replaced'):  f += 'x'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190Redirected'):  f += 'd'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190Blanked'):  f += 'b'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190Undid'):  f += 'u'
+                    elif e.comment.startswith(u'[[WP:AES|\u2190Reverted'):  f += 'r'
+                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Replaced'):  f += 'x'
+                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Redirected'):  f += 'd'
+                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Blanked'):  f += 'b'
+                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Undid'):  f += 'u'
+                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Reverted'):  f += 'r'
+                    elif e.comment.startswith(u'[[WP:AWB'): f += 'a'
+                    elif e.comment.startswith(u'[[WP:AES'): f += 'e'
+                    else: f += 'w'; #print e.comment.encode('unicode-escape');
+                elif e.comment.startswith(u'[[WP:UNDO|Revert'): f += 'r'
+                elif e.comment.startswith(u'[[WP:RBK|Reverted'): f += 'r'
+                else: f += 'w'; #print e.comment.encode('unicode-escape');
             elif(e.comment[-2:] == '*/'):
-                f += 'm'
+                f += 's'
             else:
                 uN = len(reU.findall(e.comment))
                 lN = len(reL.findall(e.comment))
@@ -1007,11 +1045,13 @@ def compute_letter_trainset(revisions):
         if(e.reverts_info > -1): f += '0'
         else: f += ('5', '4', '3', '2', '1')[e.reverts_info]
 
+        if(e.edit_group): f += 'm'
+
         # IP edit
-        # f += ('z', 'i')[e.ipedit]
+        f += ('z', 'i')[e.ipedit]
 
         # change
-        if(e.ilR > e.ilA and e.iwR > 1): f += 'd'            # and new page is smaller than the previous
+        if(e.ilR > e.ilA and e.iwR > 1): f += 'j'            # and new page is smaller than the previous
         if(e.iwR == 50): f += 'l'                            # large scale removal
 
         train.append( (dict([(labels[feature], True) for feature in list(f)]), known) )
@@ -1046,13 +1086,13 @@ def analyse_maxent(revisions, user_reputations):
         #                bernoulli=False, trace=2, tolerance=2e-5, max_iter=1000, min_lldelta=1e-7)
         
         # Bool:
-        classifier = maxent.MaxentClassifier.train(train, algorithm='megam', trace=2, tolerance=2e-5, max_iter=1000, min_lldelta=1e-7)
+        classifier = maxent.MaxentClassifier.train(train, algorithm='megam', trace=2, tolerance=2e-6, max_iter=2000, min_lldelta=1e-8)
     else:
         wikipedia.output("Reading %s..." % _classifier_arg)
         classifier = cPickle.load(open(_classifier_arg, 'rb'))
 
 
-    classifier.show_most_informative_features(n=50)
+    classifier.show_most_informative_features(n=100, show='all')
 
     if(_output_arg): cPickle.dump(classifier, open(_output_arg, 'wb'), 1)
 
@@ -1061,13 +1101,17 @@ def analyse_maxent(revisions, user_reputations):
         known = k.is_known(e.revid)                                 # previous score (some human verified)
         verified = k.is_verified(e.revid)                           # if not Empty: human verified        
         pdist = classifier.prob_classify(train[i][0])
-        score = ('bad', 'good')[pdist.prob('good') > pdist.prob('bad')]
+        #score = ('bad', 'good')[pdist.prob('good') > pdist.prob('bad')]
+        if pdist.prob('good') > 0.65: score = 'good'
+        elif pdist.prob('bad') > 0.65: score = 'bad'
+        else: continue
+
         stats['Maxent score ' + score + ' on known'][known] += 1
                 
         # Collecting stats and Human verification
-        if(verified): score = k.is_verified_as_good_or_bad(e.revid)
-        if(not score): print e.revid
-        k.known[e.revid] = known = score
+        #if(verified): score = k.is_verified_as_good_or_bad(e.revid)
+        #if(not score): print e.revid
+        #k.known[e.revid] = known = score
         uncertain = known != score
         extra = lambda: classifier.explain(train[i][0]);
         (verified, known, score) = collect_stats(stats, user_reputations, e, score, uncertain, extra)
@@ -1327,12 +1371,12 @@ def compute_reputations_shelve():
 
 def main():
     global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _reputations_arg, _classifier_arg;
-    pattern_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None;
+    _xml_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None;
     _display_pyc_arg = None; _compute_reputations_arg = None;_output_arg = None; _analyze_arg = None
     _reputations_arg = None; _username_arg = None; _filter_pyc_arg = None; _count_empty_arg = None
     _revisions_arg = None; _filter_known_revisions_arg = None; _classifier_arg = None; _evaluate_arg = None
     for arg in wikipedia.handleArgs():
-        if arg.startswith('-xml') and len(arg) > 5: pattern_arg = arg[5:]
+        if arg.startswith('-xml') and len(arg) > 5: _xml_arg = arg[5:]
         if arg.startswith('-pyc') and len(arg) > 5: _pyc_arg = arg[5:]
         if arg.startswith('-revisions') and len(arg) > 11: _revisions_arg = arg[11:]
         if arg.startswith('-reputations') and len(arg) > 13: _reputations_arg = arg[13:]
@@ -1354,13 +1398,13 @@ def main():
         if arg.startswith('-evaluate'): _evaluate_arg = True
  
 
-    if(not pattern_arg and not _pyc_arg and not _reputations_arg and not _revisions_arg):
+    if(not _xml_arg and not _pyc_arg and not _reputations_arg and not _revisions_arg):
         wikipedia.output('Usage: ./r.py \03{lightblue}-xml:\03{default}path/Wikipedia-Dump-*.xml.7z -output:Wikipedia-Dump.full -compute-pyc')
         wikipedia.output('     : ./r.py \03{lightblue}-pyc:\03{default}path/Wikipedia-Dump.full -analyze')
         return
 
-    if(pattern_arg):        # XML files input
-        xmlFilenames = sorted(locate(pattern_arg))
+    if(_xml_arg):        # XML files input
+        xmlFilenames = sorted(locate(_xml_arg))
         wikipedia.output(u"Files: \n%s\n\n" % xmlFilenames)
         mysite = wikipedia.getSite()
 
@@ -1388,6 +1432,7 @@ def main():
         for revisions in read_pyc():
             # start = time.time()
             analyse_reverts(revisions)
+            # compute_letter_trainset(revisions)
             # wikipedia.output("Revisions %d. Analysis time: %f" % (len(revisions), time.time() - start))
             for e in revisions:
                 known = k.is_known(e.revid)
