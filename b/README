@@ -50,7 +50,7 @@ Filtering known revisions/producing .known files:
 Merging reputations:
 ./r.py -pyc:p/pan-wvc-10.none.full -reputations:p/reputations-enwiki-20100130.none.full.split -output:reputations-enwiki-20100130.none.full.merged
 
-Using classifiers:
+Training/Using classifiers:
 ./r.py -revisions:p/Rocket.known -analyze -output:trained.classifier.Rocket
 ./r.py -revisions:p/pan-wvc-10.none.known -analyze -classifier:trained.classifier.Rocket
   
