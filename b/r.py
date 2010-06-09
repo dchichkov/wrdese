@@ -450,10 +450,12 @@ def read_pyc():
         revisions = [];
         try:
             info = FullInfo(marshal.load(FILE))     # load first in order to  
+            if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
             id = info.id;                           # initialize id from info.id
             revisions.append(info)
             while True:
                 info = FullInfo(marshal.load(FILE))
+                if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
                 if(id != info.id):
                     yield revisions
                     revisions = []
@@ -532,10 +534,11 @@ def read_reputations():
     except EOFError, e:
         wikipedia.output("Done reading %s. Read time: %f. Total users: %d" % (_reputations_arg, time.time() - start, len(user_reputations)))
     if(_output_arg):
-        wikipedia.output("Filtering reputations <0 or >10")
+        #wikipedia.output("Filtering reputations <0 or >10")
         FILE = open(_output_arg, 'wb')
         for u, r in user_reputations.iteritems():
-            if(r < 0 or r > 10): marshal.dump((u, r), FILE)
+            # if(r < 0 or r > 10): 
+            marshal.dump((u, r), FILE)
     return user_reputations
 
 
@@ -1257,7 +1260,7 @@ def comment_score(text):
 def analyse_decisiontree(revisions, user_reputations):
     total_time = total_size = 0
     for e in revisions:
-        known = k.is_known(e.revid)                 # previous score (some human verified)
+        #known = k.is_known(e.revid)                 # previous score (some human verified)
         score = 0
 
         if(e.comment):
@@ -1315,16 +1318,16 @@ def analyse_decisiontree(revisions, user_reputations):
             score -= 1            
 
 
-        if score > 1:       user_reputations[e.username] += 1;  score = 'good'
-        elif score < -10:   user_reputations[e.username] -= 1;  score = 'bad'
+        if score > 1:       user_reputations[e.username] += 1;  #score = 'good'
+        elif score < -10:   user_reputations[e.username] -= 1;  #score = 'bad'
         elif(e.reverts_info == -2):
-            if(score < 0):  user_reputations[e.username] -= 1;  score = 'bad'
-            else: score = 'unknown'
-        else: score = 'unknown'
+            if(score < 0):  user_reputations[e.username] -= 1;  #score = 'bad'
+            #else: score = 'unknown'
+        #else: score = 'unknown'
 
-        if(score == 'unknown'): continue
+        #if(score == 'unknown'): continue
         #uncertain = (user_reputations[e.username] > 0 and score == 'bad') or (user_reputations[e.username] < 0 and score == 'good')
-        (verified, known, score) = collect_stats(stats, user_reputations, e, score, False, None)
+        #(verified, known, score) = collect_stats(stats, user_reputations, e, score, False, None)
 
     #for e in revisions:
     #    if(user_reputations[e.username] > 0): score = 'good'
@@ -1349,10 +1352,9 @@ def compute_reputations_dictionary():
         total_pages += 1;
         total_revisions += len(revisions)
 
-        if(total_pages%100 == 0):
-            wikipedia.output("Page %d. Revisions %d. Users %s. Analysis time: %f. ETA %f Hours." %
-                (total_pages, total_revisions, len(user_reputations), time.time() - start,
-                (NNN - total_revisions) / total_revisions * (time.time() - start) / 3600 ))
+        if(total_pages%1000 == 0):
+            wikipedia.output("Page %d. Revisions %d. Users %s. Analysis time: %f. " %
+                (total_pages, total_revisions, len(user_reputations), time.time() - start))
 
             for u, r in user_reputations.iteritems():
                 marshal.dump((u, r), FILE)
