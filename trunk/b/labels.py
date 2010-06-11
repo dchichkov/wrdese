@@ -18,20 +18,24 @@ class Dataset(object):
         self.gold = dict()
         self.info = dict()
 
-    def dump_dict(self, d, name):
-        print
-        print name, "= {"
+    def dump_dict(self, FILE, d, name):
+        print >>FILE,""
+        print >>FILE, name, "= {"
         labels = [(rid, v) for rid, v in d.iteritems()]
         labels.sort(key = itemgetter(0))
         for l in labels:
-            print "%s : '%s',    " % l
-        print "}"
+            print >>FILE, "%s : '%s',    " % l
+        print >>FILE, "}"
 
     def dump(self):
-        self.dump_dict(self.known, "known")
-        self.dump_dict(self.verified, "verified")
-        self.dump_dict(self.gold, "gold")
-        self.dump_dict(self.info, "info")
+        from time import time
+        name = 'ids/%s.py' % time()
+        FILE = open(name, 'wb')
+        print "Saved ids to: %s", FILE.name
+        self.dump_dict(FILE, self.known, "known")
+        self.dump_dict(FILE, self.verified, "verified")
+        self.dump_dict(FILE, self.gold, "gold")
+        self.dump_dict(FILE, self.info, "info")
 
     def is_verified_as_good_or_bad(self, rid):
         """Returns 'good' for verified good, 'bad' for verified bad, None overwise."""
