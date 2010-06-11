@@ -980,8 +980,9 @@ def compute_letter_trainset(revisions):
             'i' : 'an IP edit',
  
             'j' : 'content deletion',
-            'l' : 'large scale content detetion',
+            'l' : 'large scale content deletion',
             'm' : 'multiple edits in a row',
+            'n' : 'large scale content new',
 
             'r' : 'comment revert',
             's' : 'no comment / section',            
@@ -1054,10 +1055,14 @@ def compute_letter_trainset(revisions):
         f += ('z', 'i')[e.ipedit]
 
         # change
-        if(e.ilR > e.ilA and e.iwR > 1): f += 'j'            # and new page is smaller than the previous
-        if(e.iwR == 50): f += 'l'                            # large scale removal
+        #if(e.ilR > e.ilA and e.iwR > 1): f += 'j'            # and new page is smaller than the previous
+        #if(e.iwR == 50): f += 'l'                            # large scale removal
+        #if(e.iwA == 50): f += 'n'
+        
 
-        train.append( (dict([(labels[feature], True) for feature in list(f)]), known) )
+        features = dict([(labels[feature], True) for feature in list(f)])
+        features['words'] = (e.iwA, e.iwA / 50 + 10)[e.iwA > 1] + (e.iwR, e.iwR / 50 + 10)[e.iwR > 1] * 1000
+        train.append( (features, known) )
         #train.append( ( {f : True}, known) )
 
     return train
@@ -1260,7 +1265,7 @@ def comment_score(text):
 def analyse_decisiontree(revisions, user_reputations):
     total_time = total_size = 0
     for e in revisions:
-        #known = k.is_known(e.revid)                 # previous score (some human verified)
+        known = k.is_known(e.revid)                 # previous score (some human verified)
         score = 0
 
         if(e.comment):
@@ -1318,16 +1323,16 @@ def analyse_decisiontree(revisions, user_reputations):
             score -= 1            
 
 
-        if score > 1:       user_reputations[e.username] += 1;  #score = 'good'
-        elif score < -10:   user_reputations[e.username] -= 1;  #score = 'bad'
+        if score > 1:       user_reputations[e.username] += 1;  score = 'good'
+        elif score < -10:   user_reputations[e.username] -= 1;  score = 'bad'
         elif(e.reverts_info == -2):
-            if(score < 0):  user_reputations[e.username] -= 1;  #score = 'bad'
-            #else: score = 'unknown'
-        #else: score = 'unknown'
+            if(score < 0):  user_reputations[e.username] -= 1;  score = 'bad'
+            else: score = 'unknown'
+        else: score = 'unknown'
 
         #if(score == 'unknown'): continue
-        #uncertain = (user_reputations[e.username] > 0 and score == 'bad') or (user_reputations[e.username] < 0 and score == 'good')
-        #(verified, known, score) = collect_stats(stats, user_reputations, e, score, False, None)
+        uncertain = (user_reputations[e.username] > 0 and score == 'bad') or (user_reputations[e.username] < 0 and score == 'good')
+        (verified, known, score) = collect_stats(stats, user_reputations, e, score, False, None)
 
     #for e in revisions:
     #    if(user_reputations[e.username] > 0): score = 'good'
@@ -1485,8 +1490,8 @@ def main():
 
     if(_analyze_arg):        
         #user_reputations = check_reputations(revisions, None)        
-        #analyse_maxent(revisions, defaultdict(int))
-        analyse_decisiontree(revisions, defaultdict(int))
+        analyse_maxent(revisions, defaultdict(int))
+        #analyse_decisiontree(revisions, defaultdict(int))
         # user_reputations = analyse_reputations(revisions)
         # analyse_crm114(revisions, user_reputations)
         wikipedia.output("Revisions %d. Analysis time: %f" % (len(revisions), time.time() - start))
