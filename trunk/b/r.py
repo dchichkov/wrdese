@@ -15,16 +15,15 @@
 
 # TODO:
 # consecutive edits as one edit
-# self-reverts: reverted edit is bad. no reputation change.
+# self-reverts: reverted edit is bad. no karma change.
 # tokens lifetime - use relative lifetime
 # switch to F1-score
 
-# User reputations - tuples (+, -) - how often '+' do '-'
+# User karma - tuples (+, -) - how often '+' do '-'
+# Try to produce 'string' karma "er eeer es es", "eee ceeee e e e e "
 
-# Try to produce 'string' reputations "er eeer es es", "eee ceeee e e e e "
 
-
-# Users with bad reputation can do good edits:
+# Users with bad karma can do good edits:
 # * self reverts
 # * partial self reverts
 # * regular edits
@@ -92,24 +91,25 @@
 
 # +1 (next), -1 (prev) revisions features
 
+# for v in xrange(1,100): print v, math.trunc(math.log(math.sqrt(i))*2*math.pi)
 
 
 # ==================================================================================
 # belief propagation
 #
-# (user reputation) -> {edit, edit, edit}
+# (user karma) -> {edit, edit, edit}
 #        negative for self-reverts
 #
-# (user reputation) -> {previous edit, previous edit}
+# (user karma) -> {previous edit, previous edit}
 #           negative for reverts
 #
-# edit -> user reputation
+# edit -> user karma
 #
 
 # 1) Mark edits based on heuristics
-# 2) Calculate reputation based on heuristics
-# 3) Mark edits based on reputation
-# 4) Adjust reputations
+# 2) Calculate karma based on heuristics
+# 3) Mark edits based on karma
+# 4) Adjust karma
 # Repeat 3/4
 
 
@@ -522,18 +522,38 @@ def filter_pyc():
     print "Filtered pages: ", filtered_pages, "Filtered revisions", filtered_revisions
 
 
-def read_counters():
+def referenced_users(revisions):
+    """Returns the list of referenced in the revisions users"""
+    users = {}
+    for e in revisions:
+        users[e.username] = True
+        if e.reverted: users[e.reverted.username] = True
+        for g in e.edit_group:
+            users[g.username] = True
+            if g.reverted: users[e.reverted.username] = True    
+    
+
+
+def read_counters(revisions):
+    """Read/Merge/Filter user counters. 
+    If _output_arg global is provided, counters will be merged and saved;
+    If revisions argument is provided only referenced users revisions will be saved;"""
+    
     wikipedia.output("Reading %s..." % _counters_arg)
     FILE = open(_counters_arg, 'rb')
     user_counters = counters_dict()
     start = time.time()
     try:
-        if(_output_arg):        # read and merge
-           while True:
-               (u,r) = marshal.load(FILE)
-               user_counters[u] = tuple([a+b for (a,b) in zip(user_counters[u] , r)])
-        else:
-           while True:          # read
+        if _output_arg:                                 # read and merge
+            if revisions:                               
+                users = referenced_users(revisions)          # filter / known users
+                            
+            while True:
+                (u,r) = marshal.load(FILE)
+                if not revisions or u in referenced_users:
+                    user_counters[u] = tuple([a+b for (a,b) in zip(user_counters[u] , r)])
+        else:                                           
+           while True:                                  # just read
                (u,r) = marshal.load(FILE)
                user_counters[u] = r
 
@@ -688,37 +708,23 @@ def analyse_reputations(revisions):
         
         delta_utc = e.utc - prev.utc
         if(delta_utc * i > total_time):              # prev edition has managed longer than usual
-            #wikipedia.output("Revision (%d, %d). Boosting user %s(%d)" % (i - 1, i, prev.username, user_reputations[prev.username]))
-            #wikipedia.output("    %s" % prev.comment)
-            #wikipedia.output("    %s" % e.comment)
             user_reputations[prev.username] += 1
 
-        if(e.comment and len(e.comment) > 80):        # we like long comments
-            #wikipedia.output("Revision (%d, %d). Boosting user %s(%d)" % (i - 1, i, e.username, user_reputations[e.username]))
-            #wikipedia.output("    %s" % e.comment)
+        if(e.comment and len(e.comment) > 80):        # we like long comments. TODO
             user_reputations[e.username] += 1
             
         total_size += e.size
         total_time += (e.utc - prev.utc)
         prev = e
 
-    #sorted_users = sorted(user_reputations.items(), key=lambda t: t[1])
-    #for u in sorted_users:
-    #    wikipedia.output("[%d] %s" % (u[1], u[0]))
-
     # marking initial revision scores
-    # adjusting revision scores with user reputation scores
+    # adjusting revision scores with user karma scores
     for e in revisions:
         e.rev_score_info = user_reputations[e.username];
         if(e.reverts_info == -2):      e.rev_score_info -= 2     # reverted
         elif(e.reverts_info == -5):    e.rev_score_info = -5      # self-reverted
         elif(e.reverts_info < -2):     e.rev_score_info -= 1     
         elif(e.reverts_info > -1):     e.rev_score_info += 1
-
-    #for i, e in enumerate(edit_info):
-    #    wikipedia.output(">>>  Revision %d (%s, %s) by %s(%s): %s %s : \03{lightblue}%s\03{default}   <<< " %   \
-    #                     (i, mark(reverts_info[i], lambda x:x>-2), mark(rev_score_info[i], lambda x:x>-1), e.username,  \
-    #                        mark(user_reputations[e.username], lambda x:x>-1), e.utc, e.size, e.comment))
 
     return user_reputations
 
@@ -759,8 +765,6 @@ def show_edit(e, prefix):
     wikipedia.output("%s %d (%s) by %s: \03{lightblue}%s\03{default}  Diff: http://en.wikipedia.org/w/index.php?diff=%d <<< " %   \
      (prefix, e.i, mark(e.reverts_info, lambda x:x!=-2), e.username, e.comment, e.revid))
 
-
-
 def collect_stats(stats, user_counters, e, score, uncertain, extra):
     global _retrain_arg, _train_arg, _human_responses
     score_numeric = e.rev_score_info                   
@@ -795,8 +799,8 @@ def collect_stats(stats, user_counters, e, score, uncertain, extra):
             (known, verified) = labeler(answer, known, verified)
             wikipedia.output("Marked as %s, %s" % (mark(known), mark(verified)) )
             _human_responses += 1
-        else:
-            if(not verified): known = score
+        #else:
+        #    if(not verified): known = score
 
     # Collecting stats
     ids.known[revid] = known
@@ -813,251 +817,58 @@ def collect_stats(stats, user_counters, e, score, uncertain, extra):
 
 
 
-def check_reputations(revisions, user_reputations):
-
-    if(not user_reputations):
-        user_reputations = defaultdict(int); user_features = defaultdict(str);
+def check_karma(revisions, user_karma):
+    if(not user_karma):
+        user_karma = defaultdict(int); user_features = defaultdict(str);
         for e in revisions:
             known = k.is_known(e.revid)    # previous score (some human verified)
-            if(known == 'good'): user_reputations[e.username] += 1; user_features[e.username] += 'g';
-            if(known == 'bad'): user_reputations[e.username] -= 1; user_features[e.username] += 'b';
+            if(known == 'good'): user_karma[e.username] += 1; user_features[e.username] += 'g';
+            if(known == 'bad'): user_karma[e.username] -= 1; user_features[e.username] += 'b';
     
     for e in revisions:
         revid = e.revid
         known = k.is_known(revid)                      # previous score (some human verified)
         verified = k.is_verified(revid)                # if not Empty: human verified
-        reputation = user_reputations[e.username]
+        karma = user_karma[e.username]
         if not known: continue
         
         # if(e.reverts_info == -5):                               # inverse for self-reverts
-        #    score = ('bad', 'good')[reputation < 0]
+        #    score = ('bad', 'good')[karma < 0]
         #else:
-        score = ('bad', 'good')[reputation > 0]
+        score = ('bad', 'good')[karma > 0]
         stats['Reputation score ' + score + ' on known'][known] += 1
     
         # Collecting stats and Human verification
         extra = lambda:wikipedia.output(" User Features: \03{lightblue}%s\03{default}" % user_features[e.username])
-        (verified, known, score) = collect_stats(stats, user_reputations, e, score, False, extra)
+        (verified, known, score) = collect_stats(stats, user_karma, e, score, False, extra)
 
-    return user_reputations
-
-
-def compute_word_features(revisions):
-    # Tracking blankings and near-blankings
-    # Establishing user ratings for the user whitelists
-    user_features = defaultdict(lambda: defaultdict(int))           # TODO: optimize!
-    edit_features = [None] * len(revisions)                         #
-
-    def add_feature(f):
-        edit_features[i][f] = 'present'
-
-    def add_uefeature(f):
-        #user_features[e.username]['U' + f] += 1
-        edit_features[i][f] = 'present'
-
-    total_time = total_size = 0
-    prev = revisions[0]
-    for i, e in enumerate(revisions):
-        edit_features[i] = {}
-        t = """
-        if(e.size * i < total_size):                                        # new page is smaller than the average
-            add_uefeature('smaller_than_average')
-            if(e.reverts_info == -2):                                       # and it was reverted
-                add_uefeature('smaller_and_reverted')
-
-        if(e.size < prev.size):   edit_features[i]['smaller %'] = float(prev.size - e.size) * i * 100 / total_size
-        elif(e.size > prev.size): edit_features[i]['larger %'] = float(e.size - prev.size) * i * 100 / total_size
- 
-
-        if(e.size < prev.size): add_uefeature('smaller')
-        elif(e.size > prev.size): add_uefeature('larger')
-        else: add_uefeature('same_size')
-
-        if(e.username != prev.username): 
-            add_uefeature(urri(e.reverts_info))
-        else: 
-            add_uefeature('same_user')
-            add_uefeature('same_' + urri(e.reverts_info))
-
-        delta_utc = e.utc - prev.utc                                        # prev edition has managed longer than usual
-        if(delta_utc * i > total_time): add_uefeature('accepted')
-        """
-        comment_revert = False
-        
-        if(e.username.lower().find('bot') > -1):
-            add_uefeature('bot')
-        elif(e.comment):
-            if(e.comment[-2:] == '*/'): add_uefeature('comment_sec_no')
-            elif(e.comment[:8] == '[[WP:AES'): add_uefeature('comment_wp_AES')
-            elif(e.comment[:9] == '[[WP:UNDO'): add_uefeature('comment_wp_UNDO'); comment_revert = True
-            elif(e.comment[:8] == '[[WP:RBK'): add_uefeature('comment_wp_RBK'); comment_revert = True
-            elif(e.comment[:7] == '[[Help:'): add_uefeature('comment_wp_Help'); comment_revert = True
-            elif(e.comment[:5] == '[[WP:' or e.comment[:7] == '[[Help:'):
-                ii = e.comment.find(']]', 5, 32)
-                if(ii > 0): add_uefeature('comment_wp_' + e.comment[5:ii])               
-            elif e.comment[:6] == 'Revert': add_feature('comment_revert'); comment_revert = True
-            elif e.comment[:5] == 'Undid': add_feature('comment_undid'); comment_revert = True
-            elif e.comment[:3] == 'rvv': add_feature('comment_rvv'); comment_revert = True
-            elif e.comment[:3] == 'rev': add_feature('comment_rev'); comment_revert = True
-            elif e.comment[:2] == 'rv': add_feature('comment_rv'); comment_revert = True
-            elif e.comment[:4] in ('BOT ', 'bot ', 'robo', 'Robo'): add_feature('comment_bot')
-            elif e.comment[:3] == 'cat': add_feature('comment_cat')
-            elif e.comment[:1] == '+': add_feature('comment_plus')
-            elif e.comment.find('spam') > -1: add_feature('comment_spam'); 
-            elif e.comment.find('ref') > -1: add_feature('comment_ref'); # print '%30s\t%s' % (e.username, e.comment)
-            else:
-                # print '%30s\t%s' % (e.username, e.comment)
-                # add_feature('comment')
-                if(len(e.comment.split()) > 7): add_uefeature('comment_long')
-                #for token in e.comment.split():
-                #    edit_features[i][token] = 'comment'
-            
-        else: add_uefeature('no_comment')
-        
-        if comment_revert and e.reverts_info == -1:
-            print '%30s\t%s' % (e.username, e.comment)
-            wikipedia.output("Diff: http://en.wikipedia.org/w/index.php?diff=%d\n\n" % e.revid)
-            
-
-        total_size += e.size
-        total_time += (e.utc - prev.utc)
-        prev = e
-
-    # for v in xrange(1,100): print v, math.trunc(math.log(math.sqrt(i))*2*math.pi)
-    # for uf in user_features.values():
-    #    for f, v in uf.iteritems():
-    #        uf[f] = math.log(v)
-            
-    
-    #pp = pprint.PrettyPrinter(width=140)
-    #for u, uf in user_features.iteritems():    
-    #    wikipedia.output("user %s(%s) features = \\\n%s" % (u, mark(user_reputations[u], lambda x:x>-1), pp.pformat(uf)))
-
-    train = [None] * len(edit_features)
-    for i, features in enumerate(edit_features):
-        e = revisions[i]
-        known = k.is_known(e.revid)              # previous score (some human verified)
-        if known == None: wikipedia.output("Unknown revision %d" % e.revid); known = 'good'
-        for f, v in user_features[e.username].iteritems():
-            features[f] = v        
-        train[i] = (features, known)
-
-    #for i in reversed(xrange(1, len(edit_features))):
-    #    for f, v in edit_features[i-1].iteritems():
-    #        edit_features[i]['PREV' + f] = v
-
-    #for i in xrange(len(edit_features) - 1):
-    #    for f, v in edit_features[i+1].iteritems():
-    #        edit_features[i]['NEXT' + f] = v
+    return user_karma
 
 
 
-def compute_letter_trainset(revisions, user_reputations):
+def compute_revisions_trainset(revisions, user_counters):
     train = []
 
-    labels = {
-            #'0' : 'duplicate',         
-            #'1' : 'regular edit',      # -1  : regular revision
-            #'2' : 'reverted',          # -2 : between duplicates, by single user (reverted, most likely bad)
-            #'3' : 'questionable',      # -3 : between duplicates, by other users (reverted, questionable)
-            #'4' : 'revert war',        # -4 : between duplicates, (revert that was reverted. revert war.)
-            #'5' : 'self revert',       # -5 : self-revert
-
-            'a' : 'comment unrecognized AWB',
-            'b' : 'comment blanked',
-            'c' : 'comment stats are looking bad',            
-            'd' : 'comment redirect',
-            'e' : 'comment unrecognized AES',
-
-            'n' : 'no comment',
-            'g' : 'comment is looking good',
-            'h' : 'HI in the comment',
-            'i' : 'an IP edit',
- 
-            'j' : 'content deletion',
-            'l' : 'large scale content detetion',
-            'm' : 'multiple edits in a row',
-
-            'r' : 'comment revert',
-            's' : 'no comment / section',            
-
-            'u' : 'comment undid',
-            'x' : 'comment replaced content',
-            'w' : 'comment unrecognized WP',
-            'z' : 'not an IP edit',
-            }
-
     for e in revisions:
-        known = k.is_known(e.revid)  # previous score (some human verified)
-        f = ''
+        #if not analyse_revision_decisiontree(e, user_reputations) != 'unknown': 
+        #   train.append(None); 
+        #else:
         
-        if analyse_revision_decisiontree(e, user_reputations) != 'unknown': 
-            train.append(None)
-            continue
+        # for v in xrange(1,100): print v, math.trunc(math.log(math.sqrt(i))*2*math.pi)
+        features = {'comment' : analyse_comment(e.comment),
+                    # 'reverts info' : urri(e.reverts_info),
+                    'ipedit' : e.ipedit,
+                    'edit_group' : bool(e.edit_group), 
+                    'smaller' : (e.ilR > e.ilA and e.iwR > 1),
+                    'large_scale_removal' : (e.iwR == 50),  
+                    #'size' : ('larger', 'same', 'smaller')[max(1, min(-1, e.size < prev.size))]
+                    #'smaller_than_average' : e.size * i < total_size,
+                    #'same_user' : e.username != prev.username, 
+                    #'accepted' : e.utc - prev.utc * i > total_time      # prev edition has managed longer than usual        
+                    }
 
-        if(e.comment):
-            if(e.comment.startswith('[[WP:')):
-                if e.comment.startswith(u'[[WP:UNDO|Undid'):  f += 'u'
-                elif e.comment.startswith(u'[[WP:A'):
-                    if e.comment.startswith(u'[[WP:AES|\u2190]]Replaced'):  f += 'x'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190]]Redirected'):  f += 'd'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190]]Blanked'):  f += 'b'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190]]Undid'):  f += 'u'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190]]Reverted'):  f += 'r'                
-                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Replaced'):  f += 'x'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Redirected'):  f += 'd'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Blanked'):  f += 'b'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Undid'):  f += 'u'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190]] Reverted'):  f += 'r'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bReplaced'):  f += 'x'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bRedirected'):  f += 'd'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bBlanked'):  f += 'b'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bUndid'):  f += 'u'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190]]\u200bReverted'):  f += 'r'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190Replaced'):  f += 'x'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190Redirected'):  f += 'd'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190Blanked'):  f += 'b'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190Undid'):  f += 'u'
-                    elif e.comment.startswith(u'[[WP:AES|\u2190Reverted'):  f += 'r'
-                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Replaced'):  f += 'x'
-                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Redirected'):  f += 'd'
-                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Blanked'):  f += 'b'
-                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Undid'):  f += 'u'
-                    elif e.comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Reverted'):  f += 'r'
-                    elif e.comment.startswith(u'[[WP:AWB'): f += 'a'
-                    elif e.comment.startswith(u'[[WP:AES'): f += 'e'
-                    else: f += 'w'; #print e.comment.encode('unicode-escape');
-                elif e.comment.startswith(u'[[WP:UNDO|Revert'): f += 'r'
-                elif e.comment.startswith(u'[[WP:RBK|Reverted'): f += 'r'
-                else: f += 'w'; #print e.comment.encode('unicode-escape');
-            elif(e.comment[-2:] == '*/'):
-                f += 's'
-            else:
-                uN = len(reU.findall(e.comment))
-                lN = len(reL.findall(e.comment))
-                esN = len(reES.findall(e.comment))
-                if((uN > 5 and lN < uN) or esN > 2): f += 'c'      # uppercase stats is looking bad
-                elif(reHI.search(e.comment) != None): f += 'h'
-                else: f += 'g'
-        else:
-            f += 'n'
-        
-        # reverts info
-        #if(e.reverts_info > -1): f += '0'
-        #else: f += ('5', '4', '3', '2', '1')[e.reverts_info]
-
-        if(e.edit_group): f += 'm'
-
-        # IP edit
-        f += ('z', 'i')[e.ipedit]
-
-        # change
-        if(e.ilR > e.ilA and e.iwR > 1): f += 'j'            # and new page is smaller than the previous
-        if(e.iwR == 50): f += 'l'                            # large scale removal
-
-        train.append( (dict([(labels[feature], True) for feature in list(f)]), known) )
-        #train.append( ( {f : True}, known) )
-
+        #total_size += e.size; total_time += (e.utc - prev.utc); prev = e;
+        train.append( (features, k.is_known(e.revid)) )
     return train
 
 
@@ -1260,6 +1071,8 @@ reHI = re.compile("(hi |penis|fuck)", re.I)
 reI = re.compile("i ", re.I)
 
 def analyse_comment(comment):
+    #if(e.username.lower().find('bot') > -1):
+    #    add_uefeature('bot')
     if(comment):
         if comment.startswith('[[WP:'):
             if comment.startswith(u'[[WP:UNDO|Undid'): return 'undo'
@@ -1294,9 +1107,21 @@ def analyse_comment(comment):
                 else: return 'wp'
             elif comment.startswith(u'[[WP:UNDO|Revert'): return 'revert'
             elif comment.startswith(u'[[WP:RBK|Reverted'): return 'reverted'
-            else: return 'wp'
+            #elif comment.startswith(u'[[Help:': return 'help'    
+            else: return 'wp'   #print e.comment.encode('unicode-escape');
         elif(comment[-2:] == '*/'): return 'section'
         else:
+            if e.comment.startswith('Revert'): return 'revert'
+            #elif e.comment.startswith('Undid'): return 'undid'
+            #elif e.comment.startswith('rvv'): return 'rvv'
+            #elif e.comment.startswith('rev'): return 'rev'
+            #elif e.comment.startswith('rv'): return 'rv' 
+            #elif e.comment[:4] in ('BOT ', 'bot ', 'robo', 'Robo'): return 'bot'
+            #elif e.comment.startswith('cat'): return 'cat'
+            #elif e.comment.startswith('+'): return 'plus'
+            #elif e.comment.find('spam') > -1: return 'spam'; 
+            #elif e.comment.find('ref') > -1: return 'ref'            
+            
             uN = len(reU.findall(comment))
             lN = len(reL.findall(comment))
             esN = len(reES.findall(comment))
@@ -1305,8 +1130,9 @@ def analyse_comment(comment):
             elif(reHI.search(comment) != None): return 'hi'
             elif(reI.search(comment) != None): return 'i'
             return 'good'
-    return 'no'
-  
+            # if len(comment) > 80:        # we like long comments
+            # if(len(e.comment.split()) > 7): add_uefeature('comment_long')
+    return 'no'  
 
 
 def analyse_decisiontree(revisions, user_counters):
@@ -1335,6 +1161,7 @@ def analyse_revision_decisiontree(e, user_counters):
     # if not e.ipedit and comment: score += 10
     # if(e.ipedit and no_comment): score -= 1
     # if(e.ipedit and no_comment_section): score -= 1
+    # if(e.utc - prev.utc * i > total_time):              # prev edition has managed longer than usual
     
     if score > 0: score = 'good'
     elif score < 0: score = 'bad'
@@ -1410,44 +1237,13 @@ def compute_counters_dictionary():
 
 
 
-def compute_reputations_shelve():
-    user_reputations = defaultdict(int)
-
-    if(_output_arg):
-        rdb = shelve.open(_output_arg)
-
-    total_pages = 0; total_revisions = 0; start = time.time();
-    for revisions in read_pyc():
-        analyse_reverts(revisions)
-        analyse_decisiontree(revisions, user_reputations)
-        total_pages += 1;
-        total_revisions += len(revisions)
-
-        if(total_pages%100 == 0):
-            wikipedia.output("Page %d. Revisions %d. Users %s. Analysis time: %f. ETA %f Hours." %
-                (total_pages, total_revisions, len(user_reputations), time.time() - start,
-                 (NNN - total_revisions) / total_revisions * (time.time() - start) / 3600 ))
-
-            for u, r in user_reputations.iteritems():
-                ue = u.encode('utf-8')
-                rdb[ue] = rdb.setdefault(ue, 0) + r
-
-            user_reputations = defaultdict(int)
-
-
-    if(_output_arg):
-        for u, r in user_reputations.iteritems():
-            ue = u.encode('utf-8')
-            rdb[ue] = rdb.setdefault(ue, 0) + r
-        rdb.close()
-
 def main():
     global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _counters_arg, _classifier_arg, stats; 
     _xml_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None; 
     _display_pyc_arg = None; _compute_counters_arg = None;_output_arg = None; _analyze_arg = None
     _counters_arg = None; _username_arg = None; _filter_pyc_arg = None; _count_empty_arg = None
     _revisions_arg = None; _filter_known_revisions_arg = None; _classifier_arg = None; _evaluate_arg = None
-    stats = defaultdict(lambda:defaultdict(int))
+    stats = defaultdict(lambda:defaultdict(int)); revisions = [];
 
     for arg in wikipedia.handleArgs():
         if arg.startswith('-xml') and len(arg) > 5: _xml_arg = arg[5:]
@@ -1494,12 +1290,6 @@ def main():
     if(_compute_counters_arg):
         compute_counters_dictionary()
 
-    if(_counters_arg):
-        user_counters = read_counters()
-        if(_username_arg): 
-            wikipedia.output("User %s, has_key %s, counter %s" %
-                (_username_arg, user_counters.has_key(_username_arg), user_counters[_username_arg]))
-
     # filter and save known revisions
     if(_filter_known_revisions_arg):
         known_revisions = []
@@ -1520,6 +1310,14 @@ def main():
         revisions = cPickle.load(open(_revisions_arg, 'rb'))
 
 
+    if(_counters_arg):
+        user_counters = read_counters(revisions)
+        if(_username_arg): 
+            wikipedia.output("User %s, has_key %s, counter %s" %
+                (_username_arg, user_counters.has_key(_username_arg), user_counters[_username_arg]))
+
+
+
     #analyse_tokens_lifetime(xmlFilenames)
     start = time.time();
 
@@ -1527,7 +1325,7 @@ def main():
         evaluate_gold(revisions, defaultdict(int))        
 
     if(_analyze_arg):        
-        if(_analyze_arg == 'counters'): user_counters = check_counters(revisions, user_reputations)        
+        if(_analyze_arg == 'counters'): user_counters = check_counters(revisions, user_counters)        
         if not user_counters: user_counters = counters_dict()
         if(_analyze_arg == 'maxent'): analyse_maxent(revisions, user_counters)
         if(_analyze_arg == 'decisiontree'): analyse_decisiontree(revisions, user_counters)
