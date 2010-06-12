@@ -35,10 +35,10 @@ Generating corpus (.pyc) from an xml dump(s):
 r.py -xml:../enwiki-20100312-pages-meta-history.xml.7z -output:/data/enwiki-20100312.none.full -compute-pyc > progress-20100312-full.txt  2>&1 &
 
 Analyzing corpus (.pyc):
-./r.py -pyc:p/pan-wvc-10.full -reputations:p/ratings-enwiki-20100130.merged -analyze -vvv
+./r.py -pyc:p/pan-wvc-10.full -counters:p/ratings-enwiki-20100130.merged -analyze -vvv
 
-Computing user reputations:
-./r.py -pyc:/data/enwiki-20100130.none.full -compute-reputations -output:p/reputations-enwiki-20100130.none.full.split > progress-reputations-enwiki-20100130.none.full.split.txt 2>&1 &
+Computing user counters:
+./r.py -pyc:/data/enwiki-20100130.none.full -compute-counters -output:p/counters-enwiki-20100130.none.full.split > progress-counters-enwiki-20100130.none.full.split.txt 2>&1 &
 
 Filtering corpus:
 ./r.py -pyc:/data/enwiki-20100130.none.full -filter-pyc -output:p/pan-wvc-10.none.full > progress-wvc-filter.none.full.txt 2>&1 &
@@ -47,8 +47,8 @@ Filtering known revisions/producing .known files:
 ./r.py -pyc:p/pan-wvc-10.none.full -filter-known-revisions -output:p/pan-wvc-10.none.known
 ./r.py -pyc:p/Rocket.none.full -filter-known-revisions -output:p/enwiki.Rocket.none.known
 
-Merging reputations:
-./r.py -pyc:p/pan-wvc-10.none.full -reputations:p/reputations-enwiki-20100130.none.full.split -output:reputations-enwiki-20100130.none.full.merged
+Merging counters:
+./r.py -pyc:p/pan-wvc-10.none.full -counters:p/counters-enwiki-20100130.none.full.split -output:counters-enwiki-20100130.none.full.merged
 
 Training/Using classifiers:
 ./r.py -revisions:p/Rocket.known -analyze -output:trained.classifier.Rocket
