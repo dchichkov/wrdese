@@ -795,6 +795,8 @@ def collect_stats(stats, user_counters, e, score, uncertain, extra):
             (known, verified) = labeler(answer, known, verified)
             wikipedia.output("Marked as %s, %s" % (mark(known), mark(verified)) )
             _human_responses += 1
+        else:
+            if(not verified): known = score
 
     # Collecting stats
     ids.known[revid] = known
@@ -819,31 +821,23 @@ def check_reputations(revisions, user_reputations):
             known = k.is_known(e.revid)    # previous score (some human verified)
             if(known == 'good'): user_reputations[e.username] += 1; user_features[e.username] += 'g';
             if(known == 'bad'): user_reputations[e.username] -= 1; user_features[e.username] += 'b';
-    for rval in xrange(100):
-        stats = defaultdict(lambda:defaultdict(int))
-        for e in revisions:
-            revid = e.revid
-            known = k.is_known(revid)                      # previous score (some human verified)
-            verified = k.is_verified(revid)                # if not Empty: human verified
-            reputation = user_reputations[e.username]
-            if not known: continue
-            
-            # if(e.reverts_info == -5):                               # inverse for self-reverts
-            #    score = ('bad', 'good')[reputation < 0]
-            #else:
-            if(reputation < -rval): score = 'bad'
-            #elif(reputation < 0): score = 'bad'
-            else: continue
-            stats['Reputation score ' + score + ' on known'][known] += 1
-            stats['Reputation score ' + score + ' on verified'][k.is_verified_as_good_or_bad(revid)] += 1
-            # Collecting stats and Human verification
-            #extra = lambda:wikipedia.output(" User Features: \03{lightblue}%s\03{default}" % user_features[e.username])
-            #(verified, known, score) = collect_stats(stats, user_reputations, e, score, False, False)
-
-        print rval, 1.0 * stats['Reputation score bad on known']['good'] / stats['Reputation score bad on known']['bad']
-        dump_cstats(stats)
-
-
+    
+    for e in revisions:
+        revid = e.revid
+        known = k.is_known(revid)                      # previous score (some human verified)
+        verified = k.is_verified(revid)                # if not Empty: human verified
+        reputation = user_reputations[e.username]
+        if not known: continue
+        
+        # if(e.reverts_info == -5):                               # inverse for self-reverts
+        #    score = ('bad', 'good')[reputation < 0]
+        #else:
+        score = ('bad', 'good')[reputation > 0]
+        stats['Reputation score ' + score + ' on known'][known] += 1
+    
+        # Collecting stats and Human verification
+        extra = lambda:wikipedia.output(" User Features: \03{lightblue}%s\03{default}" % user_features[e.username])
+        (verified, known, score) = collect_stats(stats, user_reputations, e, score, False, extra)
 
     return user_reputations
 
@@ -1416,7 +1410,36 @@ def compute_counters_dictionary():
 
 
 
+def compute_reputations_shelve():
+    user_reputations = defaultdict(int)
 
+    if(_output_arg):
+        rdb = shelve.open(_output_arg)
+
+    total_pages = 0; total_revisions = 0; start = time.time();
+    for revisions in read_pyc():
+        analyse_reverts(revisions)
+        analyse_decisiontree(revisions, user_reputations)
+        total_pages += 1;
+        total_revisions += len(revisions)
+
+        if(total_pages%100 == 0):
+            wikipedia.output("Page %d. Revisions %d. Users %s. Analysis time: %f. ETA %f Hours." %
+                (total_pages, total_revisions, len(user_reputations), time.time() - start,
+                 (NNN - total_revisions) / total_revisions * (time.time() - start) / 3600 ))
+
+            for u, r in user_reputations.iteritems():
+                ue = u.encode('utf-8')
+                rdb[ue] = rdb.setdefault(ue, 0) + r
+
+            user_reputations = defaultdict(int)
+
+
+    if(_output_arg):
+        for u, r in user_reputations.iteritems():
+            ue = u.encode('utf-8')
+            rdb[ue] = rdb.setdefault(ue, 0) + r
+        rdb.close()
 
 def main():
     global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _counters_arg, _classifier_arg, stats; 
