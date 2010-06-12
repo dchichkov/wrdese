@@ -58,17 +58,17 @@ class Irc2Http(SingleServerIRCBot):
 
 
         # real irc
-        self.FILE = open('%s.%s.pkl' % (ircServer, time()), 'wb')    
+        # self.FILE = open('%s.%s.pkl' % (ircServer, time()), 'wb')    
 
         try:
             self.start()
         except KeyboardInterrupt:
             self.connection.quit("Ctrl-C at console")
-            self.FILE.close()
+            if self.FILE: self.FILE.close()
             print "Quit IRC."
         except Exception, e:
             self.connection.quit("Unhandled Exception")
-            self.FILE.close();
+            if self.FILE: self.FILE.close();
             print("Exception at %s: %s" % (e.__class__.__name__, e.args))        
             raise 
 
@@ -82,7 +82,7 @@ class Irc2Http(SingleServerIRCBot):
         c.join(self.channel)
 
     def on_pubmsg(self, c, e):
-        if(self.FILE): cPickle.dump((time(), e), self.FILE)        
+        if self.FILE: cPickle.dump((time(), e), self.FILE)        
         
         match = self.re_edit.match(e.arguments()[0])
         if(e.source().split ('!') [0] != 'MiszaBot'):
