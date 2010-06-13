@@ -1391,14 +1391,9 @@ def main():
     if(_filter_known_revisions_arg):
         known_revisions = []
         for revisions in read_pyc():
-            # start = time.time()
             analyse_reverts(revisions)
-            # compute_letter_trainset(revisions)
-            # wikipedia.output("Revisions %d. Analysis time: %f" % (len(revisions), time.time() - start))
             for e in revisions:
-                known = k.is_known(e.revid)
-                if known: known_revisions.append(e)
-        for i, e in enumerate(known_revisions): e.i = i
+                if k.is_known(e.revid): known_revisions.append(e)
         if(_output_arg): cPickle.dump(known_revisions, open(_output_arg, 'wb'), -1)
 
     # load known revisions
