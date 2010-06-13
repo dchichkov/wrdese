@@ -854,7 +854,7 @@ def compute_revisions_trainset(revisions, user_counters):
         #   train.append(None); 
         #else:
         
-        # for v in xrange(1,100): print v, math.trunc(math.log(math.sqrt(i))*2*math.pi)
+        # for v in xrange(1,100): print v, math.trunc(math.log(math.sqrt(v))*2*math.pi)
         features = {'comment' : analyse_comment(e.comment),
                     # 'reverts info' : urri(e.reverts_info),
                     'ipedit' : e.ipedit,
@@ -872,25 +872,45 @@ def compute_revisions_trainset(revisions, user_counters):
     return train
 
 
+buckets_table = [0, 1, 2, 2, 3, 3, 3, 3, 3, 3,
+                 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 
+                 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 
+                 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+                 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+                 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+                 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+                 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+                 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+                 6, 6, 6, 6, 6, 6, 6, 6, 6, 6]
+def buckets(i):
+    return math.trunc(math.log1p(i * 2 * math.pi))
+    
+
 def compute_karma_trainset(revisions, user_counters):
     train = []
 
     for e in revisions:
         known = k.is_known(e.revid)  # previous score (some human verified)
-
-        known_user = e.username in user_counters
-        counter = user_counters[e.username]
-        features = {'edits' : counter[0],
-                    'comments' : counter[1],
-                    'reverts'  : counter[2],
-                    'regular' : counter[-1],
-                    'reverted' : counter[-2],
-                    'questionable' : counter[-3],
-                    'revert war' : counter[-4],
-                    'self revert' : counter[-5],
-                    'known user' : known_user
-                   }
-        train.append( (features, known) )
+        
+        if e.username in user_counters:
+            counter = user_counters[e.username]
+            features = {'edits' : buckets(counter[0]),
+                        'comments' : buckets(counter[1]),
+                        'reverts'  : buckets(counter[2]),
+                        'regular' : buckets(counter[-1]),
+                        'reverted' : buckets(counter[-2]),
+                        'questionable' : buckets(counter[-3]),
+                        'revert war' : buckets(counter[-4]),
+                        'self revert' : buckets(counter[-5]),
+                        #'known user' : 'True',
+                        }
+            train.append( (features, known) )
+        else: 
+            train.append(None)
+            #features = {
+            #        'known user' : False
+            #       }
+        
 
     return train
 
@@ -911,16 +931,16 @@ def analyse_maxent(revisions, user_counters):
     
     if(not _classifier_arg):        
         # Typed:
-        enc = maxent.TypedMaxentFeatureEncoding.train(train, alwayson_features=True)
+        #enc = maxent.TypedMaxentFeatureEncoding.train([t for t in train if t], alwayson_features=True)
         #for fs in train:
         #    s = "";
         #    for f, v in fs[0].iteritems(): s += " : %s = %4s " % (f, v)
         #    print("Featureset", s, " Class: ", fs[1] , "Encoding is: ", enc.encode(fs[0], fs[1]))
-        classifier = maxent.MaxentClassifier.train(train, algorithm='megam', encoding=enc, \
-                        bernoulli=False, trace=2, tolerance=2e-5, max_iter=1000, min_lldelta=1e-7)
+        #classifier = maxent.MaxentClassifier.train([t for t in train if t], algorithm='megam', encoding=enc, \
+        #                bernoulli=False, trace=2, tolerance=2e-5, max_iter=1000, min_lldelta=1e-7)
         
         # Bool:
-        #classifier = maxent.MaxentClassifier.train([t for t in train if t], algorithm='megam', trace=2, tolerance=2e-6, max_iter=2000, min_lldelta=1e-8)
+        classifier = maxent.MaxentClassifier.train([t for t in train if t], algorithm='megam', trace=2, tolerance=2e-6, max_iter=2000, min_lldelta=1e-8)
     else:
         wikipedia.output("Reading %s..." % _classifier_arg)
         classifier = cPickle.load(open(_classifier_arg, 'rb'))
@@ -950,6 +970,82 @@ def analyse_maxent(revisions, user_counters):
         uncertain = known != score
         extra = lambda: classifier.explain(train[i][0]);
         (verified, known, score) = collect_stats(stats, user_counters, e, score, uncertain, extra)
+
+
+
+def analyse_plot_reverts(revisions, user_counters):
+    import matplotlib.pyplot as plt
+    if True:
+        y = defaultdict(lambda:[[] for i in xrange(len(counters_dict()[0]))] )
+        l = defaultdict(int)     
+        for e in revisions:
+            known = k.is_known(e.revid)  # previous score (some human verified)
+            counter = user_counters[e.username]
+            for i, c in enumerate(counter): y[known][i].append(c)
+            l[known] += 1
+    
+        #plt.plot(y['good'][0], [1] * l['good'], 'g|')
+        #plt.plot(y['bad'][0], [2] * l['bad'], 'r|')
+        plt.plot(y['good'][0], y['good'][1], 'g.')
+        plt.plot(y['bad'][0], y['bad'][1], 'r.')
+        #plt.axis([0, 200, 0, 200])
+        plt.show()
+
+
+    s = defaultdict(lambda:defaultdict(lambda:[0] * 500))     
+    for x in xrange(500):
+        for e in revisions:
+            known = k.is_known(e.revid)  # previous score (some human verified)
+            counter = user_counters[e.username]
+            if(counter[0] < 25): continue            
+            score = ('bad', 'good')[counter[-2]/ 100.0 * x < counter[0]]
+            s[known][score][x] += 1
+
+    #plt.plot(xrange(1000), s['good']['good'], 'g')
+    plt.plot([x/100.0 for x in xrange(500)], s['bad']['bad'], 'g')
+    plt.plot([x/100.0 for x in xrange(500)], s['good']['bad'], 'r')
+    plt.plot([x/100.0 for x in xrange(500)], s['bad']['good'], 'm')
+    plt.axis([0, 5, 0, 1000])
+    plt.show()
+
+
+
+def analyse_plot(revisions, user_counters):
+    import matplotlib.pyplot as plt
+    if False:
+        y = defaultdict(lambda:[[] for i in xrange(len(counters_dict()[0]))] )
+        l = defaultdict(int)     
+        for e in revisions:
+            known = k.is_known(e.revid)  # previous score (some human verified)
+            counter = user_counters[e.username]
+            for i, c in enumerate(counter): y[known][i].append(c)
+            l[known] += 1
+    
+        #plt.plot(y['good'][0], [1] * l['good'], 'g|')
+        #plt.plot(y['bad'][0], [2] * l['bad'], 'r|')
+        plt.plot(y['good'][0], y['good'][1], 'g.')
+        plt.plot(y['bad'][0], y['bad'][1], 'r.')
+        #plt.axis([0, 200, 0, 200])
+        plt.show()
+
+
+    N = 20
+    s = defaultdict(lambda:defaultdict(lambda:[0] * N))     
+    for x in xrange(N):
+        for e in revisions:
+            known = k.is_known(e.revid)  # previous score (some human verified)
+            counter = user_counters[e.username]
+            score = ('bad', 'good')[counter[1] > x]
+            s[known][score][x] += 1
+
+    #plt.plot(xrange(1000), s['good']['good'], 'g')
+    plt.plot([x for x in xrange(N)], s['bad']['bad'], 'g')
+    plt.plot([x for x in xrange(N)], s['good']['bad'], 'r')
+    plt.plot([x for x in xrange(N)], s['bad']['good'], 'm')
+    plt.axis([0, N, 0, 15000])
+    plt.show()
+
+
 
 
 
@@ -1149,14 +1245,15 @@ def analyse_revision_decisiontree(e, user_counters):
     comment = analyse_comment(e.comment)
     
     score = 0
-    if comment in ['no', 'section']: pass
-    elif comment == 'good': pass
-    elif comment in ['replaced', 'blanked']: score -= 100
-    elif comment in ['undid', 'redirected', 'reverted', 'awb', 'aes', 'wp', 'revert']: score += 100
-    elif comment in ['hi', 'i', 'stats']: pass
+    
+    #if comment in ['no', 'section']: pass
+    #elif comment == 'good': pass
+    #elif comment in ['replaced', 'blanked']: score -= 100
+    #elif comment in ['undid', 'redirected', 'reverted', 'awb', 'aes', 'wp', 'revert']: score += 100
+    #elif comment in ['hi', 'i', 'stats']: pass
 
-    removal = e.ilR > e.ilA and e.iwR > 1                # and new page is smaller than the previous
-    blanking = e.iwR == 50 and e.iwA < 2                 # large scale removal
+    #removal = e.ilR > e.ilA and e.iwR > 1                # and new page is smaller than the previous
+    #blanking = e.iwR == 50 and e.iwA < 2                 # large scale removal
 
     # if not e.ipedit and comment: score += 10
     # if(e.ipedit and no_comment): score -= 1
@@ -1328,6 +1425,7 @@ def main():
         if(_analyze_arg == 'counters'): user_counters = check_counters(revisions, user_counters)        
         if not user_counters: user_counters = counters_dict()
         if(_analyze_arg == 'maxent'): analyse_maxent(revisions, user_counters)
+        if(_analyze_arg == 'plot'): analyse_plot(revisions, user_counters)
         if(_analyze_arg == 'decisiontree'): analyse_decisiontree(revisions, user_counters)
         # user_reputations = analyse_reputations(revisions)
         # analyse_crm114(revisions, user_counters)
