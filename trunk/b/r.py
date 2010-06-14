@@ -143,6 +143,7 @@ import re, sys, time, calendar, difflib, string, math, hashlib, os, fnmatch, mar
 import pprint, ddiff
 from collections import defaultdict, namedtuple
 from ordereddict import OrderedDict
+from hi import obscenelist
 
 # pywikipedia (trunk 2010/03/15) in your PYTHONPATH, configured and running
 import wikipedia, pagegenerators, xmlreader, editarticle
@@ -781,7 +782,7 @@ def collect_stats(stats, user_counters, e, score, uncertain, extra):
         if(e.reverted): show_edit(e.reverted, "Reverted:")
         if(e.edit_group):
             for edit in e.edit_group: show_edit(edit, "Edit Group:")
-            wikipedia.output("Edit Group Diff: http://en.wikipedia.org/w/index.php?diff=%d&oldid=%d" % (e.edit_group[-1].revid, e.edit_group[0].oldid))    
+            wikipedia.output("Edit Group Diff: http://en.wikipedia.org/w/index.php?diff=%d&oldid=%s" % (e.edit_group[-1].revid, e.edit_group[0].oldid))    
         wikipedia.output("Score is %s." % mark(score))
         if(known): wikipedia.output("Known as %s." % mark(known))
         if(verified): wikipedia.output("Verified as %s." % mark(verified))
@@ -972,12 +973,23 @@ def analyse_maxent(revisions, user_counters):
         (verified, known, score) = collect_stats(stats, user_counters, e, score, uncertain, extra)
 
 
+def analyse_diff_decisiontree(e):    
+    score = 0
+    # chack obscenelist
+    for (t, v) in e.diff:
+        if v:
+            for r, rscore in obscenelist:
+                if r.search(t) != None: 
+                    score += rscore * v 
+    if score < 0: return 'bad';        
+    if score > 0: return 'good'    
+    return 'unknown'
+
 
 
 def analyse_decisiontree(revisions, user_counters):
     total_time = total_size = 0
     for e in revisions:
-
         score = analyse_revision_decisiontree(e, user_counters)
         if(score == 'unknown'): continue
         #uncertain = (user_counters[e.username] > 0 and score == 'bad') or (user_counters[e.username] < 0 and score == 'good')
@@ -987,15 +999,19 @@ def analyse_revision_decisiontree(e, user_counters):
     known = k.is_known(e.revid)                 # previous score (some human verified)
     comment = analyse_comment(e.comment)    
     counter = user_counters[e.username]
+    diff = analyse_diff_decisiontree(e)
     score = 0 
     
-    if counter[0] > 500 and not counter[-2] * 5 > counter[0]: return 'good'         # user did > 500 edits, not so many reverted   
+    
+    if counter[0] > 500 and not counter[-2] * 5 > counter[0]: return 'good'         # user did > 500 edits, not so many reverted
+    if diff != 'unknown': return diff                                               # diff/text brief analysis
     if counter[0] > 25 and counter[-1] < counter[-2]: return 'bad'                  # user is reverted too often
     if counter[0] > 25 and counter[-1] * 3 < counter[0]: return 'bad'               # rate of regular edits it too low
     if counter[0] > 25 and counter[-1] * 2 > counter[0]: return 'good'
     if counter[0] > 5 and counter[-1] * 3 > counter[0] * 2: return 'good'           # > 5 edits, > 2/3 regular edits
     if counter[0] > 1 and not counter[-1]: return 'bad'                             # > 1 edits, no regular edits
     if counter[0] > 1 and counter[-1] == counter[0]: return 'good'                  # > 1 edit, only regular edits
+    if e.i < 7: return 'good'                                                      # page has less than 7 revisions    (< 50 revisions (*))
     #if counter[1] > 10: return 'good'                                              # user left > 10 valid comments 
     
     
@@ -1026,14 +1042,14 @@ def analyse_plot(revisions, user_counters):
     from random import random
     if True:
         y = defaultdict(lambda:[[] for i in xrange(len(counters_dict()[0]))] )
+        yei = defaultdict(lambda:[])
         l = defaultdict(int)     
         for e in revisions:
             known = k.is_known(e.revid)  # previous score (some human verified)
             counter = user_counters[e.username]
             score = analyse_revision_decisiontree(e, user_counters)
-            
-            
             for i, c in enumerate(counter): y[score + ' on ' + known][i].append(c + random() - 0.5)
+            yei[score + ' on ' + known].append(e.i  + random() - 0.5)            
             l[known] += 1
     
         graphs = {
@@ -1047,9 +1063,16 @@ def analyse_plot(revisions, user_counters):
     
         #plt.plot(y['good'][0], [1] * l['good'], 'g|')
         #plt.plot(y['bad'][0], [2] * l['bad'], 'r|')
+        
+
+        #for label, color in graphs.iteritems(): 
+        #    plt.plot(y[label][0], y[label][-1], color=color, linestyle='', marker='.')#, alpha = '0.5')
+
+            
         for label, color in graphs.iteritems(): 
-            plt.plot(y[label][0], y[label][-1], color=color, linestyle='', marker='.')#, alpha = '0.5')
-        plt.axis([0, 500, 0, 500])
+            plt.plot(y[label][0], yei[label], color=color, linestyle='', marker='.', alpha = '0.5')
+            
+        plt.axis([0, 500, 0, 1000])
         plt.xlabel('User edits counter')
         plt.ylabel('User regular edits counter')
         plt.show()
