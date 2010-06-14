@@ -1011,7 +1011,7 @@ def analyse_revision_decisiontree(e, user_counters):
     if counter[0] > 5 and counter[-1] * 3 > counter[0] * 2: return 'good'           # > 5 edits, > 2/3 regular edits
     if counter[0] > 1 and not counter[-1]: return 'bad'                             # > 1 edits, no regular edits
     if counter[0] > 1 and counter[-1] == counter[0]: return 'good'                  # > 1 edit, only regular edits
-    if e.i < 50: return 'good'                                                      # page has less than 7 revisions    (< 50 revisions (*))
+    if e.i < 7: return 'good'                                                      # page has less than 7 revisions    (< 50 revisions (*))
     #if counter[1] > 10: return 'good'                                              # user left > 10 valid comments 
     
     
