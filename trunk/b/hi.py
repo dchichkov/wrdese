@@ -70,6 +70,9 @@ obscenelist =  [
        (re.compile('honeysuckle', re.I)        , +5),
        (re.compile('stupid', re.I)             , -3),
        (re.compile('^haha', re.I)               , -5),
+       (re.compile('hahaha', re.I)               , -5),
+       (re.compile('^hehe', re.I)               , -5),
+       (re.compile('hehehe', re.I)               , -5),
        (re.compile('^omg', re.I)              , -3),
        (re.compile('^pimp$', re.I)           , -7),
        (re.compile('^1337$', re.I)               , -5),
@@ -111,7 +114,11 @@ obscenelist =  [
        (re.compile('asshole', re.I)                , -15),
        (re.compile('fuck ((yo)?u|h(er|im)|them|it)', re.I) , -100),        # This looks like a personal attack
        (re.compile('((yo)?u|s?he|we|they|it) sucks?', re.I)    , -100),    # This looks like a personal attack
-       (re.compile('666+$', re.I)             , -50)                      # Though this has uses, it is commonly used by vandals
+       (re.compile('666+$', re.I)             , -50),                      # Though this has uses, it is commonly used by vandals
+       
+       #(re.compile('(.{1,4})\1{20}')          , -10),        # Ugg .. the same letter(s) several times in a row. */
+       #(re.compile('[A-Z][^a-z]{20,}')        , -10),        # All capitals? Looks like vandal activity */
+
     ]
     
     
