@@ -973,23 +973,87 @@ def analyse_maxent(revisions, user_counters):
 
 
 
-def analyse_plot_reverts(revisions, user_counters):
+
+def analyse_decisiontree(revisions, user_counters):
+    total_time = total_size = 0
+    for e in revisions:
+
+        score = analyse_revision_decisiontree(e, user_counters)
+        if(score == 'unknown'): continue
+        #uncertain = (user_counters[e.username] > 0 and score == 'bad') or (user_counters[e.username] < 0 and score == 'good')
+        (verified, known, score) = collect_stats(stats, user_counters, e, score, False, None)
+
+def analyse_revision_decisiontree(e, user_counters):
+    known = k.is_known(e.revid)                 # previous score (some human verified)
+    comment = analyse_comment(e.comment)    
+    counter = user_counters[e.username]
+    score = 0 
+    
+    if counter[0] > 500 and not counter[-2] * 5 > counter[0]: return 'good'         # user did > 500 edits, not so many reverted   
+    if counter[0] > 25 and counter[-1] < counter[-2]: return 'bad'                  # user is reverted too often
+    if counter[0] > 25 and counter[-1] * 3 < counter[0]: return 'bad'               # rate of regular edits it too low
+    if counter[0] > 25 and counter[-1] * 2 > counter[0]: return 'good'
+    if counter[0] > 5 and counter[-1] * 3 > counter[0] * 2: return 'good'           # > 5 edits, > 2/3 regular edits
+    if counter[0] > 1 and not counter[-1]: return 'bad'                             # > 1 edits, no regular edits
+    if counter[0] > 1 and counter[-1] == counter[0]: return 'good'                  # > 1 edit, only regular edits
+    #if counter[1] > 10: return 'good'                                              # user left > 10 valid comments 
+    
+    
+    #if comment in ['no', 'section']: pass
+    #elif comment == 'good': pass
+    #elif comment in ['replaced', 'blanked']: score -= 100
+    #elif comment in ['undid', 'redirected', 'reverted', 'awb', 'aes', 'wp', 'revert']: score += 100
+    #elif comment in ['hi', 'i', 'stats']: pass
+
+    #removal = e.ilR > e.ilA and e.iwR > 1                # and new page is smaller than the previous
+    #blanking = e.iwR == 50 and e.iwA < 2                 # large scale removal
+
+    # if not e.ipedit and comment: score += 10
+    # if(e.ipedit and no_comment): score -= 1
+    # if(e.ipedit and no_comment_section): score -= 1
+    # if(e.utc - prev.utc * i > total_time):              # prev edition has managed longer than usual
+    
+    if score > 0: score = 'good'
+    elif score < 0: score = 'bad'
+    else: score = 'unknown'
+    return score
+
+
+
+
+def analyse_plot(revisions, user_counters):
     import matplotlib.pyplot as plt
+    from random import random
     if True:
         y = defaultdict(lambda:[[] for i in xrange(len(counters_dict()[0]))] )
         l = defaultdict(int)     
         for e in revisions:
             known = k.is_known(e.revid)  # previous score (some human verified)
             counter = user_counters[e.username]
-            for i, c in enumerate(counter): y[known][i].append(c)
+            score = analyse_revision_decisiontree(e, user_counters)
+            
+            
+            for i, c in enumerate(counter): y[score + ' on ' + known][i].append(c + random() - 0.5)
             l[known] += 1
+    
+        graphs = {
+         'good on good': '#F8F8F8',
+         'good on bad' : 'cyan',
+         'bad on good' : 'magenta',
+         'bad on bad'  : '#F8F8F8',
+         'unknown on good' : 'green',
+         'unknown on bad' : 'red',          
+         }
     
         #plt.plot(y['good'][0], [1] * l['good'], 'g|')
         #plt.plot(y['bad'][0], [2] * l['bad'], 'r|')
-        plt.plot(y['good'][0], y['good'][1], 'g.')
-        plt.plot(y['bad'][0], y['bad'][1], 'r.')
-        #plt.axis([0, 200, 0, 200])
+        for label, color in graphs.iteritems(): 
+            plt.plot(y[label][0], y[label][-1], color=color, linestyle='', marker='.')#, alpha = '0.5')
+        plt.axis([0, 500, 0, 500])
+        plt.xlabel('User edits counter')
+        plt.ylabel('User regular edits counter')
         plt.show()
+        return
 
 
     s = defaultdict(lambda:defaultdict(lambda:[0] * 500))     
@@ -997,52 +1061,15 @@ def analyse_plot_reverts(revisions, user_counters):
         for e in revisions:
             known = k.is_known(e.revid)  # previous score (some human verified)
             counter = user_counters[e.username]
-            if(counter[0] < 25): continue            
-            score = ('bad', 'good')[counter[-2]/ 100.0 * x < counter[0]]
+            if counter[0] < 25 or counter[0] > 500: continue            
+            score = ('bad', 'good')[counter[-1]/100.0 * x > counter[0]]
             s[known][score][x] += 1
 
     #plt.plot(xrange(1000), s['good']['good'], 'g')
     plt.plot([x/100.0 for x in xrange(500)], s['bad']['bad'], 'g')
     plt.plot([x/100.0 for x in xrange(500)], s['good']['bad'], 'r')
     plt.plot([x/100.0 for x in xrange(500)], s['bad']['good'], 'm')
-    plt.axis([0, 5, 0, 1000])
-    plt.show()
-
-
-
-def analyse_plot(revisions, user_counters):
-    import matplotlib.pyplot as plt
-    if False:
-        y = defaultdict(lambda:[[] for i in xrange(len(counters_dict()[0]))] )
-        l = defaultdict(int)     
-        for e in revisions:
-            known = k.is_known(e.revid)  # previous score (some human verified)
-            counter = user_counters[e.username]
-            for i, c in enumerate(counter): y[known][i].append(c)
-            l[known] += 1
-    
-        #plt.plot(y['good'][0], [1] * l['good'], 'g|')
-        #plt.plot(y['bad'][0], [2] * l['bad'], 'r|')
-        plt.plot(y['good'][0], y['good'][1], 'g.')
-        plt.plot(y['bad'][0], y['bad'][1], 'r.')
-        #plt.axis([0, 200, 0, 200])
-        plt.show()
-
-
-    N = 20
-    s = defaultdict(lambda:defaultdict(lambda:[0] * N))     
-    for x in xrange(N):
-        for e in revisions:
-            known = k.is_known(e.revid)  # previous score (some human verified)
-            counter = user_counters[e.username]
-            score = ('bad', 'good')[counter[1] > x]
-            s[known][score][x] += 1
-
-    #plt.plot(xrange(1000), s['good']['good'], 'g')
-    plt.plot([x for x in xrange(N)], s['bad']['bad'], 'g')
-    plt.plot([x for x in xrange(N)], s['good']['bad'], 'r')
-    plt.plot([x for x in xrange(N)], s['bad']['good'], 'm')
-    plt.axis([0, N, 0, 15000])
+    plt.axis([0, 5, 0, 2000])
     plt.show()
 
 
@@ -1207,7 +1234,7 @@ def analyse_comment(comment):
             else: return 'wp'   #print e.comment.encode('unicode-escape');
         elif(comment[-2:] == '*/'): return 'section'
         else:
-            if e.comment.startswith('Revert'): return 'revert'
+            if comment.startswith('Revert'): return 'revert'
             #elif e.comment.startswith('Undid'): return 'undid'
             #elif e.comment.startswith('rvv'): return 'rvv'
             #elif e.comment.startswith('rev'): return 'rev'
@@ -1230,40 +1257,6 @@ def analyse_comment(comment):
             # if(len(e.comment.split()) > 7): add_uefeature('comment_long')
     return 'no'  
 
-
-def analyse_decisiontree(revisions, user_counters):
-    total_time = total_size = 0
-    for e in revisions:
-
-        score = analyse_revision_decisiontree(e, user_counters)
-        if(score == 'unknown'): continue
-        #uncertain = (user_counters[e.username] > 0 and score == 'bad') or (user_counters[e.username] < 0 and score == 'good')
-        (verified, known, score) = collect_stats(stats, user_counters, e, score, False, None)
-
-def analyse_revision_decisiontree(e, user_counters):
-    known = k.is_known(e.revid)                 # previous score (some human verified)
-    comment = analyse_comment(e.comment)
-    
-    score = 0
-    
-    #if comment in ['no', 'section']: pass
-    #elif comment == 'good': pass
-    #elif comment in ['replaced', 'blanked']: score -= 100
-    #elif comment in ['undid', 'redirected', 'reverted', 'awb', 'aes', 'wp', 'revert']: score += 100
-    #elif comment in ['hi', 'i', 'stats']: pass
-
-    #removal = e.ilR > e.ilA and e.iwR > 1                # and new page is smaller than the previous
-    #blanking = e.iwR == 50 and e.iwA < 2                 # large scale removal
-
-    # if not e.ipedit and comment: score += 10
-    # if(e.ipedit and no_comment): score -= 1
-    # if(e.ipedit and no_comment_section): score -= 1
-    # if(e.utc - prev.utc * i > total_time):              # prev edition has managed longer than usual
-    
-    if score > 0: score = 'good'
-    elif score < 0: score = 'bad'
-    else: score = 'unknown'
-    return score
 
 
 
