@@ -452,12 +452,12 @@ def read_pyc():
         revisions = [];
         try:
             info = FullInfo(marshal.load(FILE))     # load first in order to  
-            if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
+            # if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
             id = info.id;                           # initialize id from info.id
             revisions.append(info)
             while True:
                 info = FullInfo(marshal.load(FILE))
-                if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
+                # if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
                 if(id != info.id):
                     yield revisions
                     revisions = []
