@@ -164,6 +164,7 @@ import wrdse10_dchichkov_rocket_annotations as wrdse; k.append(known = wrdse.kno
 
 NNN = 313797035 # total revisions in the latest wiki dump
 counters_dict = lambda:defaultdict(lambda:(0, 0, 0, 0, 0, 0, 0, 0))
+counters_rev = (0, 0, 0, 0, 0, 0, 0)
 good_counter = lambda x:x[-2]*5<x[0]
 
 # This is required for the text that is shown when you run this script
@@ -379,7 +380,7 @@ def display_pyc():
 
 
 class FullInfo(object):
-    __slots__ = ('i', 'reverts_info', 'rev_score_info', 'duplicates_info', 'reverted', 'edit_group', 'oldid',
+    __slots__ = ('i', 'c', 'reverts_info', 'rev_score_info', 'duplicates_info', 'reverted', 'edit_group', 'oldid',
                  
                  'id', 'revid', 'username', 'comment', 'title', 'size', 'utc', 'md5', 'ipedit',
                  'editRestriction', 'moveRestriction', 'isredirect',
@@ -406,8 +407,7 @@ class EmptyFullInfoPlaceholder(object):
         self.username = None
         self.edit_group = None
         self.revid = None
-        
-
+        self.c = counters_rev
 
 
 
@@ -682,10 +682,17 @@ def analyse_reverts(revisions):
             e.edit_group = prev.edit_group
         elif prev.edit_group:
             prev.edit_group.append(prev)
+
+        # filling counters
+        if e.reverts_info > -1:    e.c = (prev.c[0] + 1, prev.c[1] + 1, prev.c[2] + 0, prev.c[3] + 0, prev.c[4] + 0, prev.c[5] + 0, prev.c[6] + 0)
+        elif e.reverts_info == -1: e.c = (prev.c[0] + 1, prev.c[1] + 0, prev.c[2] + 0, prev.c[3] + 0, prev.c[4] + 0, prev.c[5] + 0, prev.c[6] + 1)
+        elif e.reverts_info == -2: e.c = (prev.c[0] + 1, prev.c[1] + 0, prev.c[2] + 0, prev.c[3] + 0, prev.c[4] + 0, prev.c[5] + 1, prev.c[6] + 0)
+        elif e.reverts_info == -3: e.c = (prev.c[0] + 1, prev.c[1] + 0, prev.c[2] + 0, prev.c[3] + 0, prev.c[4] + 1, prev.c[5] + 0, prev.c[6] + 0)
+        elif e.reverts_info == -4: e.c = (prev.c[0] + 1, prev.c[1] + 0, prev.c[2] + 0, prev.c[3] + 1, prev.c[4] + 0, prev.c[5] + 0, prev.c[6] + 0)
+        elif e.reverts_info == -5: e.c = (prev.c[0] + 1, prev.c[1] + 0, prev.c[2] + 1, prev.c[3] + 0, prev.c[4] + 0, prev.c[5] + 0, prev.c[6] + 0)
+        else: b = e.c = (prev.c[0] + 1, prev.c[1] + 0, prev.c[2] + 0, prev.c[3] + 0, prev.c[4] + 0, prev.c[5] + 0, prev.c[6] + 0)
+        
         prev = e        
-
-
-
 
 
 # -------------------------------------------------------------------------
@@ -783,6 +790,7 @@ def collect_stats(stats, user_counters, e, score, uncertain, extra):
         if(e.edit_group):
             for edit in e.edit_group: show_edit(edit, "Edit Group:")
             wikipedia.output("Edit Group Diff: http://en.wikipedia.org/w/index.php?diff=%d&oldid=%s" % (e.edit_group[-1].revid, e.edit_group[0].oldid))    
+        wikipedia.output("Counters: %s" % str(e.c))
         wikipedia.output("Score is %s." % mark(score))
         if(known): wikipedia.output("Known as %s." % mark(known))
         if(verified): wikipedia.output("Verified as %s." % mark(verified))
@@ -1001,7 +1009,7 @@ def analyse_revision_decisiontree(e, user_counters):
     counter = user_counters[e.username]
     diff = analyse_diff_decisiontree(e)
     score = 0 
-    
+
     
     if counter[0] > 500 and not counter[-2] * 5 > counter[0]: return 'good'         # user did > 500 edits, not so many reverted
     if diff != 'unknown': return diff                                               # diff/text brief analysis
@@ -1011,7 +1019,7 @@ def analyse_revision_decisiontree(e, user_counters):
     if counter[0] > 5 and counter[-1] * 3 > counter[0] * 2: return 'good'           # > 5 edits, > 2/3 regular edits
     if counter[0] > 1 and not counter[-1]: return 'bad'                             # > 1 edits, no regular edits
     if counter[0] > 1 and counter[-1] == counter[0]: return 'good'                  # > 1 edit, only regular edits
-    if e.i < 7: return 'good'                                                      # page has less than 7 revisions    (< 50 revisions (*))
+    if e.i < 7: return 'good'                                                      # page has less than 7 revisions    (< 50 revisions (*))    
     #if counter[1] > 10: return 'good'                                              # user left > 10 valid comments 
     
     
