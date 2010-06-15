@@ -157,9 +157,10 @@ import crm114
 #import pan10_vandalism_test_collection as k
 
 from labels import k, ids, labels, labels_shortcuts, labeler, good_labels, bad_labels
+#import pan10_vandalism_test_collection; k.append(known = pan10_vandalism_test_collection.g)
 import pan_wvc_10_gold; k.append(known = pan_wvc_10_gold.g, info = pan_wvc_10_gold.i);
-#import pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified)#, known = pan_wvc_10_labels.known)
-import pan_wvc_10_labels_15k as pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified)#, known = pan_wvc_10_labels.known)
+import pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified)#, known = pan_wvc_10_labels.known)
+#import pan_wvc_10_labels_15k as pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified)#, known = pan_wvc_10_labels.known)
 import wrdse10_dchichkov_rocket_annotations as wrdse; k.append(known = wrdse.known, verified = wrdse.verified);
 
 NNN = 313797035 # total revisions in the latest wiki dump
@@ -1458,7 +1459,9 @@ def main():
             analyse_reverts(revisions)
             for e in revisions:
                 if k.is_known(e.revid): known_revisions.append(e)
-        if(_output_arg): cPickle.dump(known_revisions, open(_output_arg, 'wb'), -1)
+        if(_output_arg): 
+            cPickle.dump(known_revisions, open(_output_arg, 'wb'), -1); 
+            wikipedia.output("Done. %d revisions known revisions have been filtered." % len(known_revisions))
 
     # load known revisions
     if(_revisions_arg):
