@@ -66,58 +66,65 @@ import re
 
 obscenelist =  [
         #('preg'               : points
-       (re.compile('^suck', re.I)               , -5),          # Usually bad words
-       (re.compile('honeysuckle', re.I)        , +5),
-       (re.compile('stupid', re.I)             , -3),
-       (re.compile('^haha', re.I)               , -5),
-       (re.compile('hahaha', re.I)               , -5),
-       (re.compile('^hehe', re.I)               , -5),
-       (re.compile('hehehe', re.I)               , -5),
-       (re.compile('^omg', re.I)              , -3),
-       (re.compile('^pimp$', re.I)           , -7),
-       (re.compile('^1337$', re.I)               , -5),
-       (re.compile('^leet$', re.I)               , -5),
-       (re.compile('^dumb$', re.I)               , -5),
-       (re.compile('^puta$', re.I)           , -7),
-       (re.compile('^homo$', re.I)           , -7),
-       (re.compile('^GAY$')                 , -10),
-       (re.compile('^slut', re.I)             , -5),
-       (re.compile('^damn', re.I)               , -5),
-       (re.compile('^ass$', re.I)                , -10),
-       (re.compile('^RAPE$')               , -7),
-       (re.compile('^poop$', re.I)               , -10),
-       (re.compile('^cock$', re.I)               , -10),
-       (re.compile('^lol$', re.I)                , -7),
-       (re.compile('^crap$', re.I)               , -5),
-       (re.compile('^SEX$')                , -5),
-       (re.compile('^noob', re.I)               , -5),
-       (re.compile('^nazi$', re.I)               , -3),
-       (re.compile('^neo-nazi$', re.I)           , +3),          # False-positive
-       (re.compile('^fuck', re.I)               , -20),             # Stronger bad words
-       (re.compile('\[\[Fucked\ Up\]\]', re.I)          , +20),     # This one is a false positive
-       (re.compile('^bitch', re.I)              , -20),
-       (re.compile('^pussy$', re.I)              , -20),
-       (re.compile('penis', re.I)              , -20),
-       (re.compile('Penisula', re.I)                , +20),         # False Positive
-       (re.compile('vagina', re.I)             , -20),
-       (re.compile('whore', re.I)              , -15),
-       (re.compile('^shit$', re.I)               , -20),
-       (re.compile('nigger', re.I)             , -20),
-       (re.compile('^nigga$', re.I)              , -20),
-       (re.compile('cocksucker', re.I)             , -20),
-       (re.compile('assrape', re.I)                , -15),
-       (re.compile('motherfucker', re.I)           , -20),
-       (re.compile('wanker', re.I)             , -20),
-       (re.compile('^cunt$', re.I)               , -20),
-       (re.compile('faggot', re.I)             , -20),
-       (re.compile('^fags', re.I)               , -20),
-       (re.compile('asshole', re.I)                , -15),
-       (re.compile('fuck ((yo)?u|h(er|im)|them|it)', re.I) , -100),        # This looks like a personal attack
-       (re.compile('((yo)?u|s?he|we|they|it) sucks?', re.I)    , -100),    # This looks like a personal attack
-       (re.compile('666+$', re.I)             , -50),                      # Though this has uses, it is commonly used by vandals
-       
-       #(re.compile('(.{1,4})\1{20}')          , -10),        # Ugg .. the same letter(s) several times in a row. */
-       #(re.compile('[A-Z][^a-z]{20,}')        , -10),        # All capitals? Looks like vandal activity */
+       (re.compile(r'^suck', re.I)               , -5),          # Usually bad words
+       (re.compile(r'honeysuckle', re.I)        , +5),
+       (re.compile(r'stupid', re.I)             , -3),
+       (re.compile(r'^haha', re.I)               , -5),
+       (re.compile(r'hahaha', re.I)               , -5),
+       (re.compile(r'^hehe', re.I)               , -5),
+       (re.compile(r'hehehe', re.I)               , -5),
+       (re.compile(r'^omg', re.I)              , -3),
+       (re.compile(r'^pimp$', re.I)           , -7),
+       (re.compile(r'^1337$', re.I)               , -5),
+       (re.compile(r'^leet$', re.I)               , -5),
+       (re.compile(r'^dumb$', re.I)               , -5),
+       (re.compile(r'^puta$', re.I)           , -7),
+       (re.compile(r'^homo$', re.I)           , -7),
+       (re.compile(r'^homos$', re.I)           , -7),
+       (re.compile(r'^GAY$')                 , -10),
+       (re.compile(r'^slut', re.I)             , -5),
+       (re.compile(r'^damn', re.I)               , -5),
+       (re.compile(r'^ass$', re.I)                , -10),
+       (re.compile(r'^RAPE$')               , -7),
+       (re.compile(r'^poop$', re.I)               , -10),
+       (re.compile(r'^cock$', re.I)               , -10),
+       (re.compile(r'^lol$', re.I)                , -7),
+       (re.compile(r'^crap$', re.I)               , -5),
+       (re.compile(r'^SEX$')                , -5),
+       (re.compile(r'^noob', re.I)               , -5),
+       (re.compile(r'^nazi$', re.I)               , -3),
+       (re.compile(r'^neo-nazi$', re.I)           , +3),          # False-positive
+       (re.compile(r'^fuck', re.I)               , -20),             # Stronger bad words
+       (re.compile(r'\[\[Fucked\ Up\]\]', re.I)          , +20),     # This one is a false positive
+       (re.compile(r'^bitch', re.I)              , -20),
+       (re.compile(r'^pussy$', re.I)              , -20),
+       (re.compile(r'penis', re.I)              , -20),
+       (re.compile(r'Penisula', re.I)                , +20),         # False Positive
+       (re.compile(r'vagina', re.I)             , -20),
+       (re.compile(r'whore', re.I)              , -15),
+       (re.compile(r'^shit$', re.I)               , -20),
+       (re.compile(r'nigger', re.I)             , -20),
+       (re.compile(r'^nigga$', re.I)              , -20),
+       (re.compile(r'cocksucker', re.I)             , -20),
+       (re.compile(r'assrape', re.I)                , -15),
+       (re.compile(r'motherfucker', re.I)           , -20),
+       (re.compile(r'wanker', re.I)             , -20),
+       (re.compile(r'^cunt$', re.I)               , -20),
+       (re.compile(r'faggot', re.I)             , -20),
+       (re.compile(r'^fags', re.I)               , -20),
+       (re.compile(r'asshole', re.I)                , -15),
+       (re.compile(r'fuck ((yo)?u|h(er|im)|them|it)', re.I) , -100),        # This looks like a personal attack
+       (re.compile(r'((yo)?u|s?he|we|they|it) sucks?', re.I)    , -100),    # This looks like a personal attack
+       (re.compile(r'666+$', re.I)             , -50),                      # Though this has uses, it is commonly used by vandals
+ 
+       (re.compile(r'^hi$', re.I)              , -1),
+       (re.compile(r'^i$', re.I)              , -1),
+       (re.compile(r'^yo$', re.I)              , -3),
+       #(re.compile(r'^my$', re.I)              , -3),
+       #(re.compile(r'^you$', re.I)              , -3),
+
+       (re.compile(r'(.{1,4})\1{10}')          , -6),        # Ugg .. the same letter(s) several times in a row. */
+       #(re.compile(r'[A-Z][^a-z]{20,}')        , -10),        # All capitals? Looks like vandal activity */
 
     ]
     

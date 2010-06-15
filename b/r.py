@@ -859,7 +859,7 @@ def compute_revisions_trainset(revisions, user_counters):
     train = []
 
     for e in revisions:
-        #if not analyse_revision_decisiontree(e, user_reputations) != 'unknown': 
+        #if not analyse_revision_decisiontree(e, user_reputations)[0] != 'unknown': 
         #   train.append(None); 
         #else:
         
@@ -998,30 +998,44 @@ def analyse_diff_decisiontree(e):
 def analyse_decisiontree(revisions, user_counters):
     total_time = total_size = 0
     for e in revisions:
-        score = analyse_revision_decisiontree(e, user_counters)
+        (score, explanation) = analyse_revision_decisiontree(e, user_counters)
         if(score == 'unknown'): continue
         #uncertain = (user_counters[e.username] > 0 and score == 'bad') or (user_counters[e.username] < 0 and score == 'good')
-        (verified, known, score) = collect_stats(stats, user_counters, e, score, False, None)
+        extra = lambda:wikipedia.output("Explanation: %s" % explanation)
+        (verified, known, score) = collect_stats(stats, user_counters, e, score, False, extra)
 
 def analyse_revision_decisiontree(e, user_counters):
     known = k.is_known(e.revid)                 # previous score (some human verified)
     comment = analyse_comment(e.comment)    
     counter = user_counters[e.username]
     diff = analyse_diff_decisiontree(e)
-    score = 0 
+    #return ('unknown', unknown)
+    
+    if counter[0] > 500 and not counter[-2] * 5 > counter[0]: return ('good'             ,'user did > 500 edits, not so many reverted')
+    if comment in ['replaced', 'blanked']: return ('bad'                                 ,'AES:replaced/blanked')
+    if diff != 'unknown': return (diff                                                   ,'diff/text brief analysis')
+    if counter[0] > 25 and (counter[-1] + counter[2]) < counter[-2]: return ('bad'       ,'user is reverted too often')
+    if counter[0] > 25 and (counter[-1] + counter[2]) * 3 < counter[0]: return ('bad'    ,'user rate of regular edits it too low')
+    if counter[0] > 25 and counter[-1]  * 2 > counter[0]: return ('good'                 ,'user rate of regular edits is good')
+    if counter[0] > 5 and counter[-1] * 3 > counter[0] * 2: return ('good'               ,'> 5 edits, > 2/3 regular edits')
+    if counter[0] > 1 and not (counter[-1] + counter[2]): return ('bad'                  ,'> 1 edits, no regular edits')
+    if counter[0] > 1 and (counter[-1] + counter[2]) == counter[0]: return ('good'       ,'> 1 edit, only regular edits')
+    
+    if e.c[0] < 7: return ('good'                                                        ,'page has less than 7 revisions')
+    if e.c[0] == e.c[-1]: return ('good'                                                 ,'page has never been vandalised')
+    
+    if comment in ['undid', 'redirected', 'reverted', 'rvv', 'rv', 'rev',
+                   'awb', 'aes', 'wp', 'revert']:    return ('good'                      ,'comment indicates this is a revert')         
+    if comment == 'bot':                            return ('good'                      ,'comment indicates this is a bot')        
+    if comment in ['cat', 'plus', 'spam', 'ref']:   return ('good'                      ,'comment have been recognised')
 
+        
+        
+        
+    #if e.c[-2]*33 < e.c[-1] : return 'good'                                             # page has rarely been reverted  + 20 gob    
+    #if not e.ipedit and comment == 'good': return 'good'                                # not ip and comment is looking good 
     
-    if counter[0] > 500 and not counter[-2] * 5 > counter[0]: return 'good'         # user did > 500 edits, not so many reverted
-    if diff != 'unknown': return diff                                               # diff/text brief analysis
-    if counter[0] > 25 and counter[-1] < counter[-2]: return 'bad'                  # user is reverted too often
-    if counter[0] > 25 and counter[-1] * 3 < counter[0]: return 'bad'               # rate of regular edits it too low
-    if counter[0] > 25 and counter[-1] * 2 > counter[0]: return 'good'
-    if counter[0] > 5 and counter[-1] * 3 > counter[0] * 2: return 'good'           # > 5 edits, > 2/3 regular edits
-    if counter[0] > 1 and not counter[-1]: return 'bad'                             # > 1 edits, no regular edits
-    if counter[0] > 1 and counter[-1] == counter[0]: return 'good'                  # > 1 edit, only regular edits
-    if e.i < 7: return 'good'                                                      # page has less than 7 revisions    (< 50 revisions (*))    
-    #if counter[1] > 10: return 'good'                                              # user left > 10 valid comments 
-    
+    return ('unknown', 'unknown')
     
     #if comment in ['no', 'section']: pass
     #elif comment == 'good': pass
@@ -1036,7 +1050,8 @@ def analyse_revision_decisiontree(e, user_counters):
     # if(e.ipedit and no_comment): score -= 1
     # if(e.ipedit and no_comment_section): score -= 1
     # if(e.utc - prev.utc * i > total_time):              # prev edition has managed longer than usual
-    
+
+    score = 0 
     if score > 0: score = 'good'
     elif score < 0: score = 'bad'
     else: score = 'unknown'
@@ -1049,16 +1064,17 @@ def analyse_plot(revisions, user_counters):
     import matplotlib.pyplot as plt
     from random import random
     if True:
-        y = defaultdict(lambda:[[] for i in xrange(len(counters_dict()[0]))] )
-        yei = defaultdict(lambda:[])
+        #x = defaultdict(lambda:[[] for i in xrange(len(counters_dict()[0]))] )
+        #for i, c in enumerate(counter): x[score + ' on ' + known][i].append(c + random() - 0.5)
+        x = defaultdict(lambda:[])
+        y = defaultdict(lambda:[])
         l = defaultdict(int)     
         for e in revisions:
             known = k.is_known(e.revid)  # previous score (some human verified)
             counter = user_counters[e.username]
-            score = analyse_revision_decisiontree(e, user_counters)
-            for i, c in enumerate(counter): y[score + ' on ' + known][i].append(c + random() - 0.5)
-            yei[score + ' on ' + known].append(e.i  + random() - 0.5)            
-            l[known] += 1
+            (score, explanation) = analyse_revision_decisiontree(e, user_counters)
+            x[score + ' on ' + known].append(random() - 0.5 + e.c[-1])
+            y[score + ' on ' + known].append(random() - 0.5 + e.c[-2])
     
         graphs = {
          'good on good': '#F8F8F8',
@@ -1069,16 +1085,9 @@ def analyse_plot(revisions, user_counters):
          'unknown on bad' : 'red',          
          }
     
-        #plt.plot(y['good'][0], [1] * l['good'], 'g|')
-        #plt.plot(y['bad'][0], [2] * l['bad'], 'r|')
-        
-
-        #for label, color in graphs.iteritems(): 
-        #    plt.plot(y[label][0], y[label][-1], color=color, linestyle='', marker='.')#, alpha = '0.5')
-
-            
+                    
         for label, color in graphs.iteritems(): 
-            plt.plot(y[label][0], yei[label], color=color, linestyle='', marker='.', alpha = '0.5')
+            plt.plot(x[label], y[label], color=color, linestyle='', marker='.', alpha = '0.5')
             
         plt.axis([0, 500, 0, 1000])
         plt.xlabel('User edits counter')
@@ -1266,15 +1275,15 @@ def analyse_comment(comment):
         elif(comment[-2:] == '*/'): return 'section'
         else:
             if comment.startswith('Revert'): return 'revert'
-            #elif e.comment.startswith('Undid'): return 'undid'
-            #elif e.comment.startswith('rvv'): return 'rvv'
-            #elif e.comment.startswith('rev'): return 'rev'
-            #elif e.comment.startswith('rv'): return 'rv' 
-            #elif e.comment[:4] in ('BOT ', 'bot ', 'robo', 'Robo'): return 'bot'
-            #elif e.comment.startswith('cat'): return 'cat'
-            #elif e.comment.startswith('+'): return 'plus'
-            #elif e.comment.find('spam') > -1: return 'spam'; 
-            #elif e.comment.find('ref') > -1: return 'ref'            
+            elif comment.startswith('Undid'): return 'undid'
+            elif comment.startswith('rvv'): return 'rvv'
+            elif comment.startswith('rev'): return 'rev'
+            elif comment.startswith('rv'): return 'rv' 
+            elif comment[:4] in ('BOT ', 'bot ', 'robo', 'Robo'): return 'bot'
+            elif comment.startswith('cat'): return 'cat'
+            elif comment.startswith('+'): return 'plus'
+            elif comment.find('spam') > -1: return 'spam'; 
+            elif comment.find('ref') > -1: return 'ref'            
             
             uN = len(reU.findall(comment))
             lN = len(reL.findall(comment))
