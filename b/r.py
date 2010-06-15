@@ -356,9 +356,21 @@ def compute_pyc(xmlFilenames):
 
 
 def dump_cstats(stats):
-    if(_verbose_arg): ids.dump() 
+    def key(v):
+        if v[0].startswith('Revision analysis score'): return -1
+        if len(v[1]) < 2: return 0
+        return min(v[1].values())
+
+    if(_verbose_arg): ids.dump()
+
+    sstats = OrderedDict(sorted(stats.items(), key = key, reverse=True))
+    for s, v in sstats.iteritems():
+        total = sum(v.values());
+        for k, i in v.iteritems(): v[k] = "%d (%d%%)" % (i, i*100/total)
+ 
+
     wikipedia.output("===================================================================================")
-    wikipedia.output("stats = \\\n%s" % pprint.PrettyPrinter(width=140).pformat(stats))
+    for k, v in sstats.iteritems(): wikipedia.output("%-60s:%s" % (k, pprint.PrettyPrinter(width=140).pformat(v)))
     wikipedia.output("===================================================================================")
 
 
@@ -998,14 +1010,15 @@ def analyse_diff_decisiontree(e):
 def analyse_decisiontree(revisions, user_counters):
     total_time = total_size = 0
     for e in revisions:
+        known = k.is_known(e.revid)                 # previous score (some human verified)
         (score, explanation) = analyse_revision_decisiontree(e, user_counters)
+        stats[explanation + ' (' + score + ') ' + 'on known'][known] += 1
         if(score == 'unknown'): continue
         #uncertain = (user_counters[e.username] > 0 and score == 'bad') or (user_counters[e.username] < 0 and score == 'good')
         extra = lambda:wikipedia.output("Explanation: %s" % explanation)
         (verified, known, score) = collect_stats(stats, user_counters, e, score, False, extra)
 
 def analyse_revision_decisiontree(e, user_counters):
-    known = k.is_known(e.revid)                 # previous score (some human verified)
     comment = analyse_comment(e.comment)    
     counter = user_counters[e.username]
     diff = analyse_diff_decisiontree(e)
