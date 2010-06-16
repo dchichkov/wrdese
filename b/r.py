@@ -139,7 +139,7 @@ and the bot will only work on that single page.
 
 __version__='$Id: r.py 7909 2010-02-05 06:42:52Z Dc987 $'
 
-import re, sys, time, calendar, difflib, string, math, hashlib, os, fnmatch, marshal, cPickle
+import re, sys, time, calendar, difflib, string, math, hashlib, os, fnmatch, marshal, cPickle, copy
 import pprint, ddiff
 from collections import defaultdict, namedtuple
 from ordereddict import OrderedDict
@@ -199,7 +199,6 @@ msg = {
 
 # Command line arguments
 _retrain_arg = None
-_train_arg = None
 _verbose_arg = None
 
 # Human iteractions
@@ -364,7 +363,7 @@ def dump_cstats(stats):
 
     if(_verbose_arg): ids.dump()
 
-    sstats = OrderedDict(sorted(stats.items(), key = key, reverse=True))
+    sstats = OrderedDict(sorted(copy.deepcopy(stats).items(), key = key, reverse=True))
     for s, v in sstats.iteritems():
         total = sum(v.values());
         for k, i in v.iteritems(): v[k] = "%d (%d%%)" % (i, i*100/total)
@@ -466,12 +465,12 @@ def read_pyc():
         revisions = [];
         try:
             info = FullInfo(marshal.load(FILE))     # load first in order to  
-            # if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
+            if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
             id = info.id;                           # initialize id from info.id
             revisions.append(info)
             while True:
                 info = FullInfo(marshal.load(FILE))
-                # if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
+                if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
                 if(id != info.id):
                     yield revisions
                     revisions = []
@@ -787,7 +786,7 @@ def show_edit(e, prefix):
      (prefix, e.i, mark(e.reverts_info, lambda x:x!=-2), e.username, e.comment, e.revid))
 
 def collect_stats(stats, user_counters, e, score, uncertain, extra):
-    global _retrain_arg, _train_arg, _human_responses
+    global _retrain_arg, _human_responses
     score_numeric = e.rev_score_info                   
     revid = e.revid
     known = k.is_known(revid)                       # previous score (some human verified)
@@ -867,6 +866,28 @@ def check_karma(revisions, user_karma):
     return user_karma
 
 
+# From: 
+# M. Potthast, B. Stein, and R. Gerling
+# Automatic Vandalism Detection inWikipedia
+# Martin Potthast, Benno Stein, and Robert Gerling
+def possible_features():
+    'char distribution' "deviation of the edit's character distribution from the expectation"
+    'char sequence', "longest consecutive sequence of the same character in an edit"
+    'compressibility', "compression rate of an edit's text"
+    'upper case ratio', "ratio of upper case letters to all letters of an edit's text"
+    'term frequency', "average relative frequency of an edit's words in the new revision"
+    'longest word', "length of the longest word"
+    'pronoun frequency', "number of pronouns relative to the number of an edit's words (only first-person and second-person pronouns are considered)"
+    'pronoun impact', "percentage by which an edit's pronouns increase the number of pronouns in the new revision"
+    'vulgarism frequency', "number of vulgar words relative to the number of an edit's words"
+    'vulgarism impact', "percentage by which an edit's vulgar words increase the number of vulgar words in the new revision"
+    'size ratio', "the size of the new version compared to the size of the old one"
+    # 'replacement similarity', "similarity of deleted text to the text inserted in exchange"
+    # 'context relation', "similarity of the new version to Wikipedia articles found for keywords extracted from the inserted text"
+    # 'anonymity', "whether an edit was submitted anonymously, or not"
+    # 'comment length', "the character length of the comment supplied with an edit"
+    'edits per user', "number of previously submitted edits from the same editor or IP"
+
 
 def compute_revisions_trainset(revisions, user_counters):
     train = []
@@ -899,6 +920,9 @@ def buckets(i):
     return math.trunc(math.log1p(i * 2 * math.pi))
     
 
+
+
+
 def compute_karma_trainset(revisions, user_counters):
     train = []
 
@@ -907,46 +931,32 @@ def compute_karma_trainset(revisions, user_counters):
         known = k.is_known(e.revid)                             # previous score (some human verified)
         comment = analyse_comment(e.comment)
 
-        if e.username in user_counters:
-            counter = user_counters[e.username]
+        #if e.username in user_counters:
+        #    counter = user_counters[e.username]
 
-            features = {'edits' : buckets(counter[0]),
-                        'comments' : buckets(counter[1]),
-                        'reverts'  : buckets(counter[2]),
-                        'regular' : buckets(counter[-1]),
-                        'reverted' : buckets(counter[-2]),
-                        'questionable' : buckets(counter[-3]),
-                        'revert war' : buckets(counter[-4]),
-                        'self revert' : buckets(counter[-5]),
+        features = {#'edits' : buckets(counter[0]),
+                    #'comments' : buckets(counter[1]),
+                    #'reverts'  : buckets(counter[2]),
+                    #'regular' : buckets(counter[-1]),
+                    #'reverted' : buckets(counter[-2]),
+                    #'questionable' : buckets(counter[-3]),
+                    #'revert war' : buckets(counter[-4]),
+                    #'self revert' : buckets(counter[-5]),
 
-                        'page edits' : buckets(e.c[0]),
-                        'page reverts'  : buckets(e.c[1]),
-                        'page regular' : buckets(e.c[-1]),
-                        'page reverted' : buckets(e.c[-2]),
-                        'page questionable' : buckets(e.c[-3]),
-                        'page revert war' : buckets(e.c[-4]),
-                        'page self revert' : buckets(e.c[-5]),
+                  #  'page edits' : buckets(e.c[0]),
+                  #  'page reverts'  : buckets(e.c[1]),
+                  #  'page regular' : buckets(e.c[-1]),
+                  #  'page reverted' : buckets(e.c[-2]),
+                  #  'page questionable' : buckets(e.c[-3]),
+                  #  'page revert war' : buckets(e.c[-4]),
+                  #  'page self revert' : buckets(e.c[-5]),
 
-                        'known user' : 'True',
-                        'comment' : comment,
-                        'ip' : e.ipedit,
-                        }
-        else: 
-            features = {
-                    'known user' : 'False',
+                    'page smaller' : (e.ilR > e.ilA and e.iwR > 1),
+                  #  'page large scaleremoval' : (e.iwR == 50),
 
-                    'page edits' : buckets(e.c[0]),
-                    'page reverts'  : buckets(e.c[1]),
-                    'page regular' : buckets(e.c[-1]),
-                    'page reverted' : buckets(e.c[-2]),
-                    'page questionable' : buckets(e.c[-3]),
-                    'page revert war' : buckets(e.c[-4]),
-                    'page self revert' : buckets(e.c[-5]),
-
-                    'comment' : comment,
-                    'ip' : e.ipedit,
-                   }
-
+                  #  'comment' : comment,
+                  #  'ip' : e.ipedit,
+                    }
         train.append( (features, known) )
 
     return train
@@ -1010,16 +1020,17 @@ def analyse_maxent(revisions, user_counters):
 
 
 def analyse_diff_decisiontree(e):    
-    score = 0
+    score = 0; explanation = 'diff/text brief analysis:'
     # chack obscenelist
     for (t, v) in e.diff:
         if v:
             for r, rscore in obscenelist:
                 if r.search(t) != None: 
                     score += rscore * v 
-    if score < -2: return 'bad';        
-    if score > 5: return 'good'    
-    return 'unknown'
+                    #explanation += " " + t
+    if score < -2: return ('bad', explanation);        
+    if score > 5: return ('good', explanation);
+    return ('unknown', 'unknown')
 
 
 
@@ -1028,9 +1039,11 @@ def analyse_decisiontree(revisions, user_counters):
     for e in revisions:
         known = k.is_known(e.revid)                 # previous score (some human verified)
         (score, explanation) = analyse_revision_decisiontree(e, user_counters)
+        #if not explanation.startswith('diff/text brief analysis') or score == known: continue        
+
         stats[explanation + ' (' + score + ') ' + 'on known'][known] += 1
-        if(score == 'unknown'): continue
         uncertain = score != known
+        #if score != 'unknown' or not e.reverted: continue
         extra = lambda:wikipedia.output("Explanation: %s" % explanation)
         (verified, known, score) = collect_stats(stats, user_counters, e, score, uncertain, extra)
 
@@ -1039,13 +1052,9 @@ def analyse_revision_decisiontree(e, user_counters):
     counter = user_counters[e.username]
     diff = analyse_diff_decisiontree(e)
 
-    #if diff != 'unknown': return (diff                                                   ,'diff/text brief analysis')
-    #return ('unknown', 'unknown')
-    
-
     if counter[0] > 500 and not counter[-2] * 5 > counter[0]: return ('good'             ,'user did > 500 edits, not so many reverted')
     if comment in ['replaced', 'blanked']: return ('bad'                                 ,'AES:replaced/blanked')
-    if diff != 'unknown': return (diff                                                   ,'diff/text brief analysis')
+    if diff != ('unknown', 'unknown'): return diff                                       # diff/text brief analysis
     if counter[0] > 25 and (counter[-1] + counter[2]) < counter[-2]: return ('bad'       ,'user is reverted too often')
     if counter[0] > 25 and (counter[-1] + counter[2]) * 3 < counter[0]: return ('bad'    ,'user rate of regular edits it too low')
     if counter[0] > 25 and counter[-1]  * 2 > counter[0] and not counter[-2]: return ('good'    ,'user rate of regular edits is good')
@@ -1061,33 +1070,14 @@ def analyse_revision_decisiontree(e, user_counters):
     if comment == 'bot':                            return ('good'                      ,'comment indicates this is a bot')        
     if comment in ['cat', 'plus', 'spam', 'ref']:   return ('good'                      ,'comment have been recognised')
 
+    if not e.ipedit and comment == 'undo': return ('good'                               ,'comment indicates this not an ip user doing undo')
         
         
-        
-    #if e.c[-2]*33 < e.c[-1] : return 'good'                                             # page has rarely been reverted  + 20 gob    
-    #if not e.ipedit and comment == 'good': return 'good'                                # not ip and comment is looking good 
-    
+    if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
+    if comment == 'good': return ('good'                                                ,'comment is looking good')
+
     return ('unknown', 'unknown')
     
-    #if comment in ['no', 'section']: pass
-    #elif comment == 'good': pass
-    #elif comment in ['replaced', 'blanked']: score -= 100
-    #elif comment in ['undid', 'redirected', 'reverted', 'awb', 'aes', 'wp', 'revert']: score += 100
-    #elif comment in ['hi', 'i', 'stats']: pass
-
-    #removal = e.ilR > e.ilA and e.iwR > 1                # and new page is smaller than the previous
-    #blanking = e.iwR == 50 and e.iwA < 2                 # large scale removal
-
-    # if not e.ipedit and comment: score += 10
-    # if(e.ipedit and no_comment): score -= 1
-    # if(e.ipedit and no_comment_section): score -= 1
-    # if(e.utc - prev.utc * i > total_time):              # prev edition has managed longer than usual
-
-    score = 0 
-    if score > 0: score = 'good'
-    elif score < 0: score = 'bad'
-    else: score = 'unknown'
-    return score
 
 
 
@@ -1176,87 +1166,69 @@ def evaluate_gold(revisions, user_counters):
         uncertain = known != score
         (verified, known, score) = collect_stats(stats, user_counters, e, score, uncertain, None)
 
+def features_crm114(e):
+    edit = []
+    edit.append('ELFusername:' + e.username)
+    if(e.ipedit): edit.append("ELFipedit")
+ 
+    if(e.comment):
+        edit.append('ELFcomment')
+        edit.append(e.comment)
+    else: edit.append('ELFnoComment')
+
+    for (t, v) in e.diff:
+       if(v > 0): edit.append('+' + t)
+       elif(v < 0): edit.append('-' + t)
+       else: edit.append('+-+-+-+-+-')
+
+    return edit
+
+
+
+def train_crm114_decisiontree(revisions, user_counters):
+    # CRM114
+    id = str(revisions[0].id)
+    c = crm114.Classifier( "data", [ id + 'good', id + 'bad' ] ) 
+    for i, e in enumerate(revisions):
+        known = k.is_known(e.revid)                               # previous score (some human verified)
+        (score, explanation) = analyse_revision_decisiontree(e, user_counters)
+        if score == 'unknown' and e.reverts_info > -2: score = 'good';  explanation = 'unknown and not reverted'
+        elif score == 'unknown' and e.reverts_info < -1: score = 'bad'; explanation = 'unknown and reverted'
+        elif score == 'good' and e.reverts_info < -1:  score = 'unknown';
+        elif score == 'bad' and e.reverts_info > -2: score = 'unknown'
+        stats['Decision tree score ' + score + ' on known'][known] += 1
+        if score == 'unknown': continue
+        known = score
+     
+        edit = features_crm114(e)
+        edit_text = ' '.join(edit).encode('utf-8')
+        
+        #show_edit(e, "\n\n\n>>> %s <<<" % mark(known))
+        #wikipedia.output(edit_text);
+
+        # Run CRM114
+        (crm114_answer, probability) = c.classify(edit_text)
+
+        # training CRM114
+        if(probability < 0.75 or not crm114_answer.endswith(known)):
+            c.learn(id + known, edit_text)
+            stats['CRM114 trained'][known] += 1
+        elif(i > 1000):
+            stats['CRM114 correct'][known] += 1
+
+
 
 
 def analyse_crm114(revisions, user_counters):
-    # stats
-    p = re.compile(r'\W+')
-    # p = re.compile(r'\s+')
-
-    # CRM114
-    c = crm114.Classifier( "data", [ "good", "bad" ] ) 
-    i = 0
-    prev = None
+    id = str(revisions[0].id)
+    c = crm114.Classifier( "data", [ id + 'good', id + 'bad' ] )
     for i, e in enumerate(revisions):
-        score_numeric = e.rev_score_info                   
-        score = ('good', 'bad')[score_numeric < 0]              # current analyse_reverts score
-        revid = e.revid
-        known = k.is_known(revid)                               # previous score (some human verified)
-        verified = k.is_verified(revid)                         # if not Empty: human verified
-
-        #wikipedia.output("Revision %d (%d): %s by %s Comment: %s" % (i, score, e.timestamp, e.username, e.comment))
-        if prev:
-            diff_time = e.utc - prev.utc
-            edit = []
-            if(diff_time < 60): edit.append('ELFsuperfast')
-            elif(diff_time < 3600): edit.append('ELFfast')
-            elif(diff_time < 3600*24): edit.append('ELFregular')
-            else: edit.append('ELFstable')
-            # edit.append('ELFtitle')       
-            # edit.append(e.title)
-            # edit.append('ELFusername')       
-            # edit.append(e.username)
-            edit.append('ELFusername:' + e.username)
-            if(e.ipedit): edit.append("ELFipedit")
-            #if(e.editRestriction): edit.append("ELFeditRest")
-            #if(e.moveRestriction): edit.append("ELFmoveRest")
-            #edit.append(e.redirect)
-            if(e.comment):
-                edit.append('ELFcomment')
-                edit.append(e.comment)
-            else: edit.append('ELFnoComment')
-
-            for (t, v) in e.diff:
-                if(v > 0): edit.append('+' + t)
-                elif(v < 0): edit.append('-' + t)
-
-            if(e.md5 and prev.md5): edit.append('ELFnotblank')
-            elif(e.md5 and not prev.md5): edit.append('ELFrevblank')
-            elif(prev.md5 and not e.md5): edit.append('ELFblanking')
-            else: edit.append('ELFblank')
-            
-            edit_text = ' '.join(edit)
-            #wikipedia.output(edit_text);
-            
-            # Run CRM114
-            (crm114_answer, probability) = c.classify(edit_text.encode('utf-8'))
-
-            # CRM114 different or uncertain
-            if(crm114_answer == 'bad' and score == 'good'): 
-                falseString = " >>> \03{lightpurple}FALSE POSITIVE\03{default} <<<"
-                uncertain = "CRM114 thinks it is: %s, prob was:%f %s" % (mark(crm114_answer), probability, falseString)
-            elif(crm114_answer == 'good' and score == 'bad'): 
-                falseString = "  >>> \03{lightpurple}False Negative\03{default} <<<"
-                uncertain = "CRM114 thinks it is: %s, prob was:%f %s" % (mark(crm114_answer), probability, falseString)
-            else: uncertain = ""
-            
-            # Collecting stats and Human verification
-            extra = lambda:wikipedia.output(" \03{lightblue}%s\03{default}" % edit_text)
-            (verified, known, score) = collect_stats(stats, user_counters, e, score, uncertain, extra)
-
-            if(i > 500):
-                stats['CRM114 answered ' + crm114_answer + ' on known'][known] += 1
-                stats['CRM114 answered ' + crm114_answer + ' on score'][score] += 1
-
-            # training CRM114
-            if(probability < 0.75 or crm114_answer != known):
-                c.learn(known, edit_text.encode('utf-8'))
-                stats['CRM114 trained'][known] += 1
-                # wikipedia.output("\03{lightpurple}Training %s\03{default}", known)
-            if(i % 100 == 0): wikipedia.output("Processed %d revisions" % i)
-
-        prev = e
-
+        edit = features_crm114(e)
+        edit_text = ' '.join(edit).encode('utf-8')
+        # Run CRM114
+        (crm114_answer, probability) = c.classify(edit_text)
+        stats['CRM114 answered ' + crm114_answer + ' on known'][known] += 1
+        
 
 # some low hanging text statistics
 reU = re.compile("[A-Z]")
@@ -1402,7 +1374,7 @@ def compute_counters_dictionary():
 def main():
     global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _counters_arg, _classifier_arg, stats; 
     _xml_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None; 
-    _display_pyc_arg = None; _compute_counters_arg = None;_output_arg = None; _analyze_arg = None
+    _display_pyc_arg = None; _compute_counters_arg = None;_output_arg = None; _analyze_arg = None; _train_arg = None
     _counters_arg = None; _username_arg = None; _filter_pyc_arg = None; _count_empty_arg = None
     _revisions_arg = None; _filter_known_revisions_arg = None; _classifier_arg = None; _evaluate_arg = None
     stats = defaultdict(lambda:defaultdict(int)); revisions = [];
@@ -1483,15 +1455,21 @@ def main():
     if(_evaluate_arg):
         evaluate_gold(revisions, defaultdict(int))        
 
+    if(_train_arg):
+        for revisions in read_pyc():
+            analyse_reverts(revisions)
+            train_crm114_decisiontree(revisions, user_counters)
+
     if(_analyze_arg):        
         if _analyze_arg.find('counters') > -1: user_counters = check_counters(revisions, user_counters)        
         if not user_counters: user_counters = counters_dict()
         if _analyze_arg.find('decisiontree') > -1: analyse_decisiontree(revisions, user_counters)
         if _analyze_arg.find('maxent') > -1: analyse_maxent(revisions, user_counters)
         if _analyze_arg.find('plot') > -1: analyse_plot(revisions, user_counters)
-        # user_reputations = analyse_reputations(revisions)
-        # analyse_crm114(revisions, user_counters)
+        if _analyze_arg.find('crm114') > -1: analyse_crm114(revisions, user_counters)
         wikipedia.output("Revisions %d. Analysis time: %f" % (len(revisions), time.time() - start))
+
+    if stats:
         dump_cstats(stats)
 
 
