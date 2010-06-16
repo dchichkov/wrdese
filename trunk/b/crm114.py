@@ -152,5 +152,5 @@ class Classifier:
         
 if __name__ == "__main__":
     # perform a simple test
-    c = Classifier( "test/data", [ "good", "bad" ] )
+    c = Classifier( "data", [ "good", "bad" ] )
     c.test()

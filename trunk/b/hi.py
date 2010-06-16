@@ -118,11 +118,14 @@ obscenelist =  [
        (re.compile(r'666+$', re.I)             , -50),                      # Though this has uses, it is commonly used by vandals
  
        (re.compile(r'^hi$', re.I)              , -3),
-       (re.compile(r'^i$', re.I)              , -3),
+       (re.compile(r'^i$')              , -3),
        (re.compile(r'^yo$', re.I)              , -3),
        (re.compile(r'^my$')              , -1),
        (re.compile(r'^you$')              , -1),
+       (re.compile(r'^I$')              , -1),
+       (re.compile(r'!!!+')              , -3),
 
+       (re.compile(r'([h-zH-Z]{1,4})\1{3}')    , -3),        # Ugg .. the same letter(s) several times in a row. */       
        (re.compile(r'(.{1,4})\1{10}')    , -6),        # Ugg .. the same letter(s) several times in a row. */
        (re.compile(r'^[A-Z]{5,}$')       , -1),        # All capitals? Looks like vandal activity */
     ]
