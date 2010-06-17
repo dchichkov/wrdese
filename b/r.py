@@ -1052,29 +1052,35 @@ def analyse_revision_decisiontree(e, user_counters):
     counter = user_counters[e.username]
     diff = analyse_diff_decisiontree(e)
 
-    if counter[0] > 500 and not counter[-2] * 5 > counter[0]: return ('good'             ,'user did > 500 edits, not so many reverted')
     if comment in ['replaced', 'blanked']: return ('bad'                                 ,'AES:replaced/blanked')
-    if diff != ('unknown', 'unknown'): return diff                                       # diff/text brief analysis
-    if counter[0] > 25 and (counter[-1] + counter[2]) < counter[-2]: return ('bad'       ,'user is reverted too often')
-    if counter[0] > 25 and (counter[-1] + counter[2]) * 3 < counter[0]: return ('bad'    ,'user rate of regular edits it too low')
-    if counter[0] > 25 and counter[-1]  * 2 > counter[0] and not counter[-2]: return ('good'    ,'user rate of regular edits is good')
-    if counter[0] > 5 and counter[-1] * 3 > counter[0] * 2  and not counter[-2]: return ('good' ,'> 5 edits, > 2/3 regular edits')
-    if counter[0] > 1 and not (counter[-1] + counter[2]): return ('bad'                  ,'> 1 edits, no regular edits')
-    if counter[0] > 1 and (counter[-1] + counter[2]) == counter[0]: return ('good'       ,'> 1 edit, only regular edits')
-    
-    if e.c[0] < 7: return ('good'                                                        ,'page has less than 7 revisions')
-    if e.c[0] == e.c[-1]: return ('good'                                                 ,'page has never been vandalised')
-
     if comment in ['undid', 'redirected', 'reverted', 'rvv', 'rv', 'rev',
                    'awb', 'aes', 'wp', 'revert']:    return ('good'                      ,'comment indicates this is a revert')         
     if comment == 'bot':                            return ('good'                      ,'comment indicates this is a bot')        
     if comment in ['cat', 'plus', 'spam', 'ref']:   return ('good'                      ,'comment have been recognised')
 
+    if counter[-1] > 150 and counter[-3] < 5: return ('good'             ,'user did > 150 regular edits, no revert conflicts')
+    if counter[0] > 500 and not counter[-2] * 5 > counter[0]: return ('good'             ,'user did > 500 edits, not so many reverted')
+    if diff != ('unknown', 'unknown'): return diff                                       # diff/text brief analysis
+    if counter[-2] > 10 and counter[-2] > counter[-1] * 2:  return ('bad'       ,'user is reverted too often')                      # CONFIRMED!
+    if counter[0] > 7 and (counter[-2] == counter[0]): return ('bad'                      ,'> 1 edit, all reverted')
+    if counter[0] > 25 and counter[-1]  * 2 > counter[0] and not counter[-2]: return ('good'    ,'user rate of regular edits is good')
+    if counter[0] > 5 and counter[-1] * 3 > counter[0] * 2  and not counter[-2]: return ('good' ,'> 5 edits, > 2/3 regular edits')
+    if counter[0] > 1 and (counter[-1] + counter[2]) == counter[0]: return ('good'       ,'> 1 edit, only regular edits')
+    if counter[-1] > 50 and counter[-3] < 1: return ('good'                              ,'user did > 50 regular edits, no revert conflicts')
+    
+    if e.c[0] < 7: return ('good'                                                        ,'page has less than 7 revisions')
+    if e.c[0] == e.c[-1]: return ('good'                                                 ,'page has never been vandalised')
+
     if not e.ipedit and comment == 'undo': return ('good'                               ,'comment indicates this not an ip user doing undo')
-        
-        
+              
+    if e.iwR < 48 and (e.iwA < 2 or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good') 
+    if e.iwR > 49 and (e.iwA > 1 and e.iwA < 25): return ('bad'                         ,'add/delete stats are looking bad') 
+    if e.iwM > 250: return ('good'                                                      ,'modify stats are looking good')
+    
     if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
     if comment == 'good': return ('good'                                                ,'comment is looking good')
+    
+
 
     return ('unknown', 'unknown')
     
@@ -1094,14 +1100,17 @@ def analyse_plot(revisions, user_counters):
         for e in revisions:
             known = k.is_known(e.revid)  # previous score (some human verified)
             counter = user_counters[e.username]
-            (score, explanation) = analyse_revision_decisiontree(e, user_counters)
-            x[score + ' on ' + known].append(random() - 0.5 + e.c[-1])
-            y[score + ' on ' + known].append(random() - 0.5 + e.c[-2])
+            (score, explanation) = ('unknown', 'unknown')
+            (score, explanation) =  analyse_revision_decisiontree(e, user_counters)
+            x[score + ' on ' + known].append(random() - 0.5 + counter[-1])  
+            y[score + ' on ' + known].append(random() - 0.5 + counter[-2])                    
+            
+            # 'al', 'bl', 'lo', 'ahi', 'bhi', 'ilA', 'ilR', 'iwA', 'iwR', 'ilM', 'iwM', 'diff'
     
         graphs = {
          'good on good': '#F8F8F8',
-         'good on bad' : 'cyan',
-         'bad on good' : 'magenta',
+         'good on bad' : 'magenta',
+         'bad on good' : 'cyan',
          'bad on bad'  : '#F8F8F8',
          'unknown on good' : 'green',
          'unknown on bad' : 'red',          
