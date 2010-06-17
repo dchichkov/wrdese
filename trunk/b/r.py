@@ -465,12 +465,12 @@ def read_pyc():
         revisions = [];
         try:
             info = FullInfo(marshal.load(FILE))     # load first in order to  
-            #if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
+            if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
             id = info.id;                           # initialize id from info.id
             revisions.append(info)
             while True:
                 info = FullInfo(marshal.load(FILE))
-                #if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
+                if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
                 if(id != info.id):
                     yield revisions
                     revisions = []
@@ -1042,7 +1042,7 @@ def analyse_decisiontree(revisions, user_counters):
         #if not explanation.startswith('diff/text brief analysis') or score == known: continue        
 
         stats[explanation + ' (' + score + ') ' + 'on known'][known] += 1
-        uncertain = score != known
+        uncertain = False #score != known
         if score == 'unknown': continue
         extra = lambda:wikipedia.output("Explanation: %s" % explanation)
         (verified, known, score) = collect_stats(stats, user_counters, e, score, uncertain, extra)
@@ -1051,6 +1051,10 @@ def analyse_revision_decisiontree(e, user_counters):
     comment = analyse_comment(e.comment)    
     counter = user_counters[e.username]
     diff = analyse_diff_decisiontree(e)
+
+    if comment == 'good': return ('good'                                                ,'comment is looking good')
+    return ('unknown', 'unknown')
+
 
     if comment in ['replaced', 'blanked']: return ('bad'                                 ,'AES:replaced/blanked')
     if comment in ['undid', 'redirected', 'reverted', 'rvv', 'rv', 'rev',
@@ -1072,16 +1076,14 @@ def analyse_revision_decisiontree(e, user_counters):
     if e.c[0] == e.c[-1]: return ('good'                                                 ,'page has never been vandalised')
 
     if not e.ipedit and comment == 'undo': return ('good'                               ,'comment indicates this not an ip user doing undo')
-              
+    if comment == 'good': return ('good'                                                ,'comment is looking good')
+    if e.iwM > 250: return ('good'                                                      ,'modify stats are looking good')
+
+    #if e.iwR < 48 and ((e.iwA < 2 and e.iwR > 0) or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good')       
     if e.iwR < 48 and (e.iwA < 2 or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good') 
     if e.iwR > 49 and (e.iwA > 1 and e.iwA < 25): return ('bad'                         ,'add/delete stats are looking bad') 
-    if e.iwM > 250: return ('good'                                                      ,'modify stats are looking good')
     
     if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
-    if comment == 'good': return ('good'                                                ,'comment is looking good')
-    
-
-
     return ('unknown', 'unknown')
     
 
@@ -1198,7 +1200,7 @@ def train_crm114_decisiontree(revisions, user_counters):
     # CRM114
     id = '' # str(revisions[0].id)
     c = crm114.Classifier( "data", [ id + 'good', id + 'bad' ] ) 
-    for i, e in enumerate(revisions[-100:]):
+    for i, e in enumerate(revisions[-50:]):
         known = k.is_known(e.revid)                               # previous score (some human verified)
         (score, explanation) = analyse_revision_decisiontree(e, user_counters)
         if score == 'unknown' and e.reverts_info > -2: score = 'good';  explanation = 'unknown and not reverted'
@@ -1237,16 +1239,12 @@ def analyse_crm114(revisions, user_counters):
         edit = features_crm114(e)
         edit_text = ' '.join(edit).encode('utf-8')
         # Run CRM114
-        (crm114_answer, probability) = c.classify(edit_text)
-        stats['CRM114 answered ' + crm114_answer + ' on known'][known] += 1
-        
+        (score, probability) = c.classify(edit_text)
+        stats['CRM114 answered ' + score + ' on known'][known] += 1
+        uncertain = known != score
+        extra = lambda:wikipedia.output("Explanation: %s" % probability)
+        (verified, known, score) = collect_stats(stats, user_counters, e, score, uncertain, None)
 
-# some low hanging text statistics
-reU = re.compile("[A-Z]")
-reL = re.compile("[a-z]")
-reES = re.compile("!")
-reHI = re.compile("(hi |penis|fuck)", re.I)
-reI = re.compile("i ", re.I)
 
 def analyse_comment(comment):
     #if(e.username.lower().find('bot') > -1):
@@ -1299,14 +1297,8 @@ def analyse_comment(comment):
             elif comment.startswith('+'): return 'plus'
             elif comment.find('spam') > -1: return 'spam'; 
             elif comment.find('ref') > -1: return 'ref'            
-            
-            uN = len(reU.findall(comment))
-            lN = len(reL.findall(comment))
-            esN = len(reES.findall(comment))
-            if(uN > 5 and lN < uN): return 'stats'       # uppercase stats is looking bad
-            elif(esN > 2): return 'stats'
-            elif(reHI.search(comment) != None): return 'hi'
-            elif(reI.search(comment) != None): return 'i'
+            elif comment.startswith(r'http://'): return 'bad'
+            elif comment.startswith(r'www.'): return 'bad'
             return 'good'
             # if len(comment) > 80:        # we like long comments
             # if(len(e.comment.split()) > 7): add_uefeature('comment_long')
