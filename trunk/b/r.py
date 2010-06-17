@@ -465,12 +465,12 @@ def read_pyc():
         revisions = [];
         try:
             info = FullInfo(marshal.load(FILE))     # load first in order to  
-            if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
+            #if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
             id = info.id;                           # initialize id from info.id
             revisions.append(info)
             while True:
                 info = FullInfo(marshal.load(FILE))
-                if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
+                #if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
                 if(id != info.id):
                     yield revisions
                     revisions = []
@@ -1043,7 +1043,7 @@ def analyse_decisiontree(revisions, user_counters):
 
         stats[explanation + ' (' + score + ') ' + 'on known'][known] += 1
         uncertain = score != known
-        #if score != 'unknown' or not e.reverted: continue
+        if score == 'unknown': continue
         extra = lambda:wikipedia.output("Explanation: %s" % explanation)
         (verified, known, score) = collect_stats(stats, user_counters, e, score, uncertain, extra)
 
@@ -1187,7 +1187,7 @@ def features_crm114(e):
 
 def train_crm114_decisiontree(revisions, user_counters):
     # CRM114
-    id = str(revisions[0].id)
+    id = '' # str(revisions[0].id)
     c = crm114.Classifier( "data", [ id + 'good', id + 'bad' ] ) 
     for i, e in enumerate(revisions):
         known = k.is_known(e.revid)                               # previous score (some human verified)
@@ -1220,9 +1220,11 @@ def train_crm114_decisiontree(revisions, user_counters):
 
 
 def analyse_crm114(revisions, user_counters):
-    id = str(revisions[0].id)
+    id = ''
     c = crm114.Classifier( "data", [ id + 'good', id + 'bad' ] )
     for i, e in enumerate(revisions):
+        if ids.is_known(e.revid): continue  # decisiontree evaluation
+        known = k.is_known(e.revid)
         edit = features_crm114(e)
         edit_text = ' '.join(edit).encode('utf-8')
         # Run CRM114
