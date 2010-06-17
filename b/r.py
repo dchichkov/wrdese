@@ -1170,7 +1170,7 @@ def features_crm114(e):
     edit = []
     edit.append('ELFusername:' + e.username)
     if(e.ipedit): edit.append("ELFipedit")
- 
+    edit.append('ELFid:%d' % e.id)
     if(e.comment):
         edit.append('ELFcomment')
         edit.append(e.comment)
@@ -1189,7 +1189,7 @@ def train_crm114_decisiontree(revisions, user_counters):
     # CRM114
     id = '' # str(revisions[0].id)
     c = crm114.Classifier( "data", [ id + 'good', id + 'bad' ] ) 
-    for i, e in enumerate(revisions):
+    for i, e in enumerate(revisions[-100:]):
         known = k.is_known(e.revid)                               # previous score (some human verified)
         (score, explanation) = analyse_revision_decisiontree(e, user_counters)
         if score == 'unknown' and e.reverts_info > -2: score = 'good';  explanation = 'unknown and not reverted'
