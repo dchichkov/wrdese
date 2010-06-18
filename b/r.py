@@ -139,11 +139,12 @@ and the bot will only work on that single page.
 
 __version__='$Id: r.py 7909 2010-02-05 06:42:52Z Dc987 $'
 
-import re, sys, time, calendar, difflib, string, math, hashlib, os, fnmatch, marshal, cPickle, copy
+import re, sys, time, calendar, difflib, string, math, hashlib 
+import os, fnmatch, marshal, cPickle, copy, pickle
 import pprint, ddiff
 from collections import defaultdict, namedtuple
 from ordereddict import OrderedDict
-from hi import obscenelist
+from hi import obscenelist, obscenelist_comment
 
 # pywikipedia (trunk 2010/03/15) in your PYTHONPATH, configured and running
 import wikipedia, pagegenerators, xmlreader, editarticle
@@ -898,7 +899,8 @@ def compute_revisions_trainset(revisions, user_counters):
         #else:
         
         # for v in xrange(1,100): print v, math.trunc(math.log(math.sqrt(v))*2*math.pi)
-        features = {'comment' : analyse_comment(e.comment),
+        (comment, explanation) =  analyse_comment(e.comment)
+        features = {'comment' : comment,
                     # 'reverts info' : urri(e.reverts_info),
                     'ipedit' : e.ipedit,
                     'edit_group' : bool(e.edit_group), 
@@ -929,7 +931,7 @@ def compute_karma_trainset(revisions, user_counters):
     for e in revisions:
         if ids.is_known(e.revid): train.append(None); continue  # decisiontree evaluation      
         known = k.is_known(e.revid)                             # previous score (some human verified)
-        comment = analyse_comment(e.comment)
+        (comment, explanation) =  analyse_comment(e.comment)
 
         #if e.username in user_counters:
         #    counter = user_counters[e.username]
@@ -1048,12 +1050,9 @@ def analyse_decisiontree(revisions, user_counters):
         (verified, known, score) = collect_stats(stats, user_counters, e, score, uncertain, extra)
 
 def analyse_revision_decisiontree(e, user_counters):
-    comment = analyse_comment(e.comment)    
+    (comment, explanation) =  analyse_comment(e.comment)
     counter = user_counters[e.username]
     diff = analyse_diff_decisiontree(e)
-
-    if comment == 'good': return ('good'                                                ,'comment is looking good')
-    return ('unknown', 'unknown')
 
 
     if comment in ['replaced', 'blanked']: return ('bad'                                 ,'AES:replaced/blanked')
@@ -1065,6 +1064,8 @@ def analyse_revision_decisiontree(e, user_counters):
     if counter[-1] > 150 and counter[-3] < 5: return ('good'             ,'user did > 150 regular edits, no revert conflicts')
     if counter[0] > 500 and not counter[-2] * 5 > counter[0]: return ('good'             ,'user did > 500 edits, not so many reverted')
     if diff != ('unknown', 'unknown'): return diff                                       # diff/text brief analysis
+    if comment == 'good': return ('good'                                                , explanation)
+    if comment == 'bad': return ('bad'                                                , explanation)
     if counter[-2] > 10 and counter[-2] > counter[-1] * 2:  return ('bad'       ,'user is reverted too often')                      # CONFIRMED!
     if counter[0] > 7 and (counter[-2] == counter[0]): return ('bad'                      ,'> 1 edit, all reverted')
     if counter[0] > 25 and counter[-1]  * 2 > counter[0] and not counter[-2]: return ('good'    ,'user rate of regular edits is good')
@@ -1200,12 +1201,12 @@ def train_crm114_decisiontree(revisions, user_counters):
     # CRM114
     id = '' # str(revisions[0].id)
     c = crm114.Classifier( "data", [ id + 'good', id + 'bad' ] ) 
-    for i, e in enumerate(revisions[-50:]):
+    for i, e in enumerate(revisions): #[-50:]):
         known = k.is_known(e.revid)                               # previous score (some human verified)
         (score, explanation) = analyse_revision_decisiontree(e, user_counters)
         if score == 'unknown' and e.reverts_info > -2: score = 'good';  explanation = 'unknown and not reverted'
-        elif score == 'unknown' and e.reverts_info < -1: score = 'bad'; explanation = 'unknown and reverted'
-        elif score == 'good' and e.reverts_info < -1:  score = 'unknown';
+        elif score == 'unknown' and e.reverts_info == -2: score = 'bad'; explanation = 'unknown and reverted'
+        elif score == 'good' and e.reverts_info == -2:  score = 'unknown';
         elif score == 'bad' and e.reverts_info > -2: score = 'unknown'
         stats['Decision tree score ' + score + ' on known'][known] += 1
         if score == 'unknown': continue
@@ -1251,58 +1252,70 @@ def analyse_comment(comment):
     #    add_uefeature('bot')
     if(comment):
         if comment.startswith('[[WP:'):
-            if comment.startswith(u'[[WP:UNDO|Undid'): return 'undo'
+            if comment.startswith(u'[[WP:UNDO|Undid'): return 'undo', "Starts with [[WP:UNDO|Undid"
             elif comment.startswith(u'[[WP:A'):
-                if comment.startswith(u'[[WP:AES|\u2190]]Replaced'): return 'replaced'
-                elif comment.startswith(u'[[WP:AES|\u2190]]Redirected'): return 'redirected'
-                elif comment.startswith(u'[[WP:AES|\u2190]]Blanked'): return 'blanked'
-                elif comment.startswith(u'[[WP:AES|\u2190]]Undid'):  return 'undid'
-                elif comment.startswith(u'[[WP:AES|\u2190]]Reverted'): return 'reverted'
-                elif comment.startswith(u'[[WP:AES|\u2190]] Replaced'): return 'replaced'
-                elif comment.startswith(u'[[WP:AES|\u2190]] Redirected'): return 'redirected'
-                elif comment.startswith(u'[[WP:AES|\u2190]] Blanked'): return 'blanked'
-                elif comment.startswith(u'[[WP:AES|\u2190]] Undid'): return 'undid'
-                elif comment.startswith(u'[[WP:AES|\u2190]] Reverted'): return 'reverted'
-                elif comment.startswith(u'[[WP:AES|\u2190]]\u200bReplaced'): return 'replaced'
-                elif comment.startswith(u'[[WP:AES|\u2190]]\u200bRedirected'): return 'redirected'
-                elif comment.startswith(u'[[WP:AES|\u2190]]\u200bBlanked'): return 'blanked'
-                elif comment.startswith(u'[[WP:AES|\u2190]]\u200bUndid'): return 'undid'
-                elif comment.startswith(u'[[WP:AES|\u2190]]\u200bReverted'): return 'reverted'
-                elif comment.startswith(u'[[WP:AES|\u2190Replaced'): return 'replaced'
-                elif comment.startswith(u'[[WP:AES|\u2190Redirected'): return 'redirected'
-                elif comment.startswith(u'[[WP:AES|\u2190Blanked'): return 'blanked'
-                elif comment.startswith(u'[[WP:AES|\u2190Undid'): return 'undid'
-                elif comment.startswith(u'[[WP:AES|\u2190Reverted'): return 'reverted'
-                elif comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Replaced'): return 'replaced'
-                elif comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Redirected'): return 'redirected'
-                elif comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Blanked'): return 'blanked'
-                elif comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Undid'): return 'undid'
-                elif comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Reverted'): return 'reverted'
-                elif comment.startswith(u'[[WP:AWB'): return 'awb'
-                elif comment.startswith(u'[[WP:AES'): return 'aes'
-                else: return 'wp'
-            elif comment.startswith(u'[[WP:UNDO|Revert'): return 'revert'
-            elif comment.startswith(u'[[WP:RBK|Reverted'): return 'reverted'
+                if comment.startswith(u'[[WP:AES|\u2190]]Replaced'): return 'replaced', "Starts with [[WP:AES|\u2190]]Replaced"
+                elif comment.startswith(u'[[WP:AES|\u2190]]Redirected'): return 'redirected', "Starts with [[WP:AES|\u2190]]Redirected"
+                elif comment.startswith(u'[[WP:AES|\u2190]]Blanked'): return 'blanked', "Starts with [[WP:AES|\u2190]]Blanked"
+                elif comment.startswith(u'[[WP:AES|\u2190]]Undid'):  return 'undid', "Starts with [[WP:AES|\u2190]]Undid"
+                elif comment.startswith(u'[[WP:AES|\u2190]]Reverted'): return 'reverted', "Starts with [[WP:AES|\u2190]]Reverted"
+                elif comment.startswith(u'[[WP:AES|\u2190]] Replaced'): return 'replaced', "Starts with [[WP:AES|\u2190]] Replaced"
+                elif comment.startswith(u'[[WP:AES|\u2190]] Redirected'): return 'redirected', "Starts with [[WP:AES|\u2190]] Redirected"
+                elif comment.startswith(u'[[WP:AES|\u2190]] Blanked'): return 'blanked', "Starts with [[WP:AES|\u2190]] Blanked"
+                elif comment.startswith(u'[[WP:AES|\u2190]] Undid'): return 'undid', "Starts with [[WP:AES|\u2190]] Undid"
+                elif comment.startswith(u'[[WP:AES|\u2190]] Reverted'): return 'reverted', "Starts with [[WP:AES|\u2190]] Reverted"
+                elif comment.startswith(u'[[WP:AES|\u2190]]\u200bReplaced'): return 'replaced', "Starts with [[WP:AES|\u2190]]\u200bReplaced"
+                elif comment.startswith(u'[[WP:AES|\u2190]]\u200bRedirected'): return 'redirected', "Starts with [[WP:AES|\u2190]]\u200bRedirected"
+                elif comment.startswith(u'[[WP:AES|\u2190]]\u200bBlanked'): return 'blanked', "Starts with [[WP:AES|\u2190]]\u200bBlanked"
+                elif comment.startswith(u'[[WP:AES|\u2190]]\u200bUndid'): return 'undid', "Starts with [[WP:AES|\u2190]]\u200bUndid"
+                elif comment.startswith(u'[[WP:AES|\u2190]]\u200bReverted'): return 'reverted', "Starts with [[WP:AES|\u2190]]\u200bReverted"
+                elif comment.startswith(u'[[WP:AES|\u2190Replaced'): return 'replaced', "Starts with [[WP:AES|\u2190Replaced"
+                elif comment.startswith(u'[[WP:AES|\u2190Redirected'): return 'redirected', "Starts with [[WP:AES|\u2190Redirected"
+                elif comment.startswith(u'[[WP:AES|\u2190Blanked'): return 'blanked', "Starts with [[WP:AES|\u2190Blanked"
+                elif comment.startswith(u'[[WP:AES|\u2190Undid'): return 'undid', "Starts with [[WP:AES|\u2190Undid"
+                elif comment.startswith(u'[[WP:AES|\u2190Reverted'): return 'reverted', "Starts with [[WP:AES|\u2190Reverted"
+                elif comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Replaced'): return 'replaced',  "Starts with [[WP:Automatic edit summaries|\u2190]]Replaced"
+                elif comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Redirected'): return 'redirected', "Starts with [[WP:Automatic edit summaries|\u2190]]Redirected"
+                elif comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Blanked'): return 'blanked', "Starts with [[WP:Automatic edit summaries|\u2190]]Blanked"
+                elif comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Undid'): return 'undid', "Starts with [[WP:Automatic edit summaries|\u2190]]Undid"
+                elif comment.startswith(u'[[WP:Automatic edit summaries|\u2190]]Reverted'): return 'reverted', "Starts with [[WP:Automatic edit summaries|\u2190]]Reverted"
+                elif comment.startswith(u'[[WP:AWB'): return 'awb', "Starts with [[WP:AWB"
+                elif comment.startswith(u'[[WP:AES'): return 'aes', "Starts with [[WP:AES"
+                else: return 'wp', "Starts with WP"
+            elif comment.startswith(u'[[WP:UNDO|Revert'): return 'revert', "Starts with [[WP:UNDO|Revert"
+            elif comment.startswith(u'[[WP:RBK|Reverted'): return 'reverted', "Starts with [[WP:RBK|Reverted"
             #elif comment.startswith(u'[[Help:': return 'help'    
-            else: return 'wp'   #print e.comment.encode('unicode-escape');
-        elif(comment[-2:] == '*/'): return 'section'
+            else: return 'wp', "Starts with WP"  #print e.comment.encode('unicode-escape');
+        elif(comment[-2:] == '*/'): return 'section', "No comment/section"
         else:
-            if comment.startswith('Revert'): return 'revert'
-            elif comment.startswith('Undid'): return 'undid'
-            elif comment.startswith('rvv'): return 'rvv'
-            elif comment.startswith('rev'): return 'rev'
-            elif comment.startswith('rv'): return 'rv' 
-            elif comment[:4] in ('BOT ', 'bot ', 'robo', 'Robo'): return 'bot'
-            elif comment.startswith('cat'): return 'cat'
-            elif comment.startswith('+'): return 'plus'
-            elif comment.find('spam') > -1: return 'spam'; 
-            elif comment.find('ref') > -1: return 'ref'            
-            elif comment.startswith(r'http://'): return 'bad'
-            elif comment.startswith(r'www.'): return 'bad'
-            return 'good'
+            if comment.startswith('Revert'): return 'revert', "Starts with revert"
+            elif comment.startswith('Undid'): return 'undid', "Starts with undid"
+            elif comment.startswith('rvv'): return 'rvv', "Starts with rvv"
+            elif comment.startswith('rev'): return 'rev', "Starts with rev"
+            elif comment.startswith('rv'): return 'rv', "Starts with rv"
+            elif comment[:4] in ('BOT ', 'bot ', 'robo', 'Robo'): return 'bot', "Starts with BOT, bot, robo, Robo"
+            elif comment.startswith('cat'): return 'cat', "Starts with cat"
+            elif comment.startswith('+'): return 'plus', "Starts with plus"
+            elif comment.find('spam') > -1: return 'spam',  "Starts with spam"
+            elif comment.find('ref') > -1: return 'ref',  "Starts with ref"
+            elif comment.startswith(r'http://'): return 'bad', "Starts with http"
+            elif comment.startswith(r'HTTP://'): return 'bad', "Starts with HTTP"
+            elif comment.startswith(r'WWW'): return 'bad', "Starts with WWW"
+            elif comment.startswith(r'www'): return 'bad', "Starts with www"
+
+            score = 0; explanation = 'Comment analysis is looking bad: '
+            # chack obscenelist
+            for r, rscore in obscenelist_comment:
+                if r.search(comment) != None:
+                    score += rscore
+                    explanation += " " + r.pattern
+            if score < -2: return 'bad', explanation;
+            if score < 0: return 'unknown', explanation;
+
+            return 'good', "Comment is looking good"
             # if len(comment) > 80:        # we like long comments
             # if(len(e.comment.split()) > 7): add_uefeature('comment_long')
-    return 'no'  
+    return 'no', "No comment"
 
 
 
