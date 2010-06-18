@@ -1180,9 +1180,9 @@ def evaluate_gold(revisions, user_counters):
 
 def features_crm114(e):
     edit = []
-    edit.append('ELFusername:' + e.username)
+    edit.append('ELFuser' + e.username)
     if(e.ipedit): edit.append("ELFipedit")
-    edit.append('ELFid:%d' % e.id)
+    edit.append('ELFid%d' % e.id)
     if(e.comment):
         edit.append('ELFcomment')
         edit.append(e.comment)
@@ -1191,16 +1191,13 @@ def features_crm114(e):
     for (t, v) in e.diff:
        if(v > 0): edit.append('+' + t)
        elif(v < 0): edit.append('-' + t)
-       else: edit.append('+-+-+-+-+-')
 
     return edit
 
 
 
-def train_crm114_decisiontree(revisions, user_counters):
+def train_crm114_decisiontree(revisions, user_counters, c):
     # CRM114
-    id = '' # str(revisions[0].id)
-    c = crm114.Classifier( "data", [ id + 'good', id + 'bad' ] ) 
     for i, e in enumerate(revisions): #[-50:]):
         known = k.is_known(e.revid)                               # previous score (some human verified)
         (score, explanation) = analyse_revision_decisiontree(e, user_counters)
@@ -1222,8 +1219,8 @@ def train_crm114_decisiontree(revisions, user_counters):
         (crm114_answer, probability) = c.classify(edit_text)
 
         # training CRM114
-        if(probability < 0.75 or not crm114_answer.endswith(known)):
-            c.learn(id + known, edit_text)
+        if(crm114_answer != known):
+            c.learn(known, edit_text)
             stats['CRM114 trained'][known] += 1
         elif(i > 1000):
             stats['CRM114 correct'][known] += 1
@@ -1232,8 +1229,7 @@ def train_crm114_decisiontree(revisions, user_counters):
 
 
 def analyse_crm114(revisions, user_counters):
-    id = ''
-    c = crm114.Classifier( "data", [ id + 'good', id + 'bad' ] )
+    c = crm114.Classifier( "data", [ 'good', 'bad' ] )
     for i, e in enumerate(revisions):
         if ids.is_known(e.revid): continue  # decisiontree evaluation
         known = k.is_known(e.revid)
@@ -1472,9 +1468,10 @@ def main():
         evaluate_gold(revisions, defaultdict(int))        
 
     if(_train_arg):
+        classifier = crm114.Classifier( "data", ['good', 'bad' ] )
         for revisions in read_pyc():
             analyse_reverts(revisions)
-            train_crm114_decisiontree(revisions, user_counters)
+            train_crm114_decisiontree(revisions, user_counters, classifier)
 
     if(_analyze_arg):        
         if _analyze_arg.find('counters') > -1: user_counters = check_counters(revisions, user_counters)        
