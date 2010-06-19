@@ -366,12 +366,18 @@ def dump_cstats(stats):
 
     sstats = OrderedDict(sorted(copy.deepcopy(stats).items(), key = key, reverse=True))
     for s, v in sstats.iteritems():
-        total = sum(v.values());
-        for k, i in v.iteritems(): v[k] = "%d (%d%%)" % (i, i*100/total)
+        total = sum(v.values()); ss = "";
+        for k, i in v.iteritems(): 
+            v[k] = "%d (%d%%)" % (i, i*100/total)
+            if k=='bad' and s.find('good') > -1: v[k] = mark(v[k])
+            ss += "%s:%s  " % (k, v[k])
+        sstats[s] = ss
+            
+       
  
 
     wikipedia.output("===================================================================================")
-    for k, v in sstats.iteritems(): wikipedia.output("%-60s:%s" % (k, pprint.PrettyPrinter(width=140).pformat(v)))
+    for k, v in sstats.iteritems(): wikipedia.output("%-60s:%s" % (k, v))
     wikipedia.output("===================================================================================")
 
 
@@ -1048,7 +1054,7 @@ def analyse_decisiontree(revisions, user_counters):
         if e.reverted and known=='good': known = 'reverted good'
         stats[explanation + ' (' + score + ') ' + 'on known'][known] += 1
 
-        #if not explanation.startswith('urban dictionary analysis:'): continue
+        #if not explanation.startswith('Comment analysis'): continue
         #if score != 'unknown' or known != 'bad': continue
         extra = lambda:wikipedia.output("Explanation: %s" % explanation)
         (verified, known, score) = collect_stats(stats, user_counters, e, score, False, extra)
@@ -1072,12 +1078,13 @@ def analyse_revision_decisiontree(e, user_counters):
 
     if counter[-1] > 150 and counter[-3] < 5: return ('good'             ,'user did > 150 regular edits, no revert conflicts')
     if counter[0] > 500 and not counter[-2] * 5 > counter[0]: return ('good'             ,'user did > 500 edits, not so many reverted')
+        
     if diff != ('unknown', 'unknown'): return diff                                       # diff/text brief analysis
-
     if comment == 'good': return ('good'                                                , explanation)
     if comment == 'bad': return ('bad'                                                , explanation)
-
     if counter[-2] > 10 and counter[-2] > counter[-1] * 2:  return ('bad'       ,'user is reverted too often')                      # CONFIRMED!
+
+
     if counter[0] > 7 and (counter[-2] == counter[0]): return ('bad'                      ,'> 1 edit, all reverted')
     if counter[0] > 25 and counter[-1]  * 2 > counter[0] and not counter[-2]: return ('good'    ,'user rate of regular edits is good')
     if counter[0] > 5 and counter[-1] * 3 > counter[0] * 2  and not counter[-2]: return ('good' ,'> 5 edits, > 2/3 regular edits')
@@ -1091,16 +1098,15 @@ def analyse_revision_decisiontree(e, user_counters):
     if comment == 'good': return ('good'                                                ,'comment is looking good')
     if e.iwM > 250: return ('good'                                                      ,'modify stats are looking good')
 
-    #if e.iwR < 48 and ((e.iwA < 2 and e.iwR > 0) or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good')       
+
     if e.iwR < 48 and (e.iwA < 2 or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good') 
-    if e.iwR > 49 and (e.iwA > 1 and e.iwA < 25): return ('bad'                         ,'add/delete stats are looking bad') 
-    
+    if e.iwR > 49 and (e.iwA > 1 and e.iwA < 25): return ('bad'                         ,'add/delete stats are looking bad')     
     if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
 
 
     score = 0; explanation = 'urban dictionary analysis:'
     for (t, v) in e.diff:
-        if v and t.lower() in urbandict: score -= v; explanation += ' ' + t
+        if v and t.lower() in urbandict: score -= v; #explanation += ' ' + t
     if score < 0: return ('bad', explanation);
 
 
@@ -1128,10 +1134,11 @@ def analyse_plot(revisions, user_counters):
         y = defaultdict(lambda:[])
         l = defaultdict(int)     
         for e in revisions:
-            known = k.is_known(e.revid)  # previous score (some human verified)
+            known = k.is_known(e.revid)  # previous score (some human verified)                    
             counter = user_counters[e.username]
             (score, explanation) = ('unknown', 'unknown')
-            (score, explanation) =  analyse_revision_decisiontree(e, user_counters)
+            (score, explanation) =  analyse_revision_decisiontree(e, user_counters)            
+            if e.reverts_info == -2 and known=='good': known = 'reverted good'
             x[score + ' on ' + known].append(random() - 0.5 + counter[-1])  
             y[score + ' on ' + known].append(random() - 0.5 + counter[-2])                    
             
@@ -1143,6 +1150,7 @@ def analyse_plot(revisions, user_counters):
          'bad on good' : 'cyan',
          'bad on bad'  : '#F8F8F8',
          'unknown on good' : 'green',
+         'unknown on reverted good' : 'yellow',
          'unknown on bad' : 'red',          
          }
     
@@ -1323,7 +1331,7 @@ def analyse_comment(comment):
             elif comment.startswith(r'WWW'): return 'bad', "Starts with WWW"
             elif comment.startswith(r'www'): return 'bad', "Starts with www"
 
-            score = 0; explanation = 'Comment analysis is looking bad: '
+            score = 0; explanation = 'Comment analysis: '
             # chack obscenelist
             for r, rscore in obscenelist_comment:
                 if r.search(comment) != None:
@@ -1332,7 +1340,7 @@ def analyse_comment(comment):
             if score < -2: return 'bad', explanation;
             if score < 0: return 'unknown', explanation;
 
-            return 'good', "Comment is looking good"
+            return 'good', explanation
             # if len(comment) > 80:        # we like long comments
             # if(len(e.comment.split()) > 7): add_uefeature('comment_long')
     return 'no', "No comment"
