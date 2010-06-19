@@ -144,7 +144,7 @@ import os, fnmatch, marshal, cPickle, copy, pickle
 import pprint, ddiff
 from collections import defaultdict, namedtuple
 from ordereddict import OrderedDict
-from hi import obscenelist, obscenelist_comment
+from hi import *
 
 # pywikipedia (trunk 2010/03/15) in your PYTHONPATH, configured and running
 import wikipedia, pagegenerators, xmlreader, editarticle
@@ -827,6 +827,7 @@ def collect_stats(stats, user_counters, e, score, uncertain, extra):
 
     # Collecting stats
     ids.known[revid] = known
+    if e.reverted and known=='good': known = 'reverted good'
     stats['Revision analysis score ' + score + ' on known'][known] += 1
     if(verified and _verbose_arg):
         stats['Revision analysis score ' + score + ' on verified'][verified] += 1
@@ -1021,6 +1022,10 @@ def analyse_maxent(revisions, user_counters):
         (verified, known, score) = collect_stats(stats, user_counters, e, score, uncertain, extra)
 
 
+# <ref>
+# markup removed, but not added
+# more obscenities
+
 def analyse_diff_decisiontree(e):    
     score = 0; explanation = 'diff/text brief analysis:'
     # chack obscenelist
@@ -1035,25 +1040,29 @@ def analyse_diff_decisiontree(e):
     return ('unknown', 'unknown')
 
 
-
 def analyse_decisiontree(revisions, user_counters):
     total_time = total_size = 0
     for e in revisions:
         known = k.is_known(e.revid)                 # previous score (some human verified)
         (score, explanation) = analyse_revision_decisiontree(e, user_counters)
-        #if not explanation.startswith('diff/text brief analysis') or score == known: continue        
-
+        if e.reverted and known=='good': known = 'reverted good'
         stats[explanation + ' (' + score + ') ' + 'on known'][known] += 1
-        uncertain = False #score != known
-        if score == 'unknown': continue
+
+        #if not explanation.startswith('urban dictionary analysis:'): continue
+        #if score != 'unknown' or known != 'bad': continue
         extra = lambda:wikipedia.output("Explanation: %s" % explanation)
-        (verified, known, score) = collect_stats(stats, user_counters, e, score, uncertain, extra)
+        (verified, known, score) = collect_stats(stats, user_counters, e, score, False, extra)
 
 def analyse_revision_decisiontree(e, user_counters):
     (comment, explanation) =  analyse_comment(e.comment)
     counter = user_counters[e.username]
     diff = analyse_diff_decisiontree(e)
 
+    sA = ' '.join([t for t, v in e.diff if v > 0])
+    sR = ' '.join([t for t, v in e.diff if v < 0])
+    for r, rscore in toolbarlist:
+        if r.search(sA) != None: return('bad'                                 ,'added default toolbar message')                 # CONFIRMED!
+        if r.search(sR) != None: return('good'                                ,'removed default toolbar message')
 
     if comment in ['replaced', 'blanked']: return ('bad'                                 ,'AES:replaced/blanked')
     if comment in ['undid', 'redirected', 'reverted', 'rvv', 'rv', 'rev',
@@ -1064,8 +1073,10 @@ def analyse_revision_decisiontree(e, user_counters):
     if counter[-1] > 150 and counter[-3] < 5: return ('good'             ,'user did > 150 regular edits, no revert conflicts')
     if counter[0] > 500 and not counter[-2] * 5 > counter[0]: return ('good'             ,'user did > 500 edits, not so many reverted')
     if diff != ('unknown', 'unknown'): return diff                                       # diff/text brief analysis
+
     if comment == 'good': return ('good'                                                , explanation)
     if comment == 'bad': return ('bad'                                                , explanation)
+
     if counter[-2] > 10 and counter[-2] > counter[-1] * 2:  return ('bad'       ,'user is reverted too often')                      # CONFIRMED!
     if counter[0] > 7 and (counter[-2] == counter[0]): return ('bad'                      ,'> 1 edit, all reverted')
     if counter[0] > 25 and counter[-1]  * 2 > counter[0] and not counter[-2]: return ('good'    ,'user rate of regular edits is good')
@@ -1085,6 +1096,22 @@ def analyse_revision_decisiontree(e, user_counters):
     if e.iwR > 49 and (e.iwA > 1 and e.iwA < 25): return ('bad'                         ,'add/delete stats are looking bad') 
     
     if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
+
+
+    score = 0; explanation = 'urban dictionary analysis:'
+    for (t, v) in e.diff:
+        if v and t.lower() in urbandict: score -= v; explanation += ' ' + t
+    if score < 0: return ('bad', explanation);
+
+
+    #sA = ' '.join([t for t, v in e.diff if v > 0])
+    #sR = ' '.join([t for t, v in e.diff if v < 0])
+    #markup = 'unknown'
+    #for c in ['[', ']', '<', '>']: #, '=', '/', '*', ';', '=', ')', '(', '#', '&', '|']:
+    #    if sA.count(c) > 0: markup = 'unknown'; break;
+    #    if sR.count(c) > 0: markup = 'bad'
+    #if markup == 'bad': return ('bad' ,'markup was removed')
+
     return ('unknown', 'unknown')
     
 
@@ -1180,18 +1207,15 @@ def evaluate_gold(revisions, user_counters):
 
 def features_crm114(e):
     edit = []
-    edit.append('ELFuser' + e.username)
-    if(e.ipedit): edit.append("ELFipedit")
-    edit.append('ELFid%d' % e.id)
-    if(e.comment):
-        edit.append('ELFcomment')
-        edit.append(e.comment)
-    else: edit.append('ELFnoComment')
-
     for (t, v) in e.diff:
-       if(v > 0): edit.append('+' + t)
-       elif(v < 0): edit.append('-' + t)
-
+       if(v > 0): edit.append(t)
+    #for (t, v) in e.diff:
+    #   if(v < 0): edit.append('ED' + t)
+    
+    if not edit: edit.append('ELFempty')
+    elif len(edit) != len(e.diff): edit.append('ELFmove')
+    edit.append('ELFid%d' % e.id)    
+    edit.append('ELFuser' + e.username)    
     return edit
 
 

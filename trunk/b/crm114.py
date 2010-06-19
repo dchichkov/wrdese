@@ -144,10 +144,11 @@ class Classifier:
     # perform some self tests   
     def test( self ):
         print self.getFileList()
-        self.learn( "good", "this is a test" )
-        self.learn( "bad", "this is very bad" )
-        print "class was: %s, prob was:%f" % ( self.classify( "this is a test" ) )
-        print "class was: %s, prob was:%f" % ( self.classify( "this is bad" ) )
+        #self.learn( "good", "this is a test" )
+        #self.learn( "bad", "this is very bad" )
+        print "class was: %s, prob was:%f" % ( self.classify( "+fucking +shit" ) )
+        print "class was: %s, prob was:%f" % ( self.classify( "+whore" ) )
+        print "class was: %s, prob was:%f" % ( self.classify( "+ flight" ) )
         
         
 if __name__ == "__main__":

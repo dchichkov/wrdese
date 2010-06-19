@@ -131,6 +131,54 @@ obscenelist =  [
     ]
 
 
+toolbarlist = [
+    # Edit page toolbar
+       (re.compile(r'Bold text')              , -10),
+       (re.compile(r'Big text')              , -10),
+       (re.compile(r'Italic text')              , -10),
+       (re.compile(r'Small text')              , -10),
+       (re.compile(r'Subscript text')              , -10),
+       (re.compile(r'Superscript text')              , -10),
+       (re.compile(r'Strikethrough text')              , -10),
+       (re.compile(r'Link title')              , -10),
+       (re.compile(r'Internal link')              , -10),
+       (re.compile(r'http://www.example.com link title')              , -10),
+       (re.compile(r'External link (remember http:// prefix)')              , -10),
+       (re.compile(r'Headline text')              , -10),
+       (re.compile(r'Level 2 headline')              , -10),
+       (re.compile(r'Insert formula here')              , -10),
+       (re.compile(r'Mathematical formula (LaTeX)')              , -10),
+       (re.compile(r'Insert non-formatted text here')              , -10),
+       (re.compile(r'Ignore wiki formatting')              , -10),
+       (re.compile(r'Example.jpg')              , -10),
+       (re.compile(r'Embedded file')              , -10),
+       (re.compile(r'Example.ogg')              , -10),
+       (re.compile(r'File link')              , -10),
+       (re.compile(r'Your signature with timestamp')              , -10),
+       (re.compile(r'Horizontal line (use sparingly)')              , -10),
+    ]
+
+
+urbanlist = ['amazing', 'ass', 'awe-inspiring', 'awesome', 'awsome', 'bad', 'badass',
+     'barf', 'beast', 'best', 'bitch', 'bitchin', 'black', 'bomb', 'boring',
+     'bra', 'brah', 'brilliant', 'bro', 'brother', 'buddy', 'chick', 'chill',
+     'cock', 'cool', 'crazy', 'cute', 'dank', 'dawg', 'dick', 'dirty',
+     'disgusting', 'dood', 'dope', 'drunk', 'dude', 'dudette', 'dumb',
+     'epic', 'excellent', 'excited', 'excitement', 'exciting',
+     'exotic', 'extraordinary', 'extreme', 'fab', 'fabulous', 'fag', 'fantastic',
+     'fuck', 'fun', 'funny', 'gay', 'girl', 'gnarly',
+     'god', 'good', 'great', 'groovy', 'gross', 'guy', 'hangover', 'happy', 'hardcore',
+     'heavy', 'hip', 'homie', 'hot', 'ill', 'incredible', 'insane', 'intense', 'interesting',
+     'killer', 'kool', 'lame', 'lame-o', 'lol', 'loser', 'love', 'loving', 'mad',
+     'man', 'mate', 'music', 'nasty', 'neat', 'nigga', 'non-chalant',
+     'nuts', 'outstanding', 'pal', 'penis', 'phat', 'pimp', 'pokey',
+     'poop', 'puke', 'rad', 'radical', 'rock', 'rocks',
+     'scary', 'sex', 'sexy', 'shit', 'sick', 'smartass', 'spectacular', 'stupid', 'super',
+     'superb', 'sweet', 'thrilling', 'throw', 'tight', 'tyte', 'uber', 'ugly',
+     'ultimate', 'vagina', 'vomit', 'weed', 'weird', 'wick', 'wicked', 'wild',
+     'wonderful', 'wow', 'wtf', 'yo']
+
+urbandict =  dict([(word, -1) for word in urbanlist])
 
 obscenelist_comment =  [
         #('preg'               : points
