@@ -1056,6 +1056,7 @@ def analyse_decisiontree(revisions, user_counters):
 
         #if not explanation.startswith('Comment analysis'): continue
         #if score != 'unknown' or known != 'bad': continue
+        if score == 'unknown': continue
         extra = lambda:wikipedia.output("Explanation: %s" % explanation)
         (verified, known, score) = collect_stats(stats, user_counters, e, score, False, extra)
 
@@ -1079,6 +1080,13 @@ def analyse_revision_decisiontree(e, user_counters):
     if counter[-1] > 150 and counter[-3] < 5: return ('good'             ,'user did > 150 regular edits, no revert conflicts')
     if counter[0] > 500 and not counter[-2] * 5 > counter[0]: return ('good'             ,'user did > 500 edits, not so many reverted')
     
+    if diff != ('unknown', 'unknown'): return diff                                       # diff/text brief analysis
+    if comment == 'good': return ('good'                                                , explanation)
+    if comment == 'bad': return ('bad'                                                , explanation)
+    
+    if counter[0] > 7 and (counter[-2] == counter[0]): return ('bad'                      ,'> 1 edit, all reverted')
+    if counter[-2] > 10 and counter[-2] > counter[-1] * 2:  return ('bad'       ,'user is reverted too often')                      # CONFIRMED!
+
 
     # check wiki markup 
     sA = ' '.join([t for t, v in e.diff if v > 0])
@@ -1089,16 +1097,9 @@ def analyse_revision_decisiontree(e, user_counters):
         markupR += sR.count(c)                        
     if markupA != markupR and markupA > 1: return ('good'             , 'Markup <>/{} is looking good')  
     if markupA > 7: return ('good'             , 'Markup <>/{} is looking good')
-      
 
 
-    if diff != ('unknown', 'unknown'): return diff                                       # diff/text brief analysis
-    if comment == 'good': return ('good'                                                , explanation)
-    if comment == 'bad': return ('bad'                                                , explanation)
-    if counter[-2] > 10 and counter[-2] > counter[-1] * 2:  return ('bad'       ,'user is reverted too often')                      # CONFIRMED!
 
-
-    if counter[0] > 7 and (counter[-2] == counter[0]): return ('bad'                      ,'> 1 edit, all reverted')
     if counter[0] > 25 and counter[-1]  * 2 > counter[0] and not counter[-2]: return ('good'    ,'user rate of regular edits is good')
     if counter[0] > 5 and counter[-1] * 3 > counter[0] * 2  and not counter[-2]: return ('good' ,'> 5 edits, > 2/3 regular edits')
     if counter[0] > 1 and (counter[-1] + counter[2]) == counter[0]: return ('good'       ,'> 1 edit, only regular edits')
@@ -1112,16 +1113,18 @@ def analyse_revision_decisiontree(e, user_counters):
     if e.iwM > 250: return ('good'                                                      ,'modify stats are looking good')
 
 
-    if e.iwR < 48 and (e.iwA < 2 or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good') 
     if e.iwR > 49 and (e.iwA > 1 and e.iwA < 25): return ('bad'                         ,'add/delete stats are looking bad')     
-    if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
-
-    
+    return ('unknown', 'unknown')
 
     score = 0; explanation = 'urban dictionary analysis:'
     for (t, v) in e.diff:
         if v and t.lower() in urbandict: score -= v; #explanation += ' ' + t
     if score < 0: return ('bad', explanation);
+
+    if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
+    if e.iwR < 48 and (e.iwA < 2 or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good') 
+
+    
 
     return ('unknown', 'unknown')
     
@@ -1147,33 +1150,27 @@ def analyse_plot(revisions, user_counters):
             if e.reverts_info == -2 and known=='good': known = 'reverted good'
 
             
-            sA = ' '.join([t for t, v in e.diff if v > 0])
-            sR = ' '.join([t for t, v in e.diff if v < 0])
-            markupA = 0; markupR = 0; 
-            for c in ['<', '>', '{', '}']:#, '=', '/', '*', ';', '=', ')', '(', '#', '&', '|']:
-                markupA += sA.count(c)
-                markupR += sR.count(c)
+            #sA = ' '.join([t for t, v in e.diff if v > 0])
+            #sR = ' '.join([t for t, v in e.diff if v < 0])
+            #markupA = 0; markupR = 0; 
+            #for c in ['<', '>', '{', '}']:#, '=', '/', '*', ';', '=', ')', '(', '#', '&', '|']:
+            #    markupA += sA.count(c)
+            #    markupR += sR.count(c)
                                 
-            if markupA != markupR and markupA > 1: score = 'good'; stats['Markup <> is looking good on known'][known] += 1  
-            if markupA > 7: score = 'good'; stats['Markup <> is looking good on known'][known] += 1  
+            #if markupA != markupR and markupA > 1: score = 'good'; stats['Markup <> is looking good on known'][known] += 1  
+            #if markupA > 7: score = 'good'; stats['Markup <> is looking good on known'][known] += 1  
+            #stats['Markup %d %d ' % (markupA, markupR)  + 'on known'][known] += 1
+            #if score == 'unknown': continue            
+            #x[score + ' on ' + known].append(random() - 0.5 + e.c[-2] / e.c[0])
+            #y[score + ' on ' + known].append(random() - 0.5 + (0,1)['score' == 'good'])                                                            
+            #x[score + ' on ' + known].append(random() - 0.5 + markupA)  
+            #y[score + ' on ' + known].append(random() - 0.5 + markupR)                    
             #if score != 'unknown': continue            
 
 
-
-#            markupA = 0; markupR = 0; 
-#            for c in ['{', '}']:
-#                markupA += sA.count(c)
-#                markupR += sR.count(c)
-#                                
-#            if markupA != markupR and markupA > 1: score = 'good'; stats['Markup [] is looking good on known'][known] += 1  
-#            if markupA > 5: score = 'good'; stats['Markup <> is looking good on known'][known] += 1  
-
-
+            x[score + ' on ' + known].append(random() - 0.1 + e.al)  
+            y[score + ' on ' + known].append(random() - 0.1 + e.bl)                    
         
-            stats['Markup %d %d ' % (markupA, markupR)  + 'on known'][known] += 1
-                            
-            x[score + ' on ' + known].append(random() - 0.5 + markupA)  
-            y[score + ' on ' + known].append(random() - 0.5 + markupR)                    
             
             # 'al', 'bl', 'lo', 'ahi', 'bhi', 'ilA', 'ilR', 'iwA', 'iwR', 'ilM', 'iwM', 'diff'
     
