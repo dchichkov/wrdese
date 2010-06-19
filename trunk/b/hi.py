@@ -240,7 +240,8 @@ obscenelist_comment =  [
        (re.compile(r'\byou\b')              , -1),
        (re.compile(r'!!!!!!!!!+')              , -3),
 
-       (re.compile(r'([a-zA-Z]{1,4})\1{5}')    , -1),        # Ugg .. the same letter(s) several times in a row. */
+       (re.compile(r'([a-zA-Z\*])\1{4}')    , -1),        # Ugg .. the same letter several times in a row. */
+       (re.compile(r'([a-zA-Z]{2,4})\1{2}')    , -1),   # Ugg .. the same letters several times in a row. */
        (re.compile(r'[A-Z ]{5,}$')       , -1),        # All capitals? Looks like vandal activity */
 
 
