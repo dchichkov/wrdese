@@ -1078,7 +1078,20 @@ def analyse_revision_decisiontree(e, user_counters):
 
     if counter[-1] > 150 and counter[-3] < 5: return ('good'             ,'user did > 150 regular edits, no revert conflicts')
     if counter[0] > 500 and not counter[-2] * 5 > counter[0]: return ('good'             ,'user did > 500 edits, not so many reverted')
-        
+    
+
+    # check wiki markup 
+    sA = ' '.join([t for t, v in e.diff if v > 0])
+    sR = ' '.join([t for t, v in e.diff if v < 0])
+    markupA = 0; markupR = 0; 
+    for c in ['<', '>', '{', '}']:
+        markupA += sA.count(c)
+        markupR += sR.count(c)                        
+    if markupA != markupR and markupA > 1: return ('good'             , 'Markup <>/{} is looking good')  
+    if markupA > 7: return ('good'             , 'Markup <>/{} is looking good')
+      
+
+
     if diff != ('unknown', 'unknown'): return diff                                       # diff/text brief analysis
     if comment == 'good': return ('good'                                                , explanation)
     if comment == 'bad': return ('bad'                                                , explanation)
@@ -1103,20 +1116,12 @@ def analyse_revision_decisiontree(e, user_counters):
     if e.iwR > 49 and (e.iwA > 1 and e.iwA < 25): return ('bad'                         ,'add/delete stats are looking bad')     
     if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
 
+    
 
     score = 0; explanation = 'urban dictionary analysis:'
     for (t, v) in e.diff:
         if v and t.lower() in urbandict: score -= v; #explanation += ' ' + t
     if score < 0: return ('bad', explanation);
-
-
-    #sA = ' '.join([t for t, v in e.diff if v > 0])
-    #sR = ' '.join([t for t, v in e.diff if v < 0])
-    #markup = 'unknown'
-    #for c in ['[', ']', '<', '>']: #, '=', '/', '*', ';', '=', ')', '(', '#', '&', '|']:
-    #    if sA.count(c) > 0: markup = 'unknown'; break;
-    #    if sR.count(c) > 0: markup = 'bad'
-    #if markup == 'bad': return ('bad' ,'markup was removed')
 
     return ('unknown', 'unknown')
     
@@ -1137,15 +1142,35 @@ def analyse_plot(revisions, user_counters):
             known = k.is_known(e.revid)  # previous score (some human verified)                    
             counter = user_counters[e.username]
             (score, explanation) = ('unknown', 'unknown')
-            #(score, explanation) =  analyse_revision_decisiontree(e, user_counters)            
+            (score, explanation) =  analyse_revision_decisiontree(e, user_counters)
+            #if score != 'unknown': continue            
             if e.reverts_info == -2 and known=='good': known = 'reverted good'
+
             
             sA = ' '.join([t for t, v in e.diff if v > 0])
             sR = ' '.join([t for t, v in e.diff if v < 0])
             markupA = 0; markupR = 0; 
-            for c in ['[', ']', '<', '>']: #, '=', '/', '*', ';', '=', ')', '(', '#', '&', '|']:
-                if sA.count(c) > 0: markupA += 1
-                if sR.count(c) > 0: markupR += 1
+            for c in ['<', '>', '{', '}']:#, '=', '/', '*', ';', '=', ')', '(', '#', '&', '|']:
+                markupA += sA.count(c)
+                markupR += sR.count(c)
+                                
+            if markupA != markupR and markupA > 1: score = 'good'; stats['Markup <> is looking good on known'][known] += 1  
+            if markupA > 7: score = 'good'; stats['Markup <> is looking good on known'][known] += 1  
+            #if score != 'unknown': continue            
+
+
+
+#            markupA = 0; markupR = 0; 
+#            for c in ['{', '}']:
+#                markupA += sA.count(c)
+#                markupR += sR.count(c)
+#                                
+#            if markupA != markupR and markupA > 1: score = 'good'; stats['Markup [] is looking good on known'][known] += 1  
+#            if markupA > 5: score = 'good'; stats['Markup <> is looking good on known'][known] += 1  
+
+
+        
+            stats['Markup %d %d ' % (markupA, markupR)  + 'on known'][known] += 1
                             
             x[score + ' on ' + known].append(random() - 0.5 + markupA)  
             y[score + ' on ' + known].append(random() - 0.5 + markupR)                    
@@ -1153,10 +1178,10 @@ def analyse_plot(revisions, user_counters):
             # 'al', 'bl', 'lo', 'ahi', 'bhi', 'ilA', 'ilR', 'iwA', 'iwR', 'ilM', 'iwM', 'diff'
     
         graphs = {
-         'good on good': '#F8F8F8',
+         'good on good': '#F0F0F0',
          'good on bad' : 'magenta',
          'bad on good' : 'cyan',
-         'bad on bad'  : '#F8F8F8',
+         'bad on bad'  : '#F0F0F0',
          'unknown on good' : 'green',
          'unknown on reverted good' : 'yellow',
          'unknown on bad' : 'red',          
@@ -1164,7 +1189,7 @@ def analyse_plot(revisions, user_counters):
     
                     
         for label, color in graphs.iteritems(): 
-            plt.plot(x[label], y[label], color=color, linestyle='', marker='.', alpha = '0.5')
+            plt.plot(x[label], y[label], color=color, linestyle='', marker='.', alpha = '0.6')
             
         plt.axis([0, 500, 0, 1000])
         plt.xlabel('User edits counter')
