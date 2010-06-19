@@ -1137,10 +1137,18 @@ def analyse_plot(revisions, user_counters):
             known = k.is_known(e.revid)  # previous score (some human verified)                    
             counter = user_counters[e.username]
             (score, explanation) = ('unknown', 'unknown')
-            (score, explanation) =  analyse_revision_decisiontree(e, user_counters)            
+            #(score, explanation) =  analyse_revision_decisiontree(e, user_counters)            
             if e.reverts_info == -2 and known=='good': known = 'reverted good'
-            x[score + ' on ' + known].append(random() - 0.5 + counter[-1])  
-            y[score + ' on ' + known].append(random() - 0.5 + counter[-2])                    
+            
+            sA = ' '.join([t for t, v in e.diff if v > 0])
+            sR = ' '.join([t for t, v in e.diff if v < 0])
+            markupA = 0; markupR = 0; 
+            for c in ['[', ']', '<', '>']: #, '=', '/', '*', ';', '=', ')', '(', '#', '&', '|']:
+                if sA.count(c) > 0: markupA += 1
+                if sR.count(c) > 0: markupR += 1
+                            
+            x[score + ' on ' + known].append(random() - 0.5 + markupA)  
+            y[score + ' on ' + known].append(random() - 0.5 + markupR)                    
             
             # 'al', 'bl', 'lo', 'ahi', 'bhi', 'ilA', 'ilR', 'iwA', 'iwR', 'ilM', 'iwM', 'diff'
     
