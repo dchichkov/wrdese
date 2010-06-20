@@ -1,17 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8  -*-
-
-# How comes rep["217.42.224.103"] = -1???
-
+from __future__ import division
 
 # Use article total revisions number as a feature (popular/unpopular)
 # Use article protected status
-
-
-
-#retrain BAD: 167750423, 285306288
-
-# 167750423
 
 # TODO:
 # consecutive edits as one edit
@@ -156,7 +148,6 @@ import crm114
 #import wicow08r_chin_microsoft_annotation as k
 #import wicow08r_chin_lincoln_annotation as k
 #import pan10_vandalism_test_collection as k
-
 from labels import k, ids, labels, labels_shortcuts, labeler, good_labels, bad_labels
 #import pan10_vandalism_test_collection; k.append(known = pan10_vandalism_test_collection.g)
 import pan_wvc_10_gold; k.append(known = pan_wvc_10_gold.g, info = pan_wvc_10_gold.i);
@@ -230,7 +221,7 @@ def timestamp_to_time(timestamp):
 
 
 # generates token 'lifetime' statistics. how long in history token has generally managed to stay 
-def analyse_tokens_lifetime(xmlFilenames):
+def analyze_tokens_lifetime(xmlFilenames):
     # stats.describe([1,2,3]): N, (min, max), mean, variance, (sqewness, coefficient of excess kurtosis) 
     # print(stats.describe([15, 47, 51, 99, 86, 86, 86, 86, 86, 22, 22, 22, 22, 22, 22, 51, 51, 51, 51, 51, 51, 54, 54, 54, 54, 54, 54, 55, 55, 55, 55, 55, 55, 11, 11, 11, 11, 11, 11, 431, 431, 431, 431]))
     
@@ -371,6 +362,7 @@ def dump_cstats(stats):
             v[k] = "%d (%d%%)" % (i, i*100/total)
             if k=='bad' and s.find('good') > -1: v[k] = mark(v[k])
             ss += "%s:%s  " % (k, v[k])
+            #if len(ss) > 40: ss += "\n%-60s:" % ""
         sstats[s] = ss
             
        
@@ -550,7 +542,7 @@ def referenced_users(revisions):
         if e.reverted: users[e.reverted.username] = True
         for g in e.edit_group:
             users[g.username] = True
-            if g.reverted: users[e.reverted.username] = True    
+            if g.reverted: users[g.reverted.username] = True    
     
 
 
@@ -564,7 +556,7 @@ def read_counters(revisions):
     user_counters = counters_dict()
     start = time.time()
     try:
-        if _output_arg:                                 # read and merge
+        if _output_arg and not _analyze_arg:                     # read and merge
             if revisions:                               
                 users = referenced_users(revisions)          # filter / known users
                             
@@ -581,7 +573,7 @@ def read_counters(revisions):
         raise
     except EOFError, e:
         wikipedia.output("Done reading %s. Read time: %f. Total users: %d" % (_counters_arg, time.time() - start, len(user_counters)))
-    if(_output_arg):
+    if(_output_arg and not _analyze_arg):
         #wikipedia.output("Filtering counters <0 or >10")
         FILE = open(_output_arg, 'wb')
         for u, r in user_counters.iteritems():
@@ -606,8 +598,6 @@ def display_last_timestamp(xmlFilenames):
 
 # -------------------------------------------------------------------------
 # initializes: revisions[].reverts_info
-
-# reverts_info
 # -1  : regular revision
 # -2 : between duplicates, by single user (reverted, most likely bad)
 # -3 : between duplicates, by other users (reverted, questionable)
@@ -615,7 +605,21 @@ def display_last_timestamp(xmlFilenames):
 # -5 : self-revert
 # >=0: this revision is a duplicate of
 # -------------------------------------------------------------------------
-def analyse_reverts(revisions):
+def reverts_info_descr(e):
+    if e.c[0] == e.reverts_info: return "regular revision (have duplicates)"    
+    if e.c[0] < e.reverts_info: return "regular revision (< e.reverts_info ?)"
+    if e.reverts_info > 0: return "regular revert (a duplicate of a previous revision)"
+    if e.reverts_info < -5: return "regular revision (< -5 ?)"
+
+    return( "regular revision (duplicate of the first revision)",               #  0            
+            "between duplicates, reverted (self-reverted)",                     # -5 
+            "between duplicates, revert that was reverted (revert war)",        # -4 
+            "between duplicates, by other users (reverted, questionable)",      # -3
+            "between duplicates, by single user (reverted, most likely bad)",   # -2 
+            "regular revision"                                                  # -1
+            )[e.reverts_info]
+                        
+def analyze_reverts(revisions):
     rev_hashes = defaultdict(list)      # Filling md5 hashes map (md5 -> [list of revision indexes]) for nonempty
     user_revisions = defaultdict(int)   # Filling nuber of nonempty revisions made by user
     total_revisions = len(revisions)
@@ -718,7 +722,7 @@ def analyse_reverts(revisions):
 # returns: user_reputation
 # initializes: revisions[].rev_score_info
 # -------------------------------------------------------------------------
-def analyse_reputations(revisions):
+def analyze_reputations(revisions):
     # Tracking blankings and near-blankings
     # Establishing user ratings for the user whitelists
     user_reputations = defaultdict(int)
@@ -901,12 +905,12 @@ def compute_revisions_trainset(revisions, user_counters):
     train = []
 
     for e in revisions:
-        #if not analyse_revision_decisiontree(e, user_reputations)[0] != 'unknown': 
+        #if not analyze_revision_decisiontree(e, user_reputations)[0] != 'unknown': 
         #   train.append(None); 
         #else:
         
         # for v in xrange(1,100): print v, math.trunc(math.log(math.sqrt(v))*2*math.pi)
-        (comment, explanation) =  analyse_comment(e.comment)
+        (comment, explanation) =  analyze_comment(e.comment)
         features = {'comment' : comment,
                     # 'reverts info' : urri(e.reverts_info),
                     'ipedit' : e.ipedit,
@@ -938,29 +942,32 @@ def compute_karma_trainset(revisions, user_counters):
     for e in revisions:
         if ids.is_known(e.revid): train.append(None); continue  # decisiontree evaluation      
         known = k.is_known(e.revid)                             # previous score (some human verified)
-        (comment, explanation) =  analyse_comment(e.comment)
+        (comment, explanation) =  analyze_comment(e.comment)
+        counter = user_counters[e.username]
 
-        #if e.username in user_counters:
-        #    counter = user_counters[e.username]
-
-        features = {#'edits' : buckets(counter[0]),
+        features = {'user edits' : 0.01 * counter[0],
+                    'user edits zero' : counter[0] == 0,
                     #'comments' : buckets(counter[1]),
                     #'reverts'  : buckets(counter[2]),
-                    #'regular' : buckets(counter[-1]),
+                    'user regular' : 0.01 * counter[-1],                    
+                    'user regular only' : counter[-1] == counter[0],
+                                        
                     #'reverted' : buckets(counter[-2]),
                     #'questionable' : buckets(counter[-3]),
                     #'revert war' : buckets(counter[-4]),
                     #'self revert' : buckets(counter[-5]),
 
-                  #  'page edits' : buckets(e.c[0]),
+                   'page edits' : 0.01 * e.c[0],
                   #  'page reverts'  : buckets(e.c[1]),
-                  #  'page regular' : buckets(e.c[-1]),
+                   'page regular' : 0.01 * e.c[-1],
+                   'page regular only' : e.c[-1] == e.c[0],
+                  # 'page regular zero' : e.c[-1] == 0,
                   #  'page reverted' : buckets(e.c[-2]),
                   #  'page questionable' : buckets(e.c[-3]),
                   #  'page revert war' : buckets(e.c[-4]),
                   #  'page self revert' : buckets(e.c[-5]),
 
-                    'page smaller' : (e.ilR > e.ilA and e.iwR > 1),
+                  #  'page smaller' : (e.ilR > e.ilA and e.iwR > 1),
                   #  'page large scaleremoval' : (e.iwR == 50),
 
                   #  'comment' : comment,
@@ -972,7 +979,7 @@ def compute_karma_trainset(revisions, user_counters):
 
 
 
-def analyse_maxent(revisions, user_counters):
+def analyze_maxent(revisions, user_counters):
     # apt-get apt-get install python-numpy python-scipy
     # import numpy as np
 
@@ -1032,7 +1039,7 @@ def analyse_maxent(revisions, user_counters):
 # markup removed, but not added
 # more obscenities
 
-def analyse_diff_decisiontree(e):    
+def analyze_diff_decisiontree(e):    
     score = 0; explanation = 'diff/text brief analysis:'
     # chack obscenelist
     for (t, v) in e.diff:
@@ -1046,11 +1053,11 @@ def analyse_diff_decisiontree(e):
     return ('unknown', 'unknown')
 
 
-def analyse_decisiontree(revisions, user_counters):
+def analyze_decisiontree(revisions, user_counters):
     total_time = total_size = 0
     for e in revisions:
         known = k.is_known(e.revid)                 # previous score (some human verified)
-        (score, explanation) = analyse_revision_decisiontree(e, user_counters)
+        (score, explanation) = analyze_revision_decisiontree(e, user_counters)
         if e.reverted and known=='good': known = 'reverted good'
         stats[explanation + ' (' + score + ') ' + 'on known'][known] += 1
 
@@ -1060,10 +1067,10 @@ def analyse_decisiontree(revisions, user_counters):
         extra = lambda:wikipedia.output("Explanation: %s" % explanation)
         (verified, known, score) = collect_stats(stats, user_counters, e, score, False, extra)
 
-def analyse_revision_decisiontree(e, user_counters):
-    (comment, explanation) =  analyse_comment(e.comment)
+def analyze_revision_decisiontree(e, user_counters):
+    (comment, explanation) =  analyze_comment(e.comment)
     counter = user_counters[e.username]
-    diff = analyse_diff_decisiontree(e)
+    diff = analyze_diff_decisiontree(e)
 
     sA = ' '.join([t for t, v in e.diff if v > 0])
     sR = ' '.join([t for t, v in e.diff if v < 0])
@@ -1106,23 +1113,38 @@ def analyse_revision_decisiontree(e, user_counters):
     if counter[-1] > 50 and counter[-3] < 1: return ('good'                              ,'user did > 50 regular edits, no revert conflicts')
     
     if e.c[0] < 7: return ('good'                                                        ,'page has less than 7 revisions')
-    if e.c[0] == e.c[-1]: return ('good'                                                 ,'page has never been vandalised')
+    if e.c[0] == e.c[-1]: return ('good'                                                 ,'page has only regular edits')
 
     if not e.ipedit and comment == 'undo': return ('good'                               ,'comment indicates this not an ip user doing undo')
     if comment == 'good': return ('good'                                                ,'comment is looking good')
     if e.iwM > 250: return ('good'                                                      ,'modify stats are looking good')
 
-
     if e.iwR > 49 and (e.iwA > 1 and e.iwA < 25): return ('bad'                         ,'add/delete stats are looking bad')     
+    if e.iwA == 0 and e.iwR == 0: return ('good'                                        ,'add/delete stats showing an empty edit')
+ 
+    
+    if e.c[-2] == 0: return ('good',                                                  'page has never been vandalised')
+    
+    if counter[0] == 0:
+        pass
+    elif e.c[0] < 10:                
+         if e.c[-2] == 0: return ('good', 'page have less than 10 edits, never reverted')
+         elif e.c[-2] / e.c[0] < 0.25 and counter[-1] / counter[0] > 0.75: return ('good', 'page have 1..10 edits, edited by known good user')
+         elif e.c[-2] / e.c[0] > 0.25 and counter[-1] / counter[0] < 0.75: return ('bad', 'page have 1..10 edits, reverted, edited by known bad user')
+    elif e.c[0] < 100:
+         if e.c[-2] == 0: return  ('good', 'page have less than 100 edits, never reverted')               
+         elif e.c[-2] / e.c[0] < 0.15 and counter[-1] / counter[0] > 0.5: return ('good', 'page have 10..100 edits, edited by known good user')
+
+    
     return ('unknown', 'unknown')
 
     score = 0; explanation = 'urban dictionary analysis:'
     for (t, v) in e.diff:
-        if v and t.lower() in urbandict: score -= v; #explanation += ' ' + t
+        if v and t.lower() in urbandict: score -= v; explanation += ' ' + t
     if score < 0: return ('bad', explanation);
 
-    if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
-    if e.iwR < 48 and (e.iwA < 2 or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good') 
+    #if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
+    #if e.iwR < 48 and (e.iwA < 2 or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good') 
 
     
 
@@ -1132,20 +1154,21 @@ def analyse_revision_decisiontree(e, user_counters):
 
 
 
-def analyse_plot(revisions, user_counters):
+def analyze_plot(revisions, user_counters):
     import matplotlib.pyplot as plt
     from random import random
     if True:
         #x = defaultdict(lambda:[[] for i in xrange(len(counters_dict()[0]))] )
         #for i, c in enumerate(counter): x[score + ' on ' + known][i].append(c + random() - 0.5)
-        x = defaultdict(lambda:[])
+        x = defaultdict(lambda:[]) 
         y = defaultdict(lambda:[])
+        a = defaultdict(lambda:[])    
         l = defaultdict(int)     
         for e in revisions:
             known = k.is_known(e.revid)  # previous score (some human verified)                    
             counter = user_counters[e.username]
             (score, explanation) = ('unknown', 'unknown')
-            (score, explanation) =  analyse_revision_decisiontree(e, user_counters)
+            #(score, explanation) =  analyze_revision_decisiontree(e, user_counters)
             #if score != 'unknown': continue            
             if e.reverts_info == -2 and known=='good': known = 'reverted good'
 
@@ -1153,7 +1176,7 @@ def analyse_plot(revisions, user_counters):
             #sA = ' '.join([t for t, v in e.diff if v > 0])
             #sR = ' '.join([t for t, v in e.diff if v < 0])
             #markupA = 0; markupR = 0; 
-            #for c in ['<', '>', '{', '}']:#, '=', '/', '*', ';', '=', ')', '(', '#', '&', '|']:
+            #for c in ['!!!']:
             #    markupA += sA.count(c)
             #    markupR += sR.count(c)
                                 
@@ -1163,13 +1186,14 @@ def analyse_plot(revisions, user_counters):
             #if score == 'unknown': continue            
             #x[score + ' on ' + known].append(random() - 0.5 + e.c[-2] / e.c[0])
             #y[score + ' on ' + known].append(random() - 0.5 + (0,1)['score' == 'good'])                                                            
-            #x[score + ' on ' + known].append(random() - 0.5 + markupA)  
-            #y[score + ' on ' + known].append(random() - 0.5 + markupR)                    
+            #x[score + ' on ' + known].append(random()* 0.8 - 0.4 + markupA)  
+            #y[score + ' on ' + known].append(random()* 0.8 - 0.4 + markupR)                    
             #if score != 'unknown': continue            
 
-
-            x[score + ' on ' + known].append(random() - 0.1 + e.al)  
-            y[score + ' on ' + known].append(random() - 0.1 + e.bl)                    
+            
+            if e.reverts_info < 0 or counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue            
+            x[score + ' on ' + known].append(random()*0.001 +  counter[-1] / counter[0])  
+            y[score + ' on ' + known].append(random()*0.1 +  counter[0])                               
         
             
             # 'al', 'bl', 'lo', 'ahi', 'bhi', 'ilA', 'ilR', 'iwA', 'iwR', 'ilM', 'iwM', 'diff'
@@ -1186,11 +1210,11 @@ def analyse_plot(revisions, user_counters):
     
                     
         for label, color in graphs.iteritems(): 
-            plt.plot(x[label], y[label], color=color, linestyle='', marker='.', alpha = '0.6')
+            plt.plot(x[label], y[label], color=color, linestyle='', marker='.', alpha = '0.8' )
             
-        plt.axis([0, 500, 0, 1000])
-        plt.xlabel('User edits counter')
-        plt.ylabel('User regular edits counter')
+        plt.axis([0, 1, 0, 1])
+        plt.xlabel('e.c[-2] / e.c[0]')
+        plt.ylabel('e.c[-1] / e.c[0]')
         plt.show()
         return
 
@@ -1223,6 +1247,10 @@ def evaluate_gold(revisions, user_counters):
         known = k.is_known(e.revid)                                 # previous score (some human verified)
         info = k.info[e.revid]
         verified = k.is_verified(e.revid)                           # if not Empty: human verified
+        stats["PAN 10 Training Set A " + ("Regular", "Vandalism")[known == 'bad']][reverts_info_descr(e)] += 1
+        stats["PAN 10 Training Set B " + ("Regular", "Vandalism")[known == 'bad']][('Regular', 'Reverted')[e.reverted != None]] += 1
+        continue
+        
         if not known: continue
         if score == known: continue        
 
@@ -1243,58 +1271,55 @@ def evaluate_gold(revisions, user_counters):
         uncertain = known != score
         (verified, known, score) = collect_stats(stats, user_counters, e, score, uncertain, None)
 
-def features_crm114(e):
-    edit = []
-    for (t, v) in e.diff:
-       if(v > 0): edit.append(t)
-    #for (t, v) in e.diff:
-    #   if(v < 0): edit.append('ED' + t)
-    
-    if not edit: edit.append('ELFempty')
-    elif len(edit) != len(e.diff): edit.append('ELFmove')
-    edit.append('ELFid%d' % e.id)    
-    edit.append('ELFuser' + e.username)    
-    return edit
 
 
-
-def train_crm114_decisiontree(revisions, user_counters, c):
+def train_crm114(revisions, user_counters, c):
     # CRM114
     for i, e in enumerate(revisions): #[-50:]):
-        known = k.is_known(e.revid)                               # previous score (some human verified)
-        (score, explanation) = analyse_revision_decisiontree(e, user_counters)
-        if score == 'unknown' and e.reverts_info > -2: score = 'good';  explanation = 'unknown and not reverted'
-        elif score == 'unknown' and e.reverts_info == -2: score = 'bad'; explanation = 'unknown and reverted'
-        elif score == 'good' and e.reverts_info == -2:  score = 'unknown';
-        elif score == 'bad' and e.reverts_info > -2: score = 'unknown'
-        stats['Decision tree score ' + score + ' on known'][known] += 1
-        if score == 'unknown': continue
-        known = score
-     
-        edit = features_crm114(e)
-        edit_text = ' '.join(edit).encode('utf-8')
+        counter = user_counters[e.username]
+        if e.reverts_info < 0 or counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue            
         
-        #show_edit(e, "\n\n\n>>> %s <<<" % mark(known))
-        #wikipedia.output(edit_text);
+        restored = []; reverted = []
+        for (t, v) in e.diff:
+            if v > 0: restored.append(t)
+            elif v < 0: reverted.append(t)
 
-        # Run CRM114
-        (crm114_answer, probability) = c.classify(edit_text)
+        for diff, known in [(restored, 'good'), (reverted, 'bad')]: 
+            if diff:
+                edit_text = ' '.join(diff).encode('utf-8')                                
+                (crm114_answer, probability) = c.classify(edit_text)        # Run CRM114            
+                if(crm114_answer != known):                                 # training CRM114
+                    c.learn(known, edit_text)
+                    stats['CRM114 trained'][known] += 1
+                elif(i > 1000):
+                    stats['CRM114 correct'][known] += 1
+                   
+                #show_edit(e, "\n\n\n>>> %s <<<" % mark(known))
+                #wikipedia.output(edit_text);
 
-        # training CRM114
-        if(crm114_answer != known):
-            c.learn(known, edit_text)
-            stats['CRM114 trained'][known] += 1
-        elif(i > 1000):
-            stats['CRM114 correct'][known] += 1
 
 
 
 
-def analyse_crm114(revisions, user_counters):
+def analyze_crm114(revisions, user_counters):
     c = crm114.Classifier( "data", [ 'good', 'bad' ] )
     for i, e in enumerate(revisions):
-        if ids.is_known(e.revid): continue  # decisiontree evaluation
+        #if ids.is_known(e.revid): continue  # decisiontree evaluation
         known = k.is_known(e.revid)
+        
+        added = []; removed = []
+        for (t, v) in e.diff:
+            if v > 0: added.append(t)
+            elif v < 0: removed.append(t)
+
+        for diff in [added, removed]: 
+            if diff:
+                edit_text = ' '.join(diff).encode('utf-8')                                
+                (crm114_answer, probability) = c.classify(edit_text)        # Run CRM114            
+                stats['CRM114 answered ' + crm114_answer + ' on known'][known] += 1
+
+        
+        
         edit = features_crm114(e)
         edit_text = ' '.join(edit).encode('utf-8')
         # Run CRM114
@@ -1305,7 +1330,7 @@ def analyse_crm114(revisions, user_counters):
         (verified, known, score) = collect_stats(stats, user_counters, e, score, uncertain, None)
 
 
-def analyse_comment(comment):
+def analyze_comment(comment):
     #if(e.username.lower().find('bot') > -1):
     #    add_uefeature('bot')
     if(comment):
@@ -1426,7 +1451,7 @@ def compute_counters_dictionary():
 
     total_pages = 0; total_revisions = 0; start = time.time();
     for revisions in read_pyc():
-        analyse_reverts(revisions)
+        analyze_reverts(revisions)
         compute_counters(revisions, user_counters)
         total_pages += 1;
         total_revisions += len(revisions)
@@ -1446,7 +1471,7 @@ def compute_counters_dictionary():
 
 
 def main():
-    global _retrain_arg, _train_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _counters_arg, _classifier_arg, stats; 
+    global _retrain_arg, _train_arg, _analyze_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _counters_arg, _classifier_arg, stats; 
     _xml_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None; 
     _display_pyc_arg = None; _compute_counters_arg = None;_output_arg = None; _analyze_arg = None; _train_arg = None
     _counters_arg = None; _username_arg = None; _filter_pyc_arg = None; _count_empty_arg = None
@@ -1502,7 +1527,7 @@ def main():
     if(_filter_known_revisions_arg):
         known_revisions = []
         for revisions in read_pyc():
-            analyse_reverts(revisions)
+            analyze_reverts(revisions)
             for e in revisions:
                 if k.is_known(e.revid): known_revisions.append(e)
         if(_output_arg): 
@@ -1523,7 +1548,7 @@ def main():
 
 
 
-    #analyse_tokens_lifetime(xmlFilenames)
+    #analyze_tokens_lifetime(xmlFilenames)
     start = time.time();
 
     if(_evaluate_arg):
@@ -1532,16 +1557,16 @@ def main():
     if(_train_arg):
         classifier = crm114.Classifier( "data", ['good', 'bad' ] )
         for revisions in read_pyc():
-            analyse_reverts(revisions)
-            train_crm114_decisiontree(revisions, user_counters, classifier)
+            analyze_reverts(revisions)
+            train_crm114(revisions, user_counters, classifier)
 
     if(_analyze_arg):        
         if _analyze_arg.find('counters') > -1: user_counters = check_counters(revisions, user_counters)        
         if not user_counters: user_counters = counters_dict()
-        if _analyze_arg.find('decisiontree') > -1: analyse_decisiontree(revisions, user_counters)
-        if _analyze_arg.find('maxent') > -1: analyse_maxent(revisions, user_counters)
-        if _analyze_arg.find('plot') > -1: analyse_plot(revisions, user_counters)
-        if _analyze_arg.find('crm114') > -1: analyse_crm114(revisions, user_counters)
+        if _analyze_arg.find('decisiontree') > -1: analyze_decisiontree(revisions, user_counters)
+        if _analyze_arg.find('maxent') > -1: analyze_maxent(revisions, user_counters)
+        if _analyze_arg.find('plot') > -1: analyze_plot(revisions, user_counters)
+        if _analyze_arg.find('crm114') > -1: analyze_crm114(revisions, user_counters)
         wikipedia.output("Revisions %d. Analysis time: %f" % (len(revisions), time.time() - start))
 
     if stats:

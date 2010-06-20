@@ -123,6 +123,7 @@ obscenelist =  [
        (re.compile(r'^my$')              , -1),
        (re.compile(r'^you$')              , -1),
        (re.compile(r'^I$')              , -1),
+       (re.compile(r'!!+')              , -1),
        (re.compile(r'!!!+')              , -3),
 
        (re.compile(r'([h-zH-Z]{1,4})\1{3}')    , -3),        # Ugg .. the same letter(s) several times in a row. */       
@@ -163,8 +164,7 @@ urbanlist = ['amazing', 'ass', 'awe-inspiring', 'awesome', 'awsome', 'bad', 'bad
      'barf', 'beast', 'best', 'bitch', 'bitchin', 'black', 'bomb', 'boring',
      'bra', 'brah', 'brilliant', 'bro', 'brother', 'buddy', 'chick', 'chill',
      'cock', 'cool', 'crazy', 'cute', 'dank', 'dawg', 'dick', 'dirty',
-     'disgusting', 'dood', 'dope', 'drunk', 'dude', 'dudette', 'dumb',
-     'epic', 'excellent', 'excited', 'excitement', 'exciting',
+     'disgusting', 'dood', 'dope', 'drunk', 'dude', 'dudette', 'dumb', 'epic',
      'exotic', 'extraordinary', 'extreme', 'fab', 'fabulous', 'fag', 'fantastic',
      'fuck', 'fun', 'funny', 'gay', 'girl', 'gnarly',
      'god', 'good', 'great', 'groovy', 'gross', 'guy', 'hangover', 'happy', 'hardcore',
