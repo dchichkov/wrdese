@@ -542,7 +542,8 @@ def referenced_users(revisions):
         if e.reverted: users[e.reverted.username] = True
         for g in e.edit_group:
             users[g.username] = True
-            if g.reverted: users[g.reverted.username] = True    
+            if g.reverted: users[g.reverted.username] = True
+    return users    
     
 
 
@@ -562,7 +563,7 @@ def read_counters(revisions):
                             
             while True:
                 (u,r) = marshal.load(FILE)
-                if not revisions or u in referenced_users:
+                if not revisions or u in users:
                     user_counters[u] = tuple([a+b for (a,b) in zip(user_counters[u] , r)])
         else:                                           
            while True:                                  # just read
