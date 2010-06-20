@@ -534,9 +534,8 @@ def filter_pyc():
     print "Filtered pages: ", filtered_pages, "Filtered revisions", filtered_revisions
 
 
-def referenced_users(revisions):
+def referenced_users(revisions, users = {}):
     """Returns the list of referenced in the revisions users"""
-    users = {}
     for e in revisions:
         users[e.username] = True
         if e.reverted: users[e.reverted.username] = True
@@ -558,9 +557,14 @@ def read_counters(revisions):
     start = time.time()
     try:
         if _output_arg and not _analyze_arg:                     # read and merge
+            users = {}
             if revisions:                               
-                users = referenced_users(revisions)          # filter / known users
-                            
+                referenced_users(revisions, users)               # filter / known users (use known revisions)            
+            if _pyc_arg:                                        
+                for revisions in read_pyc():
+                    analyze_reverts(revisions)
+                    referenced_users(revisions, users)           # filter / known users (use .pyc)
+                                                
             while True:
                 (u,r) = marshal.load(FILE)
                 if not revisions or u in users:

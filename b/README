@@ -50,9 +50,13 @@ Filtering known revisions/producing .known files:
 Merging counters:
 ./r.py -pyc:p/pan-wvc-10.none.full -counters:p/counters-enwiki-20100130.none.full.split -output:counters-enwiki-20100130.none.full.merged
 
+Filtering counters:
+./r.py -counters:p/counters-enwiki-20100130.pan10.merged -revisions:p/pan-wvc-10.test-corpus.none.known -output:p/counters-enwiki-20100130.pan10-test.filtered
+./r.py -counters:p/counters-enwiki-20100130.pan10.filtered -pyc:p/Rocket.full -output:p/counters-enwiki-20100130.pan10-test.filtered
+
 Training/Using classifiers:
 ./r.py -revisions:p/Rocket.known -analyze -output:trained.classifier.Rocket
-./r.py -revisions:p/pan-wvc-10.none.known -analyze -classifier:trained.classifier.Rocket
+./r.py -revisions:p/pan-wvc-10.none.known -analyze:maxent -classifier:trained.classifier.Rocket
   
 
 IRC Bot:
