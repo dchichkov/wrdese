@@ -1275,9 +1275,11 @@ def evaluate_gold(revisions, user_counters):
 
 def train_crm114(revisions, user_counters, c):
     # CRM114
-    for i, e in enumerate(revisions): #[-50:]):
+    for i, e in enumerate(revisions[-100:]):
+        if e.reverts_info < 0: continue
+                    
         counter = user_counters[e.username]
-        if e.reverts_info < 0 or counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue            
+        if counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue            
         
         restored = []; reverted = []
         for (t, v) in e.diff:
