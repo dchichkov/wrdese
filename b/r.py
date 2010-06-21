@@ -1303,8 +1303,8 @@ def train_crm114(revisions, user_counters, c):
             if not stats['CRM114 answered ' + crm114_answer + ' on known'][known] % 100: dump_cstats(stats)                 
             if(crm114_answer != known): c.learn(known, edit_text)
                    
-            show_edit(e, "\n\n\n>>> %s <<<" % mark(known))
-            wikipedia.output(edit_text);
+            #show_edit(e, "\n\n\n>>> %s <<<" % mark(known))
+            #wikipedia.output(edit_text);
 
 
 
