@@ -185,8 +185,8 @@ def irc(request):
         print "Wow. We have a match. User:", d['user'], "Reputation:", reputation
         S.guids[guid]['reputation'] = reputation
         S.guids[guid]['nick'] = d['user']
-        if(reputation and reputation > 50):
-            S.guids[guid]['wid'] = EncodeAES(secret.cipher, d['user'])
+        #if(reputation and reputation > 50):
+        S.guids[guid]['wid'] = EncodeAES(secret.cipher, d['user'])
  
     if(d['user'] in ['SineBot', ]):
         return HttpResponse()       # TODO
