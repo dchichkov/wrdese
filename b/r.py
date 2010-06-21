@@ -556,7 +556,7 @@ def read_counters(revisions):
     user_counters = counters_dict()
     start = time.time()
     try:
-        if _output_arg and not _analyze_arg:                     # read and merge
+        if _output_arg and not _analyze_arg and not _train_arg:  # read and merge
             users = {}
             if revisions:                               
                 referenced_users(revisions, users)               # filter / known users (use known revisions)            
@@ -1278,78 +1278,116 @@ def evaluate_gold(revisions, user_counters):
 
 
 
-def train_crm114(revisions, user_counters, c):
-    # CRM114
-    for e in revisions[-100:]:
-        if e.reverts_info < -1: continue
-                    
-        counter = user_counters[e.username]
-        if counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue            
-
-        known = ''; diff = []
-        if e.reverts_info > 0:
-            known = 'bad'
-            for (t, v) in e.diff:
-                if v < 0: diff.append(t)
-        elif e.reverts_info == -1:
-            known = 'good'
-            for (t, v) in e.diff:
-                if v > 0: diff.append(t)
-                                                    
-        if diff and known:
-            edit_text = ' '.join(diff).encode('utf-8')                                
-            (crm114_answer, probability) = c.classify(edit_text)                    # Run CRM114
-            stats['CRM114 answered ' + crm114_answer + ' on known'][known] += 1
-            if not stats['CRM114 answered ' + crm114_answer + ' on known'][known] % 100: dump_cstats(stats)                 
-            if(crm114_answer != known): c.learn(known, edit_text)
-                   
-            #show_edit(e, "\n\n\n>>> %s <<<" % mark(known))
-            #wikipedia.output(edit_text);
-
-
-
-def train_freqdist(revisions, user_counters, c):
-    # CRM114
-    for e in revisions:#[-100:]:
-        if e.reverts_info < -1: continue
-                    
-        counter = user_counters[e.username]
-        if counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue            
-
-        #show_edit(e, "\n\n\n>>> %s <<<" % mark(e.reverts_info))
+def train_crm114(user_counters):
+    c = crm114.Classifier( "data", ['good', 'bad' ] )
+    for revisions in read_pyc():
+        analyze_reverts(revisions)    
         
-        diff = []
-        if e.reverts_info > 0:
-            for (t, v) in e.diff: 
-                if v < 0: c.bad.inc(t, -v);
-        elif e.reverts_info == -1:
-            for (t, v) in e.diff:
-                if v > 0: c.good.inc(t, v)                                                
+        # CRM114
+        for e in revisions[-100:]:
+            if e.reverts_info < -1: continue
+                        
+            counter = user_counters[e.username]
+            if counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue            
+    
+            known = ''; diff = []
+            if e.reverts_info > 0:
+                known = 'bad'
+                for (t, v) in e.diff:
+                    if v < 0: diff.append(t)
+            elif e.reverts_info == -1:
+                known = 'good'
+                for (t, v) in e.diff:
+                    if v > 0: diff.append(t)
+                                                        
+            if diff and known:
+                edit_text = ' '.join(diff).encode('utf-8')                                
+                (crm114_answer, probability) = c.classify(edit_text)                    # Run CRM114
+                stats['CRM114 answered ' + crm114_answer + ' on known'][known] += 1
+                if not stats['CRM114 answered ' + crm114_answer + ' on known'][known] % 100: dump_cstats(stats)                 
+                if(crm114_answer != known): c.learn(known, edit_text)
+                       
+                #show_edit(e, "\n\n\n>>> %s <<<" % mark(known))
+                #wikipedia.output(edit_text);
 
 
-def analyse_freqdist(revisions, user_counters, c):
-    from nltk.corpus import movie_reviews, stopwords
+
+def train_freqdist(user_counters):
+    c = lambda:expando
+    c.bad = nltk.probability.FreqDist()
+    c.good = nltk.probability.FreqDist()        
+    for revisions in read_pyc():            
+        analyze_reverts(revisions)
+        for e in revisions:#[-100:]:
+            if e.reverts_info < -1: continue                        
+            counter = user_counters[e.username]
+            if counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue            
+    
+            #show_edit(e, "\n\n\n>>> %s <<<" % mark(e.reverts_info))
+            if e.reverts_info > 0:
+                for (t, v) in e.diff: 
+                    if v < 0: c.bad.inc(t, -v);
+            elif e.reverts_info == -1:
+                for (t, v) in e.diff:
+                    if v > 0: c.good.inc(t, v)                                                
+
+    print "=================================================="
+    for word, freq in c.bad.iteritems():  print word.encode("utf-8"), freq 
+    print "=================================================" 
+    for word, freq in c.good.iteritems(): print word.encode("utf-8"), freq 
+    print "==================================================" 
+
+
+
+def train_chisquare(user_counters):
     from nltk.collocations import BigramCollocationFinder
     from nltk.metrics import BigramAssocMeasures
     from nltk.probability import FreqDist, ConditionalFreqDist
     
     word_fd = FreqDist()
     label_word_fd = ConditionalFreqDist()
-    
-    for word in movie_reviews.words(categories=['pos']):
-        word_fd.inc(word.lower())
-        label_word_fd['pos'].inc(word.lower())
-    
-    for word in movie_reviews.words(categories=['neg']):
-        word_fd.inc(word.lower())
-        label_word_fd['neg'].inc(word.lower())
-    
-    # n_ii = label_word_fd[label][word]
-    # n_ix = word_fd[word]
-    # n_xi = label_word_fd[label].N()
-    # n_xx = label_word_fd.N()    
 
+    for revisions in read_pyc():
+        analyze_reverts(revisions)
+        for e in revisions:#[-100:]:
+            if e.reverts_info < -1: continue                        
+            counter = user_counters[e.username]
+            if counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue            
 
+            if e.reverts_info > 0:
+                for (t, v) in e.diff: 
+                    if v < 0: word_fd.inc(t, min(-v, 10)); label_word_fd['neg'].inc(t[:20], min(-v, 10))
+            elif e.reverts_info == -1:
+                for (t, v) in e.diff:
+                    if v > 0: word_fd.inc(t, min(v, 10)); label_word_fd['pos'].inc(t[:20], min(v, 10))
+                                                                    
+    pos_word_count = label_word_fd['pos'].N()
+    neg_word_count = label_word_fd['neg'].N()
+    total_word_count = pos_word_count + neg_word_count
+    
+    word_scores = {}    
+    for word, freq in word_fd.iteritems():
+        word_scores[word] = BigramAssocMeasures.chi_sq(label_word_fd['neg'][word], (freq, neg_word_count), total_word_count)
+    
+    best = sorted(word_scores.iteritems(), key=lambda (w,s): s, reverse=True)[:10000]
+    bestwords = set([w for w, s in best])
+
+    if(_output_arg):
+        FILE = open(_output_arg, 'wb')
+
+    print "=================================================="
+    for word, score in best:
+        if label_word_fd['pos'][word] < label_word_fd['neg'][word]:        
+            print word.encode("utf-8"), score, label_word_fd['pos'][word], label_word_fd['neg'][word] 
+            if(_output_arg): cPickle.dump((word, score, label_word_fd['pos'][word], label_word_fd['neg'][word]), FILE, 1) 
+    print "=================================================="
+    for word, score in best:
+        if label_word_fd['pos'][word] > label_word_fd['neg'][word]:        
+            print word.encode("utf-8"), score, label_word_fd['pos'][word], label_word_fd['neg'][word] 
+            if(_output_arg): cPickle.dump((word, score, label_word_fd['pos'][word], label_word_fd['neg'][word]), FILE, 1) 
+    print "=================================================="
+    
+    
 
 
 
@@ -1606,26 +1644,9 @@ def main():
     if(_evaluate_arg):
         evaluate_gold(revisions, defaultdict(int))        
 
-    if _train_arg.find('maxent') > -1:
-        classifier = crm114.Classifier( "data", ['good', 'bad' ] )
-        for revisions in read_pyc():
-            analyze_reverts(revisions)
-            train_crm114(revisions, user_counters, classifier)
-            
-            
-    if _train_arg.find('freqdist') > -1:
-        classifier = lambda:expando
-        classifier.bad = nltk.probability.FreqDist()
-        classifier.good = nltk.probability.FreqDist()        
-        for revisions in read_pyc():            
-            analyze_reverts(revisions)
-            train_freqdist(revisions, user_counters, classifier)
-
-        print "=================================================="
-        for word, freq in classifier.bad.iteritems():  print word.encode("utf-8"), freq 
-        print "==================================================" 
-        for word, freq in classifier.good.iteritems(): print word.encode("utf-8"), freq 
-        print "==================================================" 
+    if _train_arg.find('maxent') > -1: train_maxent(user_counters)            
+    if _train_arg.find('freqdist') > -1: train_freqdist(user_counters)
+    if _train_arg.find('chisquare') > -1: train_chisquare(user_counters)
         
 
     if(_analyze_arg):        
