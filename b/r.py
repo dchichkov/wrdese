@@ -1131,7 +1131,10 @@ def analyze_revision_decisiontree(e, user_counters):
     if e.c[-2] == 0: return ('good',                                                  'page has never been vandalised')
     
     if counter[0] == 0:
-        pass
+        if e.c[0] < 10: return ('good', 'page have less than 10 edits, edited by an unknown user')
+        elif e.c[-2] / e.c[0] > 0.25: return ('bad', 'page is often vandalised, edited by an unknown user')
+        elif e.c[0] > 100 and e.c[-2] / e.c[0] > 0.15: return ('bad', 'page is often vandalised, 100..? revisions, edited by an unknown user')
+        return ('good', 'catch all, edited by an unknown user')
     elif e.c[0] < 10:                
          if e.c[-2] == 0: return ('good', 'page have less than 10 edits, never reverted')
          elif e.c[-2] / e.c[0] < 0.25 and counter[-1] / counter[0] > 0.75: return ('good', 'page have 1..10 edits, edited by known good user')
@@ -1140,20 +1143,21 @@ def analyze_revision_decisiontree(e, user_counters):
          if e.c[-2] == 0: return  ('good', 'page have less than 100 edits, never reverted')               
          elif e.c[-2] / e.c[0] < 0.15 and counter[-1] / counter[0] > 0.5: return ('good', 'page have 10..100 edits, edited by known good user')
 
-    
-    return ('unknown', 'unknown')
 
-    score = 0; explanation = 'urban dictionary analysis:'
+
+    score = 0; explanation = 'bag of words analysis:'
     for (t, v) in e.diff:
-        if v and t.lower() in urbandict: score -= v; explanation += ' ' + t
-    if score < 0: return ('bad', explanation);
+        if v and t in word_chisquares:
+            score += v * word_chisquares[t]; 
+            #explanation += "%s (%d); " % (t, word_chisquares[t])
+    if score < -10: return ('bad', explanation);
 
     #if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
     #if e.iwR < 48 and (e.iwA < 2 or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good') 
 
     
 
-    return ('unknown', 'unknown')
+    return ('good', 'catch all')
     
 
 
@@ -1386,7 +1390,27 @@ def train_chisquare(user_counters):
             print word.encode("utf-8"), score, label_word_fd['pos'][word], label_word_fd['neg'][word] 
             if(_output_arg): cPickle.dump((word, score, label_word_fd['pos'][word], label_word_fd['neg'][word]), FILE, 1) 
     print "=================================================="
-    
+
+
+
+def read_chisquare():
+    wikipedia.output("Reading %s..." % _chisquare_arg)
+    FILE = open(_chisquare_arg, 'rb')
+    start = time.time()
+    word_scores = {}; good = 0; bad = 0; total = 0;
+    try:
+        while True:
+            (word, score, freq_good, freq_bad) = cPickle.load(FILE)
+            if freq_bad > freq_good: bad+=1; word_scores[word] = -score;
+            if freq_good > freq_bad: good+=1; word_scores[word] = score;
+            total += 1;
+            if _verbose_arg: wikipedia.output( (word, score, freq_good, freq_bad) )
+    except IOError, e:
+        raise
+    except:# EOFError, e:
+        wikipedia.output("Total %d. Good %d. Bad %d. Read time: %f" % (total, good, bad, time.time() - start))
+
+    return word_scores
 
 
 
@@ -1655,12 +1679,13 @@ def compute_counters_dictionary():
 
 
 def main():
-    global _retrain_arg, _train_arg, _analyze_arg, _human_responses, _verbose_arg, _output_arg, _pyc_arg, _counters_arg, _classifier_arg, stats; 
-    _xml_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None; 
-    _display_pyc_arg = None; _compute_counters_arg = None;_output_arg = None; _analyze_arg = None; _train_arg = None
+    global _retrain_arg, _train_arg, _analyze_arg, _human_responses, _chisquare_arg;
+    global _verbose_arg, _output_arg, _pyc_arg, _counters_arg, _classifier_arg, stats, word_chisquares; 
+    _xml_arg = None; _pyc_arg = None; _display_last_timestamp_arg = None; _compute_pyc_arg = None; _chisquare_arg = None
+    _display_pyc_arg = None; _compute_counters_arg = None;_output_arg = None; _analyze_arg = ""; _train_arg = ""
     _counters_arg = None; _username_arg = None; _filter_pyc_arg = None; _count_empty_arg = None
     _revisions_arg = None; _filter_known_revisions_arg = None; _classifier_arg = None; _evaluate_arg = None
-    stats = defaultdict(lambda:defaultdict(int)); revisions = [];
+    stats = defaultdict(lambda:defaultdict(int)); revisions = []; word_chisquares = {};
 
     for arg in wikipedia.handleArgs():
         if arg.startswith('-xml') and len(arg) > 5: _xml_arg = arg[5:]
@@ -1673,6 +1698,7 @@ def main():
         if arg.startswith('-filter-pyc'): _filter_pyc_arg = True
         if arg.startswith('-retrain') and len(arg) > 9: _retrain_arg = arg[9:]
         if arg.startswith('-train')  and len(arg) > 7: _train_arg = arg[7:]
+        if arg.startswith('-chisquare')  and len(arg) > 11: _chisquare_arg = arg[11:]
         if arg.startswith('-vvv'): _verbose_arg = True
         if arg.startswith('-output') and len(arg) > 8: _output_arg = arg[8:]
         if arg.startswith('-display-last-timestamp'): _display_last_timestamp_arg = True
@@ -1686,19 +1712,18 @@ def main():
         if arg.startswith('-evaluate'): _evaluate_arg = True
  
 
-    if(not _xml_arg and not _pyc_arg and not _counters_arg and not _revisions_arg):
+    if not _xml_arg and not _pyc_arg and not _counters_arg and not _revisions_arg:
         wikipedia.output('Usage: ./r.py \03{lightblue}-xml:\03{default}path/Wikipedia-Dump-*.xml.7z -output:Wikipedia-Dump.full -compute-pyc')
         wikipedia.output('     : ./r.py \03{lightblue}-pyc:\03{default}path/Wikipedia-Dump.full -analyze')
         return
 
-    if(_xml_arg):        # XML files input
+    if _xml_arg:        # XML files input
         xmlFilenames = sorted(locate(_xml_arg))
         wikipedia.output(u"Files: \n%s\n\n" % xmlFilenames)
         mysite = wikipedia.getSite()
-
     if(_display_last_timestamp_arg): display_last_timestamp(xmlFilenames); return
     if(_compute_pyc_arg): compute_pyc(xmlFilenames); return
-
+    if _chisquare_arg: word_chisquares = read_chisquare()
 
     # Precompiled .pyc (.full) files input
     if(_display_pyc_arg): display_pyc(); return
@@ -1729,7 +1754,6 @@ def main():
         if(_username_arg): 
             wikipedia.output("User %s, has_key %s, counter %s" %
                 (_username_arg, user_counters.has_key(_username_arg), user_counters[_username_arg]))
-
 
 
     #analyze_tokens_lifetime(xmlFilenames)
