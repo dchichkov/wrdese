@@ -1327,6 +1327,30 @@ def train_freqdist(revisions, user_counters, c):
                 if v > 0: c.good.inc(t, v)                                                
 
 
+def analyse_freqdist(revisions, user_counters, c):
+    from nltk.corpus import movie_reviews, stopwords
+    from nltk.collocations import BigramCollocationFinder
+    from nltk.metrics import BigramAssocMeasures
+    from nltk.probability import FreqDist, ConditionalFreqDist
+    
+    word_fd = FreqDist()
+    label_word_fd = ConditionalFreqDist()
+    
+    for word in movie_reviews.words(categories=['pos']):
+        word_fd.inc(word.lower())
+        label_word_fd['pos'].inc(word.lower())
+    
+    for word in movie_reviews.words(categories=['neg']):
+        word_fd.inc(word.lower())
+        label_word_fd['neg'].inc(word.lower())
+    
+    # n_ii = label_word_fd[label][word]
+    # n_ix = word_fd[word]
+    # n_xi = label_word_fd[label].N()
+    # n_xx = label_word_fd.N()    
+
+
+
 
 
 def analyze_crm114(revisions, user_counters):
@@ -1596,10 +1620,11 @@ def main():
         for revisions in read_pyc():            
             analyze_reverts(revisions)
             train_freqdist(revisions, user_counters, classifier)
+
+        print "=================================================="
+        for word, freq in classifier.bad.iteritems():  print word.encode("utf-8"), freq 
         print "==================================================" 
-        for key in classifier.bad.keys(): print key
-        print "==================================================" 
-        for key in classifier.good.keys(): print key 
+        for word, freq in classifier.good.iteritems(): print word.encode("utf-8"), freq 
         print "==================================================" 
         
 
