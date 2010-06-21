@@ -1316,7 +1316,7 @@ def train_freqdist(revisions, user_counters, c):
         counter = user_counters[e.username]
         if counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue            
 
-        show_edit(e, "\n\n\n>>> %s <<<" % mark(e.reverts_info))
+        #show_edit(e, "\n\n\n>>> %s <<<" % mark(e.reverts_info))
         
         diff = []
         if e.reverts_info > 0:
