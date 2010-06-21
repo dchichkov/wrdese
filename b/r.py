@@ -143,7 +143,7 @@ import wikipedia, pagegenerators, xmlreader, editarticle
 
 
 # CRM114, crm.py module by Sam Deane
-import crm114   
+import crm114, nltk   
 
 #import wicow08r_chin_microsoft_annotation as k
 #import wicow08r_chin_lincoln_annotation as k
@@ -1308,6 +1308,25 @@ def train_crm114(revisions, user_counters, c):
 
 
 
+def train_freqdist(revisions, user_counters, c):
+    # CRM114
+    for e in revisions:#[-100:]:
+        if e.reverts_info < -1: continue
+                    
+        counter = user_counters[e.username]
+        if counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue            
+
+        show_edit(e, "\n\n\n>>> %s <<<" % mark(e.reverts_info))
+        
+        diff = []
+        if e.reverts_info > 0:
+            for (t, v) in e.diff: 
+                if v < 0: c.bad.inc(t, -v);
+        elif e.reverts_info == -1:
+            for (t, v) in e.diff:
+                if v > 0: c.good.inc(t, v)                                                
+
+
 
 
 def analyze_crm114(revisions, user_counters):
@@ -1497,7 +1516,7 @@ def main():
         if arg.startswith('-retrain'): _retrain_arg = True
         if arg.startswith('-filter-pyc'): _filter_pyc_arg = True
         if arg.startswith('-retrain') and len(arg) > 9: _retrain_arg = arg[9:]
-        if arg.startswith('-train'): _train_arg = True
+        if arg.startswith('-train')  and len(arg) > 7: _train_arg = arg[7:]
         if arg.startswith('-vvv'): _verbose_arg = True
         if arg.startswith('-output') and len(arg) > 8: _output_arg = arg[8:]
         if arg.startswith('-display-last-timestamp'): _display_last_timestamp_arg = True
@@ -1563,11 +1582,26 @@ def main():
     if(_evaluate_arg):
         evaluate_gold(revisions, defaultdict(int))        
 
-    if(_train_arg):
+    if _train_arg.find('maxent') > -1:
         classifier = crm114.Classifier( "data", ['good', 'bad' ] )
         for revisions in read_pyc():
             analyze_reverts(revisions)
             train_crm114(revisions, user_counters, classifier)
+            
+            
+    if _train_arg.find('freqdist') > -1:
+        classifier = lambda:expando
+        classifier.bad = nltk.probability.FreqDist()
+        classifier.good = nltk.probability.FreqDist()        
+        for revisions in read_pyc():            
+            analyze_reverts(revisions)
+            train_freqdist(revisions, user_counters, classifier)
+        print "==================================================" 
+        for key in classifier.bad.keys(): print key
+        print "==================================================" 
+        for key in classifier.good.keys(): print key 
+        print "==================================================" 
+        
 
     if(_analyze_arg):        
         if _analyze_arg.find('counters') > -1: user_counters = check_counters(revisions, user_counters)        
