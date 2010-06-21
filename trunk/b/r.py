@@ -1280,29 +1280,31 @@ def evaluate_gold(revisions, user_counters):
 
 def train_crm114(revisions, user_counters, c):
     # CRM114
-    for i, e in enumerate(revisions[-100:]):
-        if e.reverts_info < 0: continue
+    for e in revisions[-100:]:
+        if e.reverts_info < -1: continue
                     
         counter = user_counters[e.username]
         if counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue            
-        
-        restored = []; reverted = []
-        for (t, v) in e.diff:
-            if v > 0: restored.append(t)
-            elif v < 0: reverted.append(t)
 
-        for diff, known in [(restored, 'good'), (reverted, 'bad')]: 
-            if diff:
-                edit_text = ' '.join(diff).encode('utf-8')                                
-                (crm114_answer, probability) = c.classify(edit_text)        # Run CRM114            
-                if(crm114_answer != known):                                 # training CRM114
-                    c.learn(known, edit_text)
-                    stats['CRM114 trained'][known] += 1
-                elif(i > 1000):
-                    stats['CRM114 correct'][known] += 1
+        known = ''; diff = []
+        if e.reverts_info > 0:
+            known = 'bad'
+            for (t, v) in e.diff:
+                if v < 0: diff.append(t)
+        elif e.reverts_info == -1:
+            known = 'good'
+            for (t, v) in e.diff:
+                if v > 0: diff.append(t)
+                                                    
+        if diff and known:
+            edit_text = ' '.join(diff).encode('utf-8')                                
+            (crm114_answer, probability) = c.classify(edit_text)                    # Run CRM114
+            stats['CRM114 answered ' + crm114_answer + ' on known'][known] += 1
+            if not stats['CRM114 answered ' + crm114_answer + ' on known'][known] % 100: dump_cstats(stats)                 
+            if(crm114_answer != known): c.learn(known, edit_text)
                    
-                #show_edit(e, "\n\n\n>>> %s <<<" % mark(known))
-                #wikipedia.output(edit_text);
+            show_edit(e, "\n\n\n>>> %s <<<" % mark(known))
+            wikipedia.output(edit_text);
 
 
 
