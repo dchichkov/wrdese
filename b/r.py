@@ -1741,7 +1741,7 @@ def main():
     if _train_arg.find('maxent') > -1: train_maxent(user_counters)            
     if _train_arg.find('freqdist') > -1: train_freqdist(user_counters)
     if _train_arg.find('chisquare') > -1: train_chisquare(user_counters)
-    if _train_arg.find('crm114') > -1: train_crm114(crm114)
+    if _train_arg.find('crm114') > -1: train_crm114(user_counters)
         
 
     if(_analyze_arg):        
