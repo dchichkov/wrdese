@@ -362,7 +362,7 @@ def dump_cstats(stats):
             v[k] = "%d (%d%%)" % (i, i*100/total)
             if k=='bad' and s.find('good') > -1: v[k] = mark(v[k])
             ss += "%s:%s  " % (k, v[k])
-            if len(ss) > 40: ss += "\n%-60s:" % ""
+            if len(ss) > 80: ss += "\n%-60s:" % ""
         sstats[s] = ss
             
        
@@ -1074,7 +1074,7 @@ def analyze_decisiontree(revisions, user_counters):
         stats[explanation + ' (' + score + ') ' + 'on known'][known] += 1         
 
         #if not explanation.startswith('bag of words analysis:'): continue
-        #if score != 'unknown' or known != 'bad': continue
+        if score != 'unknown' or known != 'bad': continue
         #if score == 'unknown': continue
         extra = lambda:wikipedia.output("Explanation: %s" % explanation)
         (verified, known, score) = collect_stats(stats, user_counters, e, score, False, extra)
@@ -1133,37 +1133,40 @@ def analyze_revision_decisiontree(e, user_counters):
 
     if e.iwR > 49 and (e.iwA > 1 and e.iwA < 25): return ('bad'                         ,'add/delete stats are looking bad')     
     if e.iwA == 0 and e.iwR == 0: return ('good'                                        ,'add/delete stats showing an empty edit')
- 
+    
     
     if e.c[-2] == 0: return ('good',                                                  'page has never been vandalised')
-    
+
+    kx = 0; ky = 0;
+    for (t, v) in e.diff:
+        if v < 0: kx += word_chisquares.get(t[:20], 0)
+        if v > 0: ky += word_chisquares.get(t[:20], 50);      #explanation += "%s (%d); " % (t, word_chisquares[t:20])
+    if ky < -5000: return ('bad', 'bag of words analysis:-5000')
+    if ky > 100000: return ('good', 'bag of words analysis:+10000')
+    if ky == 0: return ('good', 'bag of words analysis:0')
+
     if counter[0] == 0:
         if e.c[0] < 10: return ('good', 'page have less than 10 edits, edited by an unknown user')
         elif e.c[-2] / e.c[0] > 0.25: return ('bad', 'page is often vandalised, edited by an unknown user')
         elif e.c[0] > 100 and e.c[-2] / e.c[0] > 0.15: return ('bad', 'page is often vandalised, 100..? revisions, edited by an unknown user')
-        return ('good', 'catch all, edited by an unknown user')
     elif e.c[0] < 10:                
          if e.c[-2] == 0: return ('good', 'page have less than 10 edits, never reverted')
          elif e.c[-2] / e.c[0] < 0.25 and counter[-1] / counter[0] > 0.75: return ('good', 'page have 1..10 edits, edited by known good user')
          elif e.c[-2] / e.c[0] > 0.25 and counter[-1] / counter[0] < 0.75: return ('bad', 'page have 1..10 edits, reverted, edited by known bad user')
     elif e.c[0] < 100:
          if e.c[-2] == 0: return  ('good', 'page have less than 100 edits, never reverted')               
-         elif e.c[-2] / e.c[0] < 0.15 and counter[-1] / counter[0] > 0.5: return ('good', 'page have 10..100 edits, edited by known good user')
-
-    #score = 0; explanation = 'bag of words analysis:'
-    #for (t, v) in e.diff:
-    #    if v > 0:
-    #        score += word_chisquares.get(t[:20], 77)
-    #        
-    #        word = t[:20] 
-    #        if word in word_chisquares:
-    #            score += v * word_chisquares[t[:20]];
-    #        #explanation += "%s (%d); " % (t, word_chisquares[t:20])
-    #        #if score > 0: return ('good', explanation)
-    #if score < -10: return ('bad', explanation)
+         elif e.c[-2] / e.c[0] < 0.15 and counter[-1] / counter[0] > 0.5: return ('good', 'page have 10..100 edits, edited by known good user')    
 
     if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
     if e.iwR < 48 and (e.iwA < 2 or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good') 
+    if counter[-2] * 3 > counter[0]: return ('bad', 'user reverts rate is high')
+
+    
+    return ('unknown', 'unknown')
+    
+
+
+
     return ('good', 'catch all')
     
 
@@ -1184,7 +1187,7 @@ def analyze_plot(revisions, user_counters):
             known = k.is_known(e.revid)  # previous score (some human verified)                    
             counter = user_counters[e.username]
             (score, explanation) = ('unknown', 'unknown')
-            #(score, explanation) =  analyze_revision_decisiontree(e, user_counters)
+            (score, explanation) =  analyze_revision_decisiontree(e, user_counters)
             #if score != 'unknown': continue            
             if e.reverts_info == -2 and known=='good': known = 'reverted good'
 
@@ -1207,9 +1210,16 @@ def analyze_plot(revisions, user_counters):
             #if score != 'unknown': continue            
 
             
-            if e.reverts_info < 0 or counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue            
-            x[score + ' on ' + known].append(random()*0.001 +  counter[-1] / counter[0])  
-            y[score + ' on ' + known].append(random()*0.1 +  counter[0])                               
+            #if e.reverts_info < 0 or counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue
+            kx = 0; ky = 0;
+            for (t, v) in e.diff:
+                if v < 0: kx += word_chisquares.get(t[:20], 0)
+                if v > 0: ky += word_chisquares.get(t[:20], 50)
+            
+        
+            if counter[0] != 0: continue 
+            x[score + ' on ' + known].append(random()*100)#0.001 + counter[-2] / counter[0])  
+            y[score + ' on ' + known].append(random() + ky)                               
         
             
             # 'al', 'bl', 'lo', 'ahi', 'bhi', 'ilA', 'ilR', 'iwA', 'iwR', 'ilM', 'iwM', 'diff'
@@ -1228,7 +1238,7 @@ def analyze_plot(revisions, user_counters):
         for label, color in graphs.iteritems(): 
             plt.plot(x[label], y[label], color=color, linestyle='', marker='.', alpha = '0.8' )
             
-        plt.axis([0, 1, 0, 1])
+        plt.axis([-1000, 1000, -1000, 1000])
         plt.xlabel('e.c[-2] / e.c[0]')
         plt.ylabel('e.c[-1] / e.c[0]')
         plt.show()
@@ -1408,12 +1418,14 @@ def read_chisquare():
     try:
         while True:
             (word, score, freq_good, freq_bad) = cPickle.load(FILE)
-            if freq_bad > freq_good: bad+=1; word_scores[word] = -score;
-            if freq_good > freq_bad: good+=1; word_scores[word] = score;
+            word_scores[word] = (freq_good - freq_bad) * score / (freq_bad + freq_good) 
+            
+            if freq_bad > freq_good: bad+=1;
+            if freq_good > freq_bad: good+=1;
             total += 1;
-            if _verbose_arg: 
-                wikipedia.output("%s (%d)" % (word, word_scores[word]))
-                #wikipedia.output( str( (word, score, freq_good, freq_bad) ) )
+            #if _verbose_arg: 
+            #    wikipedia.output("%s (%d)" % (word, word_scores[word]))
+            #    #wikipedia.output( str( (word, score, freq_good, freq_bad) ) )
     except IOError, e:
         raise
     except EOFError, e:
