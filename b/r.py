@@ -353,7 +353,7 @@ def dump_cstats(stats):
         if len(v[1]) < 2: return 0
         return min(v[1].values())
 
-    if(_verbose_arg): ids.dump()
+    ids.dump()
 
     sstats = OrderedDict(sorted(copy.deepcopy(stats).items(), key = key, reverse=True))
     for s, v in sstats.iteritems():
@@ -362,7 +362,7 @@ def dump_cstats(stats):
             v[k] = "%d (%d%%)" % (i, i*100/total)
             if k=='bad' and s.find('good') > -1: v[k] = mark(v[k])
             ss += "%s:%s  " % (k, v[k])
-            #if len(ss) > 40: ss += "\n%-60s:" % ""
+            if len(ss) > 40: ss += "\n%-60s:" % ""
         sstats[s] = ss
             
        
@@ -578,7 +578,7 @@ def read_counters(revisions):
         raise
     except EOFError, e:
         wikipedia.output("Done reading %s. Read time: %f. Total users: %d" % (_counters_arg, time.time() - start, len(user_counters)))
-    if(_output_arg and not _analyze_arg):
+    if(_output_arg and not _analyze_arg and not _train_arg):
         #wikipedia.output("Filtering counters <0 or >10")
         FILE = open(_output_arg, 'wb')
         for u, r in user_counters.iteritems():
@@ -1061,14 +1061,21 @@ def analyze_diff_decisiontree(e):
 def analyze_decisiontree(revisions, user_counters):
     total_time = total_size = 0
     for e in revisions:
-        known = k.is_known(e.revid)                 # previous score (some human verified)
         (score, explanation) = analyze_revision_decisiontree(e, user_counters)
+        
+        if _output_arg:                             # saving ids
+            ids.known[e.revid] = score; 
+            ids.verified[e.revid] = explanation;
+            stats[score][explanation] += 1            
+            continue
+        
+        known = k.is_known(e.revid)                 # previous score (some human verified)
         if e.reverted and known=='good': known = 'reverted good'
-        stats[explanation + ' (' + score + ') ' + 'on known'][known] += 1
+        stats[explanation + ' (' + score + ') ' + 'on known'][known] += 1         
 
-        #if not explanation.startswith('Comment analysis'): continue
+        #if not explanation.startswith('bag of words analysis:'): continue
         #if score != 'unknown' or known != 'bad': continue
-        if score == 'unknown': continue
+        #if score == 'unknown': continue
         extra = lambda:wikipedia.output("Explanation: %s" % explanation)
         (verified, known, score) = collect_stats(stats, user_counters, e, score, False, extra)
 
@@ -1143,20 +1150,20 @@ def analyze_revision_decisiontree(e, user_counters):
          if e.c[-2] == 0: return  ('good', 'page have less than 100 edits, never reverted')               
          elif e.c[-2] / e.c[0] < 0.15 and counter[-1] / counter[0] > 0.5: return ('good', 'page have 10..100 edits, edited by known good user')
 
+    #score = 0; explanation = 'bag of words analysis:'
+    #for (t, v) in e.diff:
+    #    if v > 0:
+    #        score += word_chisquares.get(t[:20], 77)
+    #        
+    #        word = t[:20] 
+    #        if word in word_chisquares:
+    #            score += v * word_chisquares[t[:20]];
+    #        #explanation += "%s (%d); " % (t, word_chisquares[t:20])
+    #        #if score > 0: return ('good', explanation)
+    #if score < -10: return ('bad', explanation)
 
-
-    score = 0; explanation = 'bag of words analysis:'
-    for (t, v) in e.diff:
-        if v and t in word_chisquares:
-            score += v * word_chisquares[t]; 
-            #explanation += "%s (%d); " % (t, word_chisquares[t])
-    if score < -10: return ('bad', explanation);
-
-    #if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
-    #if e.iwR < 48 and (e.iwA < 2 or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good') 
-
-    
-
+    if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
+    if e.iwR < 48 and (e.iwA < 2 or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good') 
     return ('good', 'catch all')
     
 
@@ -1404,10 +1411,12 @@ def read_chisquare():
             if freq_bad > freq_good: bad+=1; word_scores[word] = -score;
             if freq_good > freq_bad: good+=1; word_scores[word] = score;
             total += 1;
-            if _verbose_arg: wikipedia.output( (word, score, freq_good, freq_bad) )
+            if _verbose_arg: 
+                wikipedia.output("%s (%d)" % (word, word_scores[word]))
+                #wikipedia.output( str( (word, score, freq_good, freq_bad) ) )
     except IOError, e:
         raise
-    except:# EOFError, e:
+    except EOFError, e:
         wikipedia.output("Total %d. Good %d. Bad %d. Read time: %f" % (total, good, bad, time.time() - start))
 
     return word_scores
