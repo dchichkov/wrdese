@@ -1074,8 +1074,8 @@ def analyze_decisiontree(revisions, user_counters):
         stats[explanation + ' (' + score + ') ' + 'on known'][known] += 1         
 
         #if not explanation.startswith('bag of words analysis:'): continue
-        if score != 'unknown' or known != 'bad': continue
-        #if score == 'unknown': continue
+        #if score != 'unknown': continue
+        #if score != 'bad' and known != 'good': continue
         extra = lambda:wikipedia.output("Explanation: %s" % explanation)
         (verified, known, score) = collect_stats(stats, user_counters, e, score, False, extra)
 
@@ -1114,8 +1114,8 @@ def analyze_revision_decisiontree(e, user_counters):
     for c in ['<', '>', '{', '}']:
         markupA += sA.count(c)
         markupR += sR.count(c)                        
-    if markupA != markupR and markupA > 1: return ('good'             , 'Markup <>/{} is looking good')  
-    if markupA > 7: return ('good'             , 'Markup <>/{} is looking good')
+    if markupA != markupR and markupA > 1: return ('good'             , 'Markup <>/{} is looking good?')  
+    if markupA > 7: return ('good'             , 'Markup <>/{} is looking good: > 7')
 
 
 
@@ -1127,9 +1127,9 @@ def analyze_revision_decisiontree(e, user_counters):
     if e.c[0] < 7: return ('good'                                                        ,'page has less than 7 revisions')
     if e.c[0] == e.c[-1]: return ('good'                                                 ,'page has only regular edits')
 
-    if not e.ipedit and comment == 'undo': return ('good'                               ,'comment indicates this not an ip user doing undo')
+    #if not e.ipedit and comment == 'undo': return ('good'                               ,'comment indicates this not an ip user doing undo')
     if comment == 'good': return ('good'                                                ,'comment is looking good')
-    if e.iwM > 250: return ('good'                                                      ,'modify stats are looking good')
+    #if e.iwM > 250: return ('good'                                                      ,'modify stats are looking good')
 
     if e.iwR > 49 and (e.iwA > 1 and e.iwA < 25): return ('bad'                         ,'add/delete stats are looking bad')     
     if e.iwA == 0 and e.iwR == 0: return ('good'                                        ,'add/delete stats showing an empty edit')
@@ -1137,37 +1137,33 @@ def analyze_revision_decisiontree(e, user_counters):
     
     if e.c[-2] == 0: return ('good',                                                  'page has never been vandalised')
 
-    kx = 0; ky = 0;
+    kx = 0; ky = 0; explanation = "";
     for (t, v) in e.diff:
-        if v < 0: kx += word_chisquares.get(t[:20], 0)
-        if v > 0: ky += word_chisquares.get(t[:20], 50);      #explanation += "%s (%d); " % (t, word_chisquares[t:20])
+        if v < 0: kx += word_chisquares.get(t[:20], 1);       explanation += "%s (%d); " % (t, word_chisquares.get(t[:20], 0))
+        if v > 0: ky += word_chisquares.get(t[:20], 1);      explanation += "%s (%d); " % (t, word_chisquares.get(t[:20], 0))
     if ky < -5000: return ('bad', 'bag of words analysis:-5000')
     if ky > 100000: return ('good', 'bag of words analysis:+10000')
-    if ky == 0: return ('good', 'bag of words analysis:0')
+    if ky == 0: return ('good', 'bag of words analysis:0?')
 
     if counter[0] == 0:
-        if e.c[0] < 10: return ('good', 'page have less than 10 edits, edited by an unknown user')
-        elif e.c[-2] / e.c[0] > 0.25: return ('bad', 'page is often vandalised, edited by an unknown user')
-        elif e.c[0] > 100 and e.c[-2] / e.c[0] > 0.15: return ('bad', 'page is often vandalised, 100..? revisions, edited by an unknown user')
+        if e.c[-2] / e.c[0] > 0.25: return ('bad', 'page is often vandalised, edited by an unknown user?')
+        elif e.c[0] > 100 and e.c[-2] / e.c[0] > 0.15: return ('bad', 'page is often vandalised, 100..? revisions, edited by an unknown user?')
     elif e.c[0] < 10:                
          if e.c[-2] == 0: return ('good', 'page have less than 10 edits, never reverted')
-         elif e.c[-2] / e.c[0] < 0.25 and counter[-1] / counter[0] > 0.75: return ('good', 'page have 1..10 edits, edited by known good user')
-         elif e.c[-2] / e.c[0] > 0.25 and counter[-1] / counter[0] < 0.75: return ('bad', 'page have 1..10 edits, reverted, edited by known bad user')
+         elif e.c[-2] / e.c[0] < 0.25 and counter[-1] / counter[0] > 0.75: return ('good', 'page have 1..10 edits, edited by known good user?')
+         elif e.c[-2] / e.c[0] > 0.25 and counter[-1] / counter[0] < 0.75: return ('bad', 'page have 1..10 edits, reverted, edited by known bad user?')
     elif e.c[0] < 100:
          if e.c[-2] == 0: return  ('good', 'page have less than 100 edits, never reverted')               
          elif e.c[-2] / e.c[0] < 0.15 and counter[-1] / counter[0] > 0.5: return ('good', 'page have 10..100 edits, edited by known good user')    
 
-    if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob')
-    if e.iwR < 48 and (e.iwA < 2 or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good') 
-    if counter[-2] * 3 > counter[0]: return ('bad', 'user reverts rate is high')
+    if counter[-2] * 4 > counter[0] and e.c[-2] / e.c[0] > 0.2: return ('bad', 'user reverts rate is high?')
+    if counter[-2] * 2 > counter[0]: return ('bad', 'user reverts rate is high?')
+    if e.c[-2]*33 < e.c[-1] : return ('good'                                            ,'page has rarely been reverted  + 20 gob?')
+    if e.iwR < 48 and (e.iwA < 2 or (e.iwA < 3 and e.iwR > 2)): return ('good'          ,'add/delete stats are looking good?') 
 
+    if ky < -10: return ('bad', 'bag of words analysis:<-10?')
     
-    return ('unknown', 'unknown')
-    
-
-
-
-    return ('good', 'catch all')
+    return ('good', 'catch all?')
     
 
 
@@ -1418,6 +1414,7 @@ def read_chisquare():
     try:
         while True:
             (word, score, freq_good, freq_bad) = cPickle.load(FILE)
+            if not word: continue
             word_scores[word] = (freq_good - freq_bad) * score / (freq_bad + freq_good) 
             
             if freq_bad > freq_good: bad+=1;
