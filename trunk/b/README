@@ -1,3 +1,40 @@
+Usage
+=====
+Generating corpus (.pyc) from an xml dump(s):
+r.py -xml:../enwiki-20100312-pages-meta-history.xml.7z -output:/data/enwiki-20100312.none.full -compute-pyc > progress-20100312-full.txt  2>&1 &
+
+Analyzing corpus (.pyc):
+./r.py -pyc:p/pan-wvc-10.full -counters:p/ratings-enwiki-20100130.merged -analyze:decisiontree -vvv
+
+Computing user counters:
+./r.py -pyc:/data/enwiki-20100130.none.full -compute-counters -output:p/counters-enwiki-20100130.none.full.split > progress-counters-enwiki-20100130.none.full.split.txt 2>&1 &
+
+Filtering corpus:
+./r.py -pyc:/data/enwiki-20100130.none.full -filter-pyc -output:p/pan-wvc-10.none.full > progress-wvc-filter.none.full.txt 2>&1 &
+
+
+Filtering known revisions/producing .known files:
+./r.py -pyc:p/pan-wvc-10.none.full -filter-known-revisions -output:p/pan-wvc-10.none.known
+./r.py -pyc:p/Rocket.none.full -filter-known-revisions -output:p/enwiki.Rocket.none.known
+
+Merging counters:
+./r.py -pyc:p/pan-wvc-10.none.full -counters:p/counters-enwiki-20100130.none.full.split -output:counters-enwiki-20100130.none.full.merged
+
+Filtering counters:
+./r.py -counters:p/counters-enwiki-20100130.pan10.merged -revisions:p/pan-wvc-10.test-corpus.none.known -output:p/counters-enwiki-20100130.pan10-test.filtered
+./r.py -counters:p/counters-enwiki-20100130.pan10.filtered -pyc:p/Rocket.full -output:p/counters-enwiki-20100130.pan10-test.filtered
+
+Training/Using classifiers:
+./r.py -revisions:p/Rocket.known -analyze -output:trained.classifier.Rocket
+./r.py -revisions:p/pan-wvc-10.none.known -analyze:maxent -classifier:trained.classifier.Rocket
+
+
+IRC Bot:
+./ircbot.py Dc987test p/ratings-enwiki-20100130.merged > ircbot-test-20100510.txt 2>&1 &
+
+
+
+
 Design
 ======
 
@@ -27,38 +64,3 @@ Belief propagation:
 * several revisions up/down;
 * user comments;
 * user contributions.
-
-
-Usage
-=====
-Generating corpus (.pyc) from an xml dump(s):
-r.py -xml:../enwiki-20100312-pages-meta-history.xml.7z -output:/data/enwiki-20100312.none.full -compute-pyc > progress-20100312-full.txt  2>&1 &
-
-Analyzing corpus (.pyc):
-./r.py -pyc:p/pan-wvc-10.full -counters:p/ratings-enwiki-20100130.merged -analyze -vvv
-
-Computing user counters:
-./r.py -pyc:/data/enwiki-20100130.none.full -compute-counters -output:p/counters-enwiki-20100130.none.full.split > progress-counters-enwiki-20100130.none.full.split.txt 2>&1 &
-
-Filtering corpus:
-./r.py -pyc:/data/enwiki-20100130.none.full -filter-pyc -output:p/pan-wvc-10.none.full > progress-wvc-filter.none.full.txt 2>&1 &
-
-Filtering known revisions/producing .known files:
-./r.py -pyc:p/pan-wvc-10.none.full -filter-known-revisions -output:p/pan-wvc-10.none.known
-./r.py -pyc:p/Rocket.none.full -filter-known-revisions -output:p/enwiki.Rocket.none.known
-
-Merging counters:
-./r.py -pyc:p/pan-wvc-10.none.full -counters:p/counters-enwiki-20100130.none.full.split -output:counters-enwiki-20100130.none.full.merged
-
-Filtering counters:
-./r.py -counters:p/counters-enwiki-20100130.pan10.merged -revisions:p/pan-wvc-10.test-corpus.none.known -output:p/counters-enwiki-20100130.pan10-test.filtered
-./r.py -counters:p/counters-enwiki-20100130.pan10.filtered -pyc:p/Rocket.full -output:p/counters-enwiki-20100130.pan10-test.filtered
-
-Training/Using classifiers:
-./r.py -revisions:p/Rocket.known -analyze -output:trained.classifier.Rocket
-./r.py -revisions:p/pan-wvc-10.none.known -analyze:maxent -classifier:trained.classifier.Rocket
-  
-
-IRC Bot:
-./ircbot.py Dc987test p/ratings-enwiki-20100130.merged > ircbot-test-20100510.txt 2>&1 &
-
