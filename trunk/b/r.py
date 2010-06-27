@@ -1379,10 +1379,10 @@ def train_chisquare(user_counters):
                     if v < 0:
                         t = r12.subn(r'\1\1\1', t)[0]
                         t = r34.subn(r'\1\1\1', t)[0]
-                        word_fd.inc(t, min(-v, 2)); label_word_fd['neg'].inc(t[:20], min(-v, 2))
+                        word_fd.inc(t, min(-v, 2)); label_word_fd['neg'].inc(t[:21], min(-v, 2))
             elif e.reverts_info == -1:
                 for (t, v) in e.diff:
-                    if v > 0: word_fd.inc(t, min(v, 2)); label_word_fd['pos'].inc(t[:20], min(v, 2))
+                    if v > 0: word_fd.inc(t, min(v, 2)); label_word_fd['pos'].inc(t[:21], min(v, 2))
                                                                     
     pos_word_count = label_word_fd['pos'].N()
     neg_word_count = label_word_fd['neg'].N()
