@@ -1342,7 +1342,7 @@ def train_freqdist(user_counters):
     
             #show_edit(e, "\n\n\n>>> %s <<<" % mark(e.reverts_info))
             if e.reverts_info > 0:
-                for (t, v) in e.diff: 
+                for (t, v) in e.diff:
                     if v < 0: c.bad.inc(t, -v);
             elif e.reverts_info == -1:
                 for (t, v) in e.diff:
@@ -1361,6 +1361,9 @@ def train_chisquare(user_counters):
     from nltk.metrics import BigramAssocMeasures
     from nltk.probability import FreqDist, ConditionalFreqDist
     
+    r12 = re.compile(r'(.{1,2})\1{3,}')  # Ugg .. the same letters several times in a row. */
+    r34 = re.compile(r'(.{3,4})\1{3,}')  # Ugg .. the same letters several times in a row. */
+ 
     word_fd = FreqDist()
     label_word_fd = ConditionalFreqDist()
 
@@ -1373,10 +1376,13 @@ def train_chisquare(user_counters):
 
             if e.reverts_info > 0:
                 for (t, v) in e.diff: 
-                    if v < 0: word_fd.inc(t, min(-v, 10)); label_word_fd['neg'].inc(t[:20], min(-v, 10))
+                    if v < 0:
+                        t = r12.subn(r'\1\1\1', t)[0]
+                        t = r34.subn(r'\1\1\1', t)[0]
+                        word_fd.inc(t, min(-v, 2)); label_word_fd['neg'].inc(t[:20], min(-v, 2))
             elif e.reverts_info == -1:
                 for (t, v) in e.diff:
-                    if v > 0: word_fd.inc(t, min(v, 10)); label_word_fd['pos'].inc(t[:20], min(v, 10))
+                    if v > 0: word_fd.inc(t, min(v, 2)); label_word_fd['pos'].inc(t[:20], min(v, 2))
                                                                     
     pos_word_count = label_word_fd['pos'].N()
     neg_word_count = label_word_fd['neg'].N()
@@ -1386,7 +1392,7 @@ def train_chisquare(user_counters):
     for word, freq in word_fd.iteritems():
         word_scores[word] = BigramAssocMeasures.chi_sq(label_word_fd['neg'][word], (freq, neg_word_count), total_word_count)
     
-    best = sorted(word_scores.iteritems(), key=lambda (w,s): s, reverse=True)[:20000]
+    best = sorted(word_scores.iteritems(), key=lambda (w,s): s, reverse=True)[:50000]
     bestwords = set([w for w, s in best])
 
     if(_output_arg):
