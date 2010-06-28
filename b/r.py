@@ -1361,8 +1361,7 @@ def train_chisquare(user_counters):
     from nltk.metrics import BigramAssocMeasures
     from nltk.probability import FreqDist, ConditionalFreqDist
     
-    r12 = re.compile(r'(.{1,2})\1{3,}')  # Ugg .. the same letters several times in a row. */
-    r34 = re.compile(r'(.{3,4})\1{3,}')  # Ugg .. the same letters several times in a row. */
+    r14 = re.compile(r'(.{1,4}?)\1{3,}')  # Ugg .. the same letters several times in a row. */
  
     word_fd = FreqDist()
     label_word_fd = ConditionalFreqDist()
@@ -1377,12 +1376,13 @@ def train_chisquare(user_counters):
             if e.reverts_info > 0:
                 for (t, v) in e.diff: 
                     if v < 0:
-                        t = r12.subn(r'\1\1\1', t)[0]
-                        t = r34.subn(r'\1\1\1', t)[0]
+                        t = r14.subn(r'\1\1\1', t)[0]
                         word_fd.inc(t, min(-v, 2)); label_word_fd['neg'].inc(t[:21], min(-v, 2))
             elif e.reverts_info == -1:
                 for (t, v) in e.diff:
-                    if v > 0: word_fd.inc(t, min(v, 2)); label_word_fd['pos'].inc(t[:21], min(v, 2))
+                    if v > 0:
+                        t = r14.subn(r'\1\1\1', t)[0]
+                        word_fd.inc(t, min(v, 2)); label_word_fd['pos'].inc(t[:21], min(v, 2))
                                                                     
     pos_word_count = label_word_fd['pos'].N()
     neg_word_count = label_word_fd['neg'].N()
