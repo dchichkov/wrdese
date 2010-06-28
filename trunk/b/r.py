@@ -1392,7 +1392,7 @@ def train_chisquare(user_counters):
     for word, freq in word_fd.iteritems():
         word_scores[word] = BigramAssocMeasures.chi_sq(label_word_fd['neg'][word], (freq, neg_word_count), total_word_count)
     
-    best = sorted(word_scores.iteritems(), key=lambda (w,s): s, reverse=True)[:50000]
+    best = sorted(word_scores.iteritems(), key=lambda (w,s): s, reverse=True)[:100000]
     bestwords = set([w for w, s in best])
 
     if(_output_arg):
