@@ -134,7 +134,8 @@ __version__='$Id: r.py 7909 2010-02-05 06:42:52Z Dc987 $'
 import re, sys, time, calendar, difflib, string, math, hashlib 
 import os, fnmatch, marshal, cPickle, copy, pickle
 import pprint, ddiff
-from collections import defaultdict, namedtuple
+from collections import defaultdict, namedtuple 
+from operator import itemgetter
 from ordereddict import OrderedDict
 from hi import *
 
@@ -1258,7 +1259,12 @@ def analyze_plot(revisions, user_counters):
     plt.show()
 
 
-
+def evaluate_anons(revisions, user_counters):
+    for i, e in enumerate(revisions):
+        known = k.is_known(e.revid)                                 # previous score (some human verified)
+        
+        stats[("Registered", "Anonymous")[e.ipedit]  ][("Regular", "Vandalism")[known == 'bad'] + ("", " (Revert)")[e.reverts_info > 0]] += 1
+    print "Revisions", len(revisions)
 
 
 
@@ -1330,29 +1336,32 @@ def train_crm114(user_counters):
 
 
 def train_freqdist(user_counters):
-    c = lambda:expando
-    c.bad = nltk.probability.FreqDist()
-    c.good = nltk.probability.FreqDist()        
+    r14 = re.compile(r'(.{1,4}?)\1{3,}')  # Ugg .. the same letters several times in a row. */
+    #tokens = defaultdict(int)
+    import pyjudy
+    freqs = pyjudy.JudySLInt()
+
     for revisions in read_pyc():            
-        analyze_reverts(revisions)
+        # analyze_reverts(revisions)
         for e in revisions:#[-100:]:
-            if e.reverts_info < -1: continue                        
-            counter = user_counters[e.username]
-            if counter[0] < 100 or counter[-1] / counter[0] < 0.5: continue            
+            for (t, v) in e.diff:
+                #t = r14.subn(r'\1\1\1', t)[0][:21]
+                t = t[:21].encode("utf-8")
+                freqs[t] = freqs.get(t, 0) + 1
+        #if len(tokens) > 10000000: break
+
+    top_freqs = [(token, c) for token, c in freqs.iteritems() if c > 200]
+    top_freqs.sort(key = itemgetter(1), reverse=True)
     
-            #show_edit(e, "\n\n\n>>> %s <<<" % mark(e.reverts_info))
-            if e.reverts_info > 0:
-                for (t, v) in e.diff:
-                    if v < 0: c.bad.inc(t, -v);
-            elif e.reverts_info == -1:
-                for (t, v) in e.diff:
-                    if v > 0: c.good.inc(t, v)                                                
 
     print "=================================================="
-    for word, freq in c.bad.iteritems():  print word.encode("utf-8"), freq 
-    print "=================================================" 
-    for word, freq in c.good.iteritems(): print word.encode("utf-8"), freq 
+    print "len(freqs) = %d, len(top_freqs) = %d" % (len(freqs), len(top_freqs))
     print "==================================================" 
+    for token, c in top_freqs:
+        print token.encode("utf-8"), c
+        if(_output_arg): cPickle.dump((token, c), FILE, 1)
+    print "=================================================="
+
 
 
 
@@ -1375,14 +1384,14 @@ def train_chisquare(user_counters):
 
             if e.reverts_info > 0:
                 for (t, v) in e.diff: 
-                    if v < 0:
-                        t = r14.subn(r'\1\1\1', t)[0]
-                        word_fd.inc(t, min(-v, 2)); label_word_fd['neg'].inc(t[:21], min(-v, 2))
+                    if v < 0 and t.startswith('a'):
+                        t = r14.subn(r'\1\1\1', t)[0][:21]
+                        word_fd.inc(t, min(-v, 2)); label_word_fd['neg'].inc(t, min(-v, 2))
             elif e.reverts_info == -1:
                 for (t, v) in e.diff:
-                    if v > 0:
-                        t = r14.subn(r'\1\1\1', t)[0]
-                        word_fd.inc(t, min(v, 2)); label_word_fd['pos'].inc(t[:21], min(v, 2))
+                    if v > 0 and t.startswith('a'):
+                        t = r14.subn(r'\1\1\1', t)[0][:21]
+                        word_fd.inc(t, min(v, 2)); label_word_fd['pos'].inc(t, min(v, 2))
                                                                     
     pos_word_count = label_word_fd['pos'].N()
     neg_word_count = label_word_fd['neg'].N()
@@ -1784,7 +1793,8 @@ def main():
     start = time.time();
 
     if(_evaluate_arg):
-        evaluate_gold(revisions, defaultdict(int))        
+        #evaluate_gold(revisions, defaultdict(int))        
+        evaluate_anons(revisions, defaultdict(int))
 
     if _train_arg.find('maxent') > -1: train_maxent(user_counters)            
     if _train_arg.find('freqdist') > -1: train_freqdist(user_counters)
