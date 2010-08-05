@@ -1337,20 +1337,24 @@ def train_crm114(user_counters):
 
 def train_freqdist(user_counters):
     r14 = re.compile(r'(.{1,4}?)\1{3,}')  # Ugg .. the same letters several times in a row. */
-    #tokens = defaultdict(int)
-    import pyjudy
-    freqs = pyjudy.JudySLInt()
-
+    freqs = defaultdict(int)
+    #from Bio import trie
+    #freqs = trie.trie()
+    N = 0;
     for revisions in read_pyc():            
         # analyze_reverts(revisions)
         for e in revisions:#[-100:]:
             for (t, v) in e.diff:
                 #t = r14.subn(r'\1\1\1', t)[0][:21]
-                t = t[:21].encode("utf-8")
-                freqs[t] = freqs.get(t, 0) + 1
+                #t = t[:21].encode("utf-8")
+                #freqs[t] = freqs.get(t, 0) + 1
+                N += 1
         #if len(tokens) > 10000000: break
 
-    top_freqs = [(token, c) for token, c in freqs.iteritems() if c > 200]
+    print "N = ", N
+    print open('/proc/%d/status' % os.getpid()).read()
+
+    top_freqs = [(token, freqs[token]) for token in freqs.keys() if freqs[token] > 200]
     top_freqs.sort(key = itemgetter(1), reverse=True)
     
 
