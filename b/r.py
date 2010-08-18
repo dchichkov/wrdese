@@ -150,11 +150,11 @@ import crm114, nltk
 #import wicow08r_chin_lincoln_annotation as k
 #import pan10_vandalism_test_collection as k
 from labels import k, ids, labels, labels_shortcuts, labeler, good_labels, bad_labels
-#import pan10_vandalism_test_collection; k.append(known = pan10_vandalism_test_collection.g)
-import pan_wvc_10_gold; k.append(known = pan_wvc_10_gold.g, info = pan_wvc_10_gold.i);
-import pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified)#, known = pan_wvc_10_labels.known)
+import pan10_vandalism_test_collection; k.append(known = pan10_vandalism_test_collection.g)
+#import pan_wvc_10_gold; k.append(known = pan_wvc_10_gold.g, info = pan_wvc_10_gold.i);
+#import pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified)#, known = pan_wvc_10_labels.known)
 #import pan_wvc_10_labels_15k as pan_wvc_10_labels; k.append(verified = pan_wvc_10_labels.verified)#, known = pan_wvc_10_labels.known)
-import wrdse10_dchichkov_rocket_annotations as wrdse; k.append(known = wrdse.known, verified = wrdse.verified);
+#import wrdse10_dchichkov_rocket_annotations as wrdse; k.append(known = wrdse.known, verified = wrdse.verified);
 
 NNN = 313797035 # total revisions in the latest wiki dump
 counters_dict = lambda:defaultdict(lambda:(0, 0, 0, 0, 0, 0, 0, 0))
@@ -465,12 +465,12 @@ def read_pyc():
         revisions = [];
         try:
             info = FullInfo(marshal.load(FILE))     # load first in order to  
-            if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
+            #if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
             id = info.id;                           # initialize id from info.id
             revisions.append(info)
             while True:
                 info = FullInfo(marshal.load(FILE))
-                if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
+                #if(info.utc > 1258329600): continue     # filter date < Mon, 16 Nov 2009 00:00:00 GMT
                 if(id != info.id):
                     yield revisions
                     revisions = []
@@ -500,19 +500,18 @@ def filter_pyc():
         total_pages += 1;
         total_revisions += len(revisions)
         if(total_pages%100 == 0):
-            wikipedia.output("Page %d. Revs %d. Filtered Pages %d. Filtered Revs %d. Analysis time: %f. ETA %f Hours." %
-                (total_pages, total_revisions, filtered_pages, filtered_revisions, time.time() - start,
-                 (NNN - total_revisions) / total_revisions * (time.time() - start) / 3600 ))
+            wikipedia.output("Page %d. Revs %d. Filtered Pages %d. Filtered Revs %d." %
+                (total_pages, total_revisions, filtered_pages, filtered_revisions))
         
         for e in revisions:
             known = k.is_known(e.revid)
             if known: break
         if not known: continue
 
-        # mark 'known'
+        # hack. mark 'known'
         for e in revisions:
-            known = k.is_known(e.revid)
-            if known: k.g[e.revid] = 'known'
+            if k.is_known(e.revid): 
+                k.known[e.revid] = 'known'
 
         for e in revisions:
             full_info = (e.id, e.revid, e.username, e.comment, e.title,
@@ -525,12 +524,12 @@ def filter_pyc():
         filtered_pages += 1
 
     l = []
-    for e, v in k.g.iteritems():
+    for e, v in k.known.iteritems():
         if v != 'known': l.append(e)
     
-    # print "Known list:", k.g
+    # print "Known list:", k.known
     print "Missing list", sorted(l)
-    print "Known revisions: ", len(k.g)
+    print "Known revisions: ", len(k.known)
     print "Missing revisions total: ", len(l)
     print "Filtered pages: ", filtered_pages, "Filtered revisions", filtered_revisions
 
