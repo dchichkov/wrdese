@@ -64,11 +64,11 @@ import string;
 kCrmPath = "crm"
 
 
-kClassificationType = "<osb unique microgroom>"
-kClassificationExtension = ".css"
+#kClassificationType = "<osb unique microgroom>"
+#kClassificationExtension = ".css"
 
-#kClassificationType = "<hyperspace>"
-#kClassificationExtension = ".csh"
+kClassificationType = "<hyperspace>"
+kClassificationExtension = ".csh"
 
 #kClassificationType = "<osb unigram>"
 #kClassificationExtension = ".css"
