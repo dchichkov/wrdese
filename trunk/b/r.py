@@ -1268,36 +1268,25 @@ def evaluate_anons(revisions, user_counters):
 
 
 def evaluate_gold(revisions, user_counters):
-    print "editid,newrevisionid,class,annotators,totalannotators,known,verified,diffurl,editgroupdiffurl,revertdiffurl,revertcomment"
+    import csv
+    csvWriter = csv.writer(open(_output_arg, 'wb'))
+    csvWriter.writerow(['newrevisionid','diffurl','editgroupdiffurl','tag','revertdiffurl','revertcomment'])
     for i, e in enumerate(revisions):
-        score = k.is_gold(e.revid)
-        known = k.is_known(e.revid)                                 # previous score (some human verified)
-        info = k.info[e.revid]
-        verified = k.is_verified(e.revid)                           # if not Empty: human verified
-        stats["PAN 10 Training Set A " + ("Regular", "Vandalism")[known == 'bad']][reverts_info_descr(e)] += 1
-        stats["PAN 10 Training Set B " + ("Regular", "Vandalism")[known == 'bad']][('Regular', 'Reverted')[e.reverted != None]] += 1
-        continue
-        
-        if not known: continue
-        if score == known: continue        
+        if not k.is_known(e.revid): continue
 
-        edit_group_diff = ""; revert_diff = "";  revert_comment = ""
+        edit_group_diff = ""; revert_diff = "";  revert_comment = ""; diff = "http://en.wikipedia.org/w/index.php?diff=%d" % e.revid
         if(e.edit_group and e.edit_group[0].oldid): edit_group_diff = "http://en.wikipedia.org/w/index.php?diff=%d&oldid=%d" % (e.edit_group[-1].revid, e.edit_group[0].oldid) 
         if(e.reverted): revert_diff = "http://en.wikipedia.org/w/index.php?diff=%d" % e.reverted.revid; 
         if(e.reverted and e.reverted.comment): revert_comment = e.reverted.comment
 
-
-        print('%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,"%s"' %
-                         (info[0]['editid'], e.revid, info[1]['class'], info[1]['annotators'], info[1]['totalannotators'],                        
-                          known, verified,   
-                          info[0]['diffurl'],
+        csvWriter.writerow(
+                         [e.revid, # info[1]['class'], info[1]['annotators'], info[1]['totalannotators'],                        
+                          # known, verified,   
+                          diff, reverts_info_descr(e),
                           edit_group_diff, revert_diff, revert_comment.encode("utf-8")   
-                          ))
-
-
-        uncertain = known != score
-        (verified, known, score) = collect_stats(stats, user_counters, e, score, uncertain, None)
-
+                          ])
+        stats['total'][reverts_info_descr(e)] += 1
+        stats[('regular', 'ip')(e.ipedit)][reverts_info_descr(e)] += 1
 
 
 def train_crm114(user_counters):
@@ -1796,8 +1785,8 @@ def main():
     start = time.time();
 
     if(_evaluate_arg):
-        #evaluate_gold(revisions, defaultdict(int))        
-        evaluate_anons(revisions, defaultdict(int))
+        evaluate_gold(revisions, defaultdict(int))        
+        #evaluate_anons(revisions, defaultdict(int))
 
     if _train_arg.find('maxent') > -1: train_maxent(user_counters)            
     if _train_arg.find('freqdist') > -1: train_freqdist(user_counters)
