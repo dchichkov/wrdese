@@ -1270,7 +1270,7 @@ def evaluate_anons(revisions, user_counters):
 def evaluate_gold(revisions, user_counters):
     import csv
     csvWriter = csv.writer(open(_output_arg, 'wb'))
-    csvWriter.writerow(['newrevisionid','diffurl','editgroupdiffurl','tag','revertdiffurl','revertcomment'])
+    csvWriter.writerow(['newrevisionid','diffurl','tag','editgroupdiffurl','revertdiffurl','revertcomment'])
     for i, e in enumerate(revisions):
         if not k.is_known(e.revid): continue
 
@@ -1286,7 +1286,17 @@ def evaluate_gold(revisions, user_counters):
                           edit_group_diff, revert_diff, revert_comment.encode("utf-8")   
                           ])
         stats['total'][reverts_info_descr(e)] += 1
-        stats[('regular', 'ip')(e.ipedit)][reverts_info_descr(e)] += 1
+        stats[('regular', 'ip')[e.ipedit]][reverts_info_descr(e)] += 1
+
+    for revid in [326893407, 326893471, 327839049, 327887694, 327964100, 328143999, 328561560, 328625401, 328782264, 329017705, 329749020, 329800579]:
+        diff = "http://en.wikipedia.org/w/index.php?diff=%d" % revid
+        csvWriter.writerow(
+           [revid, # info[1]['class'], info[1]['annotators'], info[1]['totalannotators'],                        
+               # known, verified,   
+               diff, "regular revision",
+               "", "", ""
+            ])
+ 
 
 
 def train_crm114(user_counters):
