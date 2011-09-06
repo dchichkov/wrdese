@@ -14,7 +14,6 @@ from __future__ import division
 # User karma - tuples (+, -) - how often '+' do '-'
 # Try to produce 'string' karma "er eeer es es", "eee ceeee e e e e "
 
-
 # Users with bad karma can do good edits:
 # * self reverts
 # * partial self reverts
